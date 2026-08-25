@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firebird Hub · Start Here</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--cardinal:#8F1106;--cardinal-dark:#5F0C03;--gold:#FFC91F;--gold-soft:#FFE9A8;--paper:#FBF6EC;--ink:#271510;--ink-soft:#5F5047;--line:#E4D9C6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Atkinson Hyperlegible",Georgia,sans-serif;font-size:16px;line-height:1.55;
+background-image:radial-gradient(rgba(143,17,6,.045) 1px,transparent 1.4px);background-size:22px 22px;padding:28px 16px 60px}
+.wrap{max-width:760px;margin:0 auto}
+.kicker{font-family:"Barlow Condensed",sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.16em;font-size:14px;color:#C74A0C;margin:0 0 6px}
+h1{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.03em;font-size:clamp(34px,6vw,48px);margin:0 0 6px;color:var(--cardinal-dark)}
+.lead{color:var(--ink-soft);margin:0 0 26px;max-width:56ch}
+h2{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.04em;font-size:22px;color:var(--cardinal-dark);margin:34px 0 12px}
+.card{display:block;background:#fff;border:2px solid var(--ink);border-radius:14px;box-shadow:4px 4px 0 rgba(39,21,16,.14);padding:16px;margin-bottom:12px;
+text-decoration:none;color:var(--ink);transition:transform .14s ease, box-shadow .14s ease}
+a.card:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(39,21,16,.18)}
+.card b{font-family:"Barlow Condensed",sans-serif;text-transform:uppercase;letter-spacing:.03em;font-size:20px;color:var(--cardinal);display:block}
+.card span{color:var(--ink-soft);font-size:14.5px}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.05em;background:var(--gold-soft);border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;margin-left:8px;vertical-align:2px}
+ol{margin:0;padding-left:20px;display:grid;gap:9px}
+ol li{padding-left:4px}
+.note{font-size:13.5px;color:var(--ink-soft);border:2px dashed var(--line);border-radius:12px;padding:12px 14px;background:#fff}
+code{background:var(--gold-soft);border-radius:5px;padding:1px 6px;font-size:13.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Fremont ASB · Tech Commission</p>
+  <h1>Firebird Hub · Review Kit</h1>
+  <p class="lead">Everything in this folder opens right in your browser. No installs, no build, no accounts. It all runs in demo mode, so click anything and try to break it.</p>
+
+  <h2>Open these</h2>
+  <a class="card" href="FirebirdHub/index.html"><b>The student app <span class="tag">Start here</span></b><span>Events, live bell schedule, spirit points with the AI outfit check, clubs, and the Firebird Card with Fire Bucks + QR.</span></a>
+  <a class="card" href="FirebirdHub/teacher.html"><b>Teacher console</b><span>The staff side: scan a student&rsquo;s card QR (or load the test student) and grant Fire Bucks. Demo PIN is <code>2627</code>.</span></a>
+  <a class="card" href="spirit-vision-test.html"><b>Outfit-check tester</b><span>Drop in any photo, pick a spirit day, get the yes/no. The smart model downloads on first check, so give it a moment (needs internet).</span></a>
+  <a class="card" href="Firebird Hub - Fremont ASB.html"><b>Single-file copy</b><span>The whole student app in one portable .html, same code inlined. Handy for sharing; review in the folder version above.</span></a>
+  <a class="card" href="backend/README.md"><b>Backend (read this one)</b><span><code>backend/Code.gs</code> is the whole server: a free Google Apps Script on a Google Sheet. Grants, balances, submissions, leaderboard. The README is the 5-minute deploy guide.</span></a>
+
+  <h2>A good 5-minute tour</h2>
+  <ol>
+    <li><b>Schedule:</b> flip <i>Normal week / Special weeks</i> and browse a full finals or CAASPP week.</li>
+    <li><b>Spirit:</b> pick a spirit day, upload any outfit photo, hit <i>Check my fit</i>. Notice you can&rsquo;t submit until the check passes.</li>
+    <li><b>More tab:</b> fill in a name, grade, and any 6-digit ID → <i>Make my card</i>. Tap the QR to blow it up.</li>
+    <li><b>Teacher console:</b> <i>Load test student</i>, type a custom amount, PIN <code>2627</code>, give the bucks, watch the log.</li>
+    <li>Try it on a phone width too. It&rsquo;s built mobile-first.</li>
+  </ol>
+
+  <h2>Two honest caveats</h2>
+  <p class="note">Scanning the QR with an actual phone camera needs the app hosted at a URL (drag the FirebirdHub folder to Netlify Drop and it just works, teacher console included at <code>/teacher.html</code>). And the outfit check&rsquo;s smart model + Google sign-in need internet; offline it falls back to a color check and says so. Feedback on anything: tell Abir. Go Firebirds.</p>
+</div>
+</body>
+</html>
