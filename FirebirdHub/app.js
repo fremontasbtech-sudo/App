@@ -12,6 +12,11 @@ const CONFIG = {
   googleClientId: ""
 };
 
+// Feature flags — flip to true to bring a feature back into the live app.
+// Fire Bucks (Firebird Card, QR, teacher "give" screen) stays built in the repo,
+// but is hidden from the live app for now. Set fireBucks:true to re-enable it.
+const FEATURES = { fireBucks: false };
+
 /* Spirit-points scoreboard auto-syncs from this Google Sheet (view-shared).
    Sheet is a matrix: col A = class, each next column = an event; a class's
    total is the sum of its row. Add an event = add a column, nothing else. */
@@ -130,6 +135,7 @@ function parseHash(){
     const i = kv.indexOf("=");
     if(i>0) params[kv.slice(0,i)] = decodeURIComponent(kv.slice(i+1).replace(/\+/g," "));
   });
+  if(view==="give" && !FEATURES.fireBucks) return { view:"home", params:{} };
   return { view, params };
 }
 function show(view, focusHeading){
@@ -774,3 +780,9 @@ setInterval(()=>{
 const boot = parseHash();
 if(boot.view==="give") fillGive(boot.params);
 show(boot.view || "home", false);
+
+// Fire Bucks off: hide the Firebird Card section in More (code kept in the repo).
+if(!FEATURES.fireBucks){
+  const fbSection = document.querySelector('section[aria-labelledby="h-card"]');
+  if(fbSection) fbSection.hidden = true;
+}
