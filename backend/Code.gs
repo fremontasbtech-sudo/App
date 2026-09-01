@@ -38,7 +38,7 @@ function setup() {
   });
   var props = PropertiesService.getScriptProperties();
   if (!props.getProperty("TEACHER_PIN")) {
-    props.setProperty("TEACHER_PIN", "2627"); // CHANGE ME in Script Properties
+    props.setProperty("TEACHER_PIN", "0000"); // PLACEHOLDER ONLY — set the real PIN in Project Settings > Script Properties > TEACHER_PIN before using
   }
 }
 
