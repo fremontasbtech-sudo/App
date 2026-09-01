@@ -12,6 +12,11 @@ const CONFIG = {
   googleClientId: ""
 };
 
+/* Spirit-points scoreboard auto-syncs from this Google Sheet (view-shared).
+   Sheet is a matrix: col A = class, each next column = an event; a class's
+   total is the sum of its row. Add an event = add a column, nothing else. */
+const SPIRIT_SHEET = "https://docs.google.com/spreadsheets/d/1gS0bbOGgpjMpCfeYOUBI4B39oPEtNU-1Y2n1nEWkZ7o/gviz/tq?tqx=out:csv&gid=0";
+
 /* ---- backend calls (Apps Script). Both return null in demo mode. ---- */
 async function apiPost(body){
   if(!CONFIG.apiUrl) return null;
@@ -704,6 +709,44 @@ document.getElementById("signinBtn").addEventListener("click", ()=>{
 initGoogleSignin();
 
 /* =====================================================
+   Spirit scoreboard — live pull from the Google Sheet
+===================================================== */
+function parseSheetRows(text){
+  const rows=[]; let row=[],cell="",q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'&&text[i+1]==='"'){cell+='"';i++;} else if(c==='"')q=false; else cell+=c; }
+    else if(c==='"')q=true;
+    else if(c===",")
+      {row.push(cell);cell="";}
+    else if(c==="\n"||c==="\r"){ if(c==="\r"&&text[i+1]==="\n")i++; row.push(cell);rows.push(row);row=[];cell=""; }
+    else cell+=c;
+  }
+  if(cell.length||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+async function syncScoreboard(){
+  const board=document.querySelector(".scoreboard");
+  if(!board) return;
+  const GRADES=["Seniors","Juniors","Sophomores","Freshmen"];
+  try{
+    const res=await fetch(SPIRIT_SHEET);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows=parseSheetRows(await res.text());
+    const standings=GRADES.map(label=>{
+      const r=rows.find(x=>(x[0]||"").trim().toLowerCase()===label.toLowerCase());
+      if(!r) return null;
+      const pts=r.slice(1).reduce((sum,c)=>{ const n=Number(String(c).replace(/[^\d.-]/g,"")); return sum+(Number.isFinite(n)?n:0); },0);
+      return {label,pts};
+    }).filter(Boolean);
+    if(!standings.length) return;           // sheet unreadable/empty → keep placeholders
+    standings.sort((a,b)=>b.pts-a.pts);
+    board.innerHTML=standings.map((s,i)=>
+      '<div class="score'+(i===0?" lead":"")+'"><div class="cls">'+s.label+'</div><div class="pts">'+s.pts+'</div></div>'
+    ).join("");
+  }catch(e){ /* offline / blocked → leave the hardcoded standings in place */ }
+}
+
+/* =====================================================
    Boot
 ===================================================== */
 /* Home "right now" chip — what period it is, at a glance */
@@ -720,6 +763,7 @@ function tickNowChip(){
 renderClubs();
 initSchedule();
 renderToday();
+syncScoreboard();
 tickClock(); tickCountdown(); tickNowChip();
 let lastMin = new Date().getMinutes();
 setInterval(()=>{
