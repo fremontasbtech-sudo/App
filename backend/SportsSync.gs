@@ -26,7 +26,7 @@ function syncSports(){
   var res = UrlFetchApp.fetch(SPORTS_ENDPOINT, {muteHttpExceptions:true});
   var data = JSON.parse(res.getContentText());
   if(!data || !data.programs) return;
-  var header = ["name","date","endDate","time","location","description","tags","status","section","seniorNight"];
+  var header = ["name","date","endDate","time","location","description","tags","status","section","seniorNight","score","result"];
   var rows = [header];
   data.programs.forEach(function(p){
     (p.upcoming||[]).forEach(function(g){ rows.push(gameRow_(g, p, "upcoming")); });
@@ -47,15 +47,25 @@ function isSeniorNight_(g){
 function gameRow_(g, p, section){
   var sport = g.sport || p.sport || "";
   var homeAway = g.home ? "Home" : "Away";
-  var score = g.score || g.result || g.finalScore || "";
+  var score = g.score || g.finalScore || "";
+  var result = g.wlWord || g.wl || (g.won === true ? "Win" : (g.won === false ? "Loss" : ""));
+  var sets = Array.isArray(g.setScores) ? g.setScores.join(", ") : (g.setScores || "");
+  var standouts = Array.isArray(g.standouts) ? g.standouts.join(", ") : (g.standouts || "");
   var sr = isSeniorNight_(g);
   var name = ((sr ? "\u2605 SENIOR NIGHT \u2014 " : "") + sport + (g.level ? (" " + g.level) : "") + " " + homeAway +
               (g.opponent ? (" vs " + g.opponent) : "")).trim();
   var descBits = [];
   if(g.matchup) descBits.push(g.matchup);
   if(g.league) descBits.push("League game");
-  if(section === "result") descBits.push(score ? ("Final: " + score) : "Final score pending");
+  if(section === "result"){
+    var fin = [result, score].filter(String).join(" ");
+    descBits.push(fin ? ("Final: " + fin) : "Final score pending");
+    if(sets) descBits.push("Sets: " + sets);
+    if(g.placement) descBits.push(g.placement);
+    if(standouts) descBits.push("Standouts: " + standouts);
+    if(g.note) descBits.push(g.note);
+  }
   var tags = [sport, g.level, homeAway, (g.league ? "league" : ""), (sr ? "senior-night" : "")].filter(String).join(";");
   return [ name, g.date || "", g.date || "", g.time || "", g.location || "",
-           descBits.join(" \u2014 "), tags, g.status || "", section, (sr ? "YES" : "") ];
+           descBits.join(" \u2014 "), tags, g.status || "", section, (sr ? "YES" : ""), score, result ];
 }
