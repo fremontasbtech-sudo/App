@@ -631,25 +631,31 @@ document.getElementById("giveForm").addEventListener("submit", async e=>{
   }
 });
 
-/* Feedback form */
-document.getElementById("fbForm").addEventListener("submit", async e=>{
+/* Feedback form — collects name/email/message, then opens the ASB contact
+   Google Form in a new tab with those fields pre-filled. */
+const FEEDBACK_FORM = "https://docs.google.com/forms/d/e/1FAIpQLScNFE8IoooVpQER65d2GIse6ru1nLIp03EHcBjeGBVpsOJMZQ/viewform?usp=pp_url";
+const FEEDBACK_ENTRY = { name:"entry.1253423822", email:"entry.2023794996", message:"entry.548009737" };
+document.getElementById("fbForm").addEventListener("submit", function(e){
   e.preventDefault();
-  const m = document.getElementById("fbMsg");
-  if(!m.value.trim()){ setBad("fbMsg", true); m.focus(); return; }
-  setBad("fbMsg", false);
-  const ok = document.getElementById("fbOk");
-  let text;
-  try{
-    const res = await apiPost({ action:"feedback", message:m.value.trim(),
-      name:document.getElementById("fbName").value.trim() });
-    text = res ? "Thanks! Your note went straight to ASB."
-               : "Thanks, Firebird! (Demo mode. ASB Tech deploys the backend to deliver these for real.)";
-  }catch(err){ text = "Hmm, that didn’t send. Check your connection and try again."; }
-  ok.textContent = text;
+  const nameEl=document.getElementById("fbName"), emailEl=document.getElementById("fbEmail"), msgEl=document.getElementById("fbMsg");
+  const name=nameEl.value.trim(), email=emailEl.value.trim(), msg=msgEl.value.trim();
+  const emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  let bad=false;
+  if(!name){ setBad("fbName",true); bad=true; } else setBad("fbName",false);
+  if(!emailOk){ setBad("fbEmail",true); bad=true; } else setBad("fbEmail",false);
+  if(!msg){ setBad("fbMsg",true); bad=true; } else setBad("fbMsg",false);
+  if(bad){ (!name?nameEl:(!emailOk?emailEl:msgEl)).focus(); return; }
+  const url = FEEDBACK_FORM
+    + "&"+FEEDBACK_ENTRY.name+"="+encodeURIComponent(name)
+    + "&"+FEEDBACK_ENTRY.email+"="+encodeURIComponent(email)
+    + "&"+FEEDBACK_ENTRY.message+"="+encodeURIComponent(msg);
+  const w = window.open(url, "_blank", "noopener");
+  const ok=document.getElementById("fbOk");
+  if(w){ ok.textContent="Opening the contact form in a new tab with your info filled in — hit Submit there to send it to ASB."; }
+  else{ ok.innerHTML='Your info is ready. <a href="'+url+'" target="_blank" rel="noopener"><b>Tap here to open the contact form</b></a>, then hit Submit.'; }
   ok.classList.add("show"); ok.focus();
-  e.target.reset();
 });
-document.getElementById("fbMsg").addEventListener("input", e=>{ if(e.target.value.trim()) setBad("fbMsg", false); });
+["fbName","fbEmail","fbMsg"].forEach(function(id){ document.getElementById(id).addEventListener("input", function(e){ if(e.target.value.trim()) setBad(id,false); }); });
 
 /* =====================================================
    Clubs — search + filter
