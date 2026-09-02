@@ -106,8 +106,12 @@ const EVENTS = [
   { name: "BTS Spirit Week", when: new Date(2026,7,24,8,30) },
   { name: "BTS Rally", when: new Date(2026,7,28,8,30) },
   { name: "Beach Bash Social", when: new Date(2026,7,28,18,15) },
+  { name: "Clubs Day", when: new Date(2026,8,16,8,30) },
   { name: "Firebird Football", when: new Date(2026,9,12,8,30) },
-  { name: "Homecoming Week", when: new Date(2026,9,19,8,30) }
+  { name: "Homecoming Week", when: new Date(2026,9,19,8,30) },
+  { name: "Multicultural Night", when: new Date(2026,9,28,18,0) },
+  { name: "Club Trivia Night", when: new Date(2027,0,27,18,0) },
+  { name: "Club Grub Day", when: new Date(2027,3,21,8,30) }
 ];
 
 /* SAMPLE club list — replace with the real Club Database export. */
