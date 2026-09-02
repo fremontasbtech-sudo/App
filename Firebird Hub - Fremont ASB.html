@@ -627,10 +627,10 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
     <div class="copy">
       <p class="kicker">Fremont High School · Sunnyvale</p>
       <h1>The One Nest for <span class="hl">Everything FHS</span></h1>
-      <p>Events, the bell schedule, spirit points, and clubs, all in one nest and built by the Tech Commission for every Firebird. No downloads, and no login needed to look around.</p>
+      <p>Every event, every bell, every club, in one place, for every Firebird. No app to download, and no login needed to look around.</p>
       <div class="btnrow">
-        <a class="btn primary" href="#spirit" data-nav="spirit">Submit spirit points</a>
-        <a class="btn ghost" href="#schedule" data-nav="schedule">Bell schedule</a>
+        <a class="btn primary" href="#schedule" data-nav="schedule">Bell schedule</a>
+        <a class="btn ghost" href="#clubs" data-nav="clubs">Browse clubs</a>
       </div>
     </div>
     <div class="art">
@@ -1726,7 +1726,7 @@ function renderEvents(){
    the sheet shows up on the app with no code change. A row counts as "featured"
    when Ava highlights it RED in the sheet; the app shows ONLY featured events.
    Paste the web-app /exec URL here. Empty => the seed events above are shown. */
-const EVENTS_API = "https://script.google.com/macros/s/AKfycby9SaxVGilXMU6fL6WvcnzmmFwErdlnolIYjzA9AanRlrsCOSgA1kum6-18Au5FIOxi/exec";
+const EVENTS_API = "https://script.google.com/macros/s/AKfycby1RxuBsmahIAX532I6LaCFxaLUd0MXuwCkVGJbt-mPBMCwVDMmY8vrbrznakpzYlRj/exec";
 function parseEvDate(s,isEnd){
   const m = String(s||"").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if(!m) return null;

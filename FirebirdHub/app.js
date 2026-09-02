@@ -241,7 +241,7 @@ function renderEvents(){
    the sheet shows up on the app with no code change. A row counts as "featured"
    when Ava highlights it RED in the sheet; the app shows ONLY featured events.
    Paste the web-app /exec URL here. Empty => the seed events above are shown. */
-const EVENTS_API = "https://script.google.com/macros/s/AKfycby9SaxVGilXMU6fL6WvcnzmmFwErdlnolIYjzA9AanRlrsCOSgA1kum6-18Au5FIOxi/exec";
+const EVENTS_API = "https://script.google.com/macros/s/AKfycby1RxuBsmahIAX532I6LaCFxaLUd0MXuwCkVGJbt-mPBMCwVDMmY8vrbrznakpzYlRj/exec";
 function parseEvDate(s,isEnd){
   const m = String(s||"").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if(!m) return null;
