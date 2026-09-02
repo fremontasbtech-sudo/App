@@ -131,7 +131,7 @@ let CLUBS = [
 /* =====================================================
    Tab navigation (hash deep-links, focus management)
 ===================================================== */
-const VIEWS = ["home","schedule","spirit","clubs","more","give"]; // "give" is reached by QR scan, not the nav
+const VIEWS = ["home","schedule","spirit","clubs","sports","more","give"]; // "give" is reached by QR scan, not the nav
 function parseHash(){
   const h = location.hash.replace(/^#/,"");
   const [view, qs] = h.split("?");
@@ -162,6 +162,7 @@ function show(view, focusHeading){
     region.focus({preventScroll:true});
   }
   if(view==="home") staggerOnce("eventList");
+  if(view==="sports") loadSports();
   if(view==="clubs") staggerOnce("clubGrid");
 }
 document.addEventListener("click", e=>{
@@ -209,7 +210,7 @@ function renderEvents(){
   if(!grid) return;
   const now = nowPST();
   const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const list = EVENTS.filter(function(e){ return e.end >= now; }).sort(function(a,b){ return a.when-b.when; });
+  const list = EVENTS.filter(function(e){ return e.end >= now && e.when <= new Date(now.getTime()+31*86400000); }).sort(function(a,b){ return a.when-b.when; });
   if(!list.length){ grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
   grid.innerHTML = list.map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
@@ -251,6 +252,68 @@ async function syncEvents(){
 /* =====================================================
    Live bell-schedule clock + special-schedule sync
 ===================================================== */
+/* =====================================================
+   Sports — live games + scores from Fremont Athletics
+   (the public Apps Script JSON endpoint the athletics site uses).
+   Auto-updates on each load; no spreadsheet or key needed.
+===================================================== */
+const SPORTS_API = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec";
+let sportsData = null, sportFilter = "all", sportsLoaded = false;
+function loadSports(){
+  if(sportsLoaded) return; sportsLoaded = true;
+  const cb = "fhsSportsCb_" + Math.random().toString(36).slice(2);
+  window[cb] = function(data){ sportsData = data; renderSports(); try{ delete window[cb]; }catch(e){} };
+  const s = document.createElement("script");
+  s.src = SPORTS_API + "?view=results&callback=" + cb;
+  s.onerror = function(){ sportsLoaded = false; const g=document.getElementById("sportsBody"); if(g) g.innerHTML = '<p class="note">Could not load Fremont Athletics right now. Try again later.</p>'; };
+  document.head.appendChild(s);
+}
+function renderSports(){
+  const body = document.getElementById("sportsBody");
+  if(!body || !sportsData || !sportsData.programs){ if(body) body.innerHTML='<p class="note">No sports data available right now.</p>'; return; }
+  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const progs = sportsData.programs;
+  const chips = document.getElementById("sportChips");
+  const sports = progs.map(function(p){ return p.sport; });
+  chips.innerHTML = '<button type="button" data-sport="all" aria-pressed="'+(sportFilter==="all")+'">All sports</button>' +
+    sports.map(function(sp){ return '<button type="button" data-sport="'+clubEsc(sp)+'" aria-pressed="'+(sportFilter===sp)+'">'+clubEsc(sp)+'</button>'; }).join("");
+  document.getElementById("sportsUpdated").textContent = sportsData.updatedLabel ? ("Updated "+sportsData.updatedLabel) : "";
+  const inFilter = function(p){ return sportFilter==="all" || p.sport===sportFilter; };
+  let upcoming=[], results=[];
+  progs.filter(inFilter).forEach(function(p){
+    (p.upcoming||[]).forEach(function(g){ upcoming.push(g); });
+    (p.results||[]).forEach(function(g){ results.push(g); });
+  });
+  upcoming.sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
+  results.sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
+  function card(g, isResult){
+    const m = String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    const mo = m?MO[+m[2]-1]:"TBA", day = m?+m[3]:"";
+    const tags = ['<span class="tag'+(g.home?' free':'')+'">'+(g.home?'Home':'Away')+'</span>'];
+    if(g.league) tags.push('<span class="tag">League</span>');
+    let line2;
+    if(isResult){ const sc = g.score||g.result||g.finalScore||""; line2 = sc ? ('Final: '+clubEsc(sc)) : 'Final score pending'; }
+    else { line2 = [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; "); }
+    return '<article class="ticket"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
+      '<div class="body"><h3>'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h3>'+
+      '<p class="meta">'+clubEsc(g.matchup||g.opponent||"")+'</p>'+
+      (line2?('<p>'+line2+'</p>'):"")+
+      tags.join(" ")+'</div></article>';
+  }
+  let html = '<section aria-labelledby="h-upgames"><div class="sechead"><h2 id="h-upgames" style="font-size:20px">Upcoming games</h2><span class="rule" aria-hidden="true"></span></div>';
+  html += upcoming.length ? ('<div class="grid cols2">'+upcoming.map(function(g){return card(g,false);}).join("")+'</div>') : '<p class="note">No upcoming games listed right now.</p>';
+  html += '</section>';
+  if(results.length){
+    html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-results"><div class="sechead"><h2 id="h-results" style="font-size:20px">Recent results</h2><span class="rule" aria-hidden="true"></span></div>';
+    html += '<div class="grid cols2">'+results.slice(0,12).map(function(g){return card(g,true);}).join("")+'</div></section>';
+  }
+  body.innerHTML = html;
+}
+document.getElementById("sportChips").addEventListener("click", function(e){
+  const b = e.target.closest("button[data-sport]"); if(!b) return;
+  sportFilter = b.dataset.sport; renderSports();
+});
+
 function todayKey(){
   const wd = new Date().getDay(); // 0 Sun … 6 Sat
   if(wd===1) return "mon";

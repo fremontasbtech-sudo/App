@@ -34,6 +34,7 @@
       <button data-nav="schedule">Schedule</button>
       <button data-nav="spirit">Spirit</button>
       <button data-nav="clubs">Clubs</button>
+      <button data-nav="sports">Sports</button>
       <button data-nav="more">More</button>
     </nav>
     <button class="signin" id="signinBtn" type="button">
@@ -401,6 +402,21 @@
 
   </div>
 
+<!-- ================= SPORTS ================= -->
+<div class="view" id="view-sports" role="region" aria-label="Sports">
+  <div class="sechead">
+    <h2>Sports</h2>
+    <span class="rule" aria-hidden="true"></span>
+  </div>
+  <p class="note" id="sportsUpdated" aria-live="polite"></p>
+  <div class="chips" id="sportChips" role="group" aria-label="Filter by sport">
+    <button type="button" data-sport="all" aria-pressed="true">All sports</button>
+  </div>
+  <div id="sportsBody" aria-live="polite">
+    <p class="note">Loading Fremont Athletics…</p>
+  </div>
+</div>
+
 <!-- ================= MORE ================= -->
 <div class="view" id="view-more" role="region" aria-label="More">
 
@@ -572,6 +588,10 @@
   <a href="#clubs" data-nav="clubs">
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.5" stroke="currentColor" stroke-width="2"/><path d="M2.5 20c1.2-3.4 3.6-5 6.5-5s5.3 1.6 6.5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="17" cy="9" r="2.6" stroke="currentColor" stroke-width="2"/><path d="M17.8 15.2c1.8.5 3.1 1.8 3.7 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
     Clubs
+  </a>
+  <a href="#sports" data-nav="sports">
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="2"/><path d="M12 3.5v17M3.6 9h16.8M4.2 15h15.6" stroke="currentColor" stroke-width="1.6"/></svg></span>
+    Sports
   </a>
   <a href="#more" data-nav="more">
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21 12a9 9 0 1 0-3.5 7.1L21 20l-.6-3.2A8.9 8.9 0 0 0 21 12Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="8.5" cy="12" r="1.1" fill="currentColor"/><circle cx="12" cy="12" r="1.1" fill="currentColor"/><circle cx="15.5" cy="12" r="1.1" fill="currentColor"/></svg></span>
