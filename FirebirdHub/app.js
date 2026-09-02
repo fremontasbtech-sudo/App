@@ -286,6 +286,7 @@ function loadSports(){
    { sport:"Football", date:"2026-10-22" } (opponent optional) to badge them early. */
 const SENIOR_NIGHTS = [
   { sport:"Football", date:"2026-10-22", opponent:"Los Altos" }, // Football + Cheer senior night
+  { sport:"Field Hockey", date:"2026-10-26" }, // Girls Field Hockey senior night, 6 PM
 ];
 function isSeniorNight(g){
   if(!g) return false;
