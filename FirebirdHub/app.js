@@ -268,6 +268,21 @@ function loadSports(){
   s.onerror = function(){ sportsLoaded = false; const g=document.getElementById("sportsBody"); if(g) g.innerHTML = '<p class="note">Could not load Fremont Athletics right now. Try again later.</p>'; };
   document.head.appendChild(s);
 }
+/* Senior Night labeling. The athletics feed marks a senior night in a game's
+   "status" (sometimes the matchup) text once the athletics office sets it, and we
+   auto-detect that so games get badged the moment they publish it. Dates usually
+   aren't posted until a few weeks before, so until then add known ones here as
+   { sport:"Football", date:"2026-10-22" } (opponent optional) to badge them early. */
+const SENIOR_NIGHTS = [
+  { sport:"Football", date:"2026-10-22", opponent:"Los Altos" }, // Football + Cheer senior night
+];
+function isSeniorNight(g){
+  if(!g) return false;
+  const txt = [g.status, g.matchup, g.opponent, g.note, g.title, g.name].filter(Boolean).join(" ");
+  if(/senior\s*(night|day)/i.test(txt)) return true;
+  const d = String(g.date||"");
+  return SENIOR_NIGHTS.some(function(s){ return s.date===d && (!s.sport || s.sport===g.sport); });
+}
 function renderSports(){
   const body = document.getElementById("sportsBody");
   if(!body || !sportsData || !sportsData.programs){ if(body) body.innerHTML='<p class="note">No sports data available right now.</p>'; return; }
@@ -287,14 +302,16 @@ function renderSports(){
   upcoming.sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
   results.sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
   function card(g, isResult){
+    const sr = isSeniorNight(g);
     const m = String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     const mo = m?MO[+m[2]-1]:"TBA", day = m?+m[3]:"";
     const tags = ['<span class="tag'+(g.home?' free':'')+'">'+(g.home?'Home':'Away')+'</span>'];
     if(g.league) tags.push('<span class="tag">League</span>');
+    if(sr) tags.unshift('<span class="tag sr">&#9733; Senior Night</span>');
     let line2;
     if(isResult){ const sc = g.score||g.result||g.finalScore||""; line2 = sc ? ('Final: '+clubEsc(sc)) : 'Final score pending'; }
     else { line2 = [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; "); }
-    return '<article class="ticket"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
+    return '<article class="ticket'+(sr?' sr':'')+'"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
       '<div class="body"><h3>'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h3>'+
       '<p class="meta">'+clubEsc(g.matchup||g.opponent||"")+'</p>'+
       (line2?('<p>'+line2+'</p>'):"")+
