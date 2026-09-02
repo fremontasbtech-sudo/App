@@ -236,39 +236,38 @@ function renderEvents(){
   }).join("");
   staggered.delete("eventList"); staggerOnce("eventList");
 }
-/* Live events feed. The app pulls directly from the events spreadsheet through a
-   Google Apps Script web app (see App/backend/FeaturedEvents.gs), so any edit in
-   the sheet shows up on the app with no code change. A row counts as "featured"
-   when Ava highlights it RED in the sheet; the app shows ONLY featured events.
-   Paste the web-app /exec URL here. Empty => the seed events above are shown. */
-const EVENTS_API = "https://script.google.com/macros/s/AKfycby1RxuBsmahIAX532I6LaCFxaLUd0MXuwCkVGJbt-mPBMCwVDMmY8vrbrznakpzYlRj/exec";
+/* Live events feed — a live read straight from the events spreadsheet (not a static
+   file), so any edit shows up on the app. Ava highlights an event RED in the sheet;
+   a bound Apps Script trigger (App/backend/FeaturedEvents.gs) writes a "featured"
+   column from the red cells, and the app shows ONLY featured events. The sheet must
+   be shared "Anyone with the link: Viewer" for this public read. */
+const EVENTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&gid=0";
 function parseEvDate(s,isEnd){
   const m = String(s||"").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if(!m) return null;
   return isEnd ? new Date(+m[1],+m[2]-1,+m[3],23,59) : new Date(+m[1],+m[2]-1,+m[3],8,0);
 }
-function applyEvents(data){
-  if(!data || !data.events) return;
-  const list = [];
-  data.events.forEach(function(r){
-    const when = parseEvDate(r.date,false); if(!r.name || !when) return;
-    const end = parseEvDate(r.endDate,true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
-    const tags = String(r.tags||"").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
-    list.push({ name:r.name, when:when, end:end, time:r.time||"", loc:r.location||"", desc:r.description||"", tags:tags, featured:!!r.featured, photos:r.photos||r.flickr||"" });
-  });
-  eventsCurated = true;
-  EVENTS = list.filter(function(e){ return e.featured; }).sort(function(a,b){ return a.when-b.when; });
-  renderEvents(); tickCountdown();
-}
-function loadEventsApi(){
-  if(!EVENTS_API){ return; }
-  eventsApiLoaded = true;
-  const cb = "fhsEvCb_" + Math.random().toString(36).slice(2);
-  window[cb] = function(data){ applyEvents(data); try{ delete window[cb]; }catch(e){} };
-  const s = document.createElement("script");
-  s.src = EVENTS_API + (EVENTS_API.indexOf("?")>=0 ? "&" : "?") + "callback=" + cb;
-  s.onerror = function(){ eventsApiLoaded = false; try{ delete window[cb]; }catch(e){} };
-  document.head.appendChild(s);
+async function syncEventsSheet(){
+  if(!EVENTS_SHEET) return;
+  try{
+    const res = await fetch(EVENTS_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = parseSheetRows(await res.text()); if(rows.length<2) return;
+    const head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
+    const gi = function(n){ return head.indexOf(n); };
+    const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
+    const hasFeat = gi("featured")>=0;
+    const list = [];
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,"name"); const when=parseEvDate(col(r,"date"),false); if(!name||!when) continue;
+      const end = parseEvDate(col(r,"enddate"),true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
+      const tags = col(r,"tags").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
+      const feat = /^(yes|true|1|x|red|y)$/i.test(col(r,"featured"));
+      list.push({ name:name, when:when, end:end, time:col(r,"time"), loc:col(r,"location")||col(r,"place"), desc:col(r,"description")||col(r,"desc"), tags:tags, featured:feat, photos:col(r,"photos")||col(r,"flickr") });
+    }
+    if(!list.length) return;
+    eventsCurated = true;
+    EVENTS = (hasFeat ? list.filter(function(e){ return e.featured; }) : list).sort(function(a,b){ return a.when-b.when; });
+    renderEvents(); tickCountdown();
+  }catch(e){ /* sheet not public yet or offline: keep the seed events */ }
 }
 
 /* =====================================================
@@ -1106,7 +1105,7 @@ renderToday();
 syncScoreboard();
 syncClubs();
 renderEvents();
-loadEventsApi();
+syncEventsSheet();
 tickClock(); tickCountdown(); tickNowChip();
 let lastMin = new Date().getMinutes();
 setInterval(()=>{
@@ -1114,7 +1113,7 @@ setInterval(()=>{
   const m = new Date().getMinutes();
   if(m!==lastMin){ lastMin=m; tickNowChip(); if(pickedDay==="auto") renderToday(); }
 }, 1000);
-if(EVENTS_API){ setInterval(loadEventsApi, 5*60*1000); }
+setInterval(syncEventsSheet, 5*60*1000);
 /* =====================================================
    #9 Announcements — priority banner + modal (ASB-editable seed).
    priority: "high" => modal (once per session); "med"/"low" => top banner.
