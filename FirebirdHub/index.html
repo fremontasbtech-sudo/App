@@ -44,6 +44,8 @@
   </div>
 </header>
 
+<div id="announceBanner" class="announce-banner" role="region" aria-label="Announcement" hidden></div>
+
 <main id="main">
 
 <!-- ================= HOME ================= -->
@@ -70,6 +72,8 @@
     <span class="nowchip" id="nowChip" hidden></span>
     <time id="nextupTime" datetime=""></time>
   </div>
+
+  <section id="ftvCard" class="ftvcard" aria-labelledby="h-ftv" hidden></section>
 
   <section aria-labelledby="h-events">
     <div class="sechead">
@@ -527,6 +531,8 @@
       <div class="card">
         <h3 style="margin-bottom:10px">About this app</h3>
         <p style="margin-top:0; color:var(--ink-soft)">Built by the ASB Tech Commission. Spirit submissions go only to ASB Spirit, Tech, and the advisor. They&rsquo;re never shared publicly, and student IDs are used solely to remove duplicate entries. Questions? Drop a note in the feedback box.</p>
+        <p style="margin:14px 0 0"><button type="button" class="btn ghost" id="motionToggle" aria-pressed="false" style="font-size:14px">Motion mode: Off</button></p>
+        <p class="hint" style="margin-top:8px">Motion mode swaps the card layout for scroll animations and a swipeable events row. Off keeps the classic look.</p>
       </div>
     </div>
   </div>
@@ -587,6 +593,13 @@
   <form method="dialog" style="text-align:right; margin-top:12px">
     <button class="btn gold" style="font-size:15px">Done</button>
   </form>
+</dialog>
+
+<dialog id="announceDialog" class="announce-modal" aria-labelledby="anTitle">
+  <button type="button" class="announce-x" id="anDismiss" aria-label="Close">&times;</button>
+  <h3 id="anTitle" style="margin-bottom:8px">Announcement</h3>
+  <p id="anBody" style="margin:0 0 14px; color:var(--ink-soft)"></p>
+  <div id="anFoot" style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap"></div>
 </dialog>
 
 <nav class="bottomnav" aria-label="Primary">

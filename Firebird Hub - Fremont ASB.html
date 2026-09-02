@@ -546,6 +546,48 @@ dialog[open]{animation:viewin .2s ease-out}
   .ticket:hover, .card.club:hover, .asbcard-qr:hover{transform:none}
 }
 
+/* ---------- #9 Announcements: banner + modal ---------- */
+.announce-banner{ background:var(--cardinal); color:#fff; border-bottom:3px solid var(--gold); }
+.announce-in{ max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:10px 16px; }
+.announce-dot{ width:10px; height:10px; border-radius:50%; background:var(--gold); flex:0 0 auto; box-shadow:0 0 0 4px rgba(255,201,31,.25); }
+.announce-copy{ flex:1 1 auto; font-size:14.5px; line-height:1.35; }
+.announce-copy b{ font-weight:700; }
+.announce-copy span{ opacity:.92; }
+.announce-banner .btn.gold{ padding:6px 12px; font-size:13.5px; }
+.announce-x{ background:none; border:none; color:#fff; font-size:26px; line-height:1; cursor:pointer; padding:0 4px; border-radius:6px; }
+.announce-x:hover{ background:rgba(255,255,255,.15); }
+.announce-modal{ border:2px solid var(--ink); border-radius:16px; padding:22px; max-width:440px; box-shadow:8px 8px 0 var(--ink); position:relative; }
+.announce-modal::backdrop{ background:rgba(39,21,16,.5); }
+.announce-modal .announce-x{ position:absolute; top:8px; right:10px; color:var(--ink); }
+
+/* ---------- #7 FTV card ---------- */
+.ftvcard .ftv-today{ padding:14px 16px; }
+.ftv-date{ font-family:"Barlow Condensed",sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--cardinal-dark); margin:0 0 8px; }
+.ftv-bullets{ margin:0; padding-left:20px; }
+.ftv-bullets li{ margin:4px 0; }
+.ftv-full summary, .ftv-archive summary, .ftv-day summary{ cursor:pointer; font-weight:700; margin-top:10px; color:var(--cardinal); }
+.ftv-day{ margin:8px 0; padding-left:8px; border-left:3px solid var(--gold-soft); }
+
+/* ---------- #8 event photos button ---------- */
+.evphotos{ margin-top:10px; padding:6px 12px; font-size:13.5px; }
+.evphotos-soon{ margin:10px 0 0; font-style:italic; }
+
+/* ---------- #3 Motion mode ---------- */
+body.motion .ticket{ opacity:0; transform:translateY(24px); transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1); }
+body.motion .ticket.in{ opacity:1; transform:none; }
+body.motion .ticket:hover{ transform:translateY(-5px); }
+@media(min-width:800px){
+  body.motion #eventList.stagger{ display:flex; overflow-x:auto; gap:16px; scroll-snap-type:x mandatory; padding-bottom:10px; grid-template-columns:none; }
+  body.motion #eventList.stagger > .ticket{ flex:0 0 320px; scroll-snap-align:center; }
+}
+body.motion .skeleton{ position:relative; overflow:hidden; background:#efe7d6; border-radius:14px; min-height:96px; }
+body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,201,31,.45),transparent); animation:fh-shimmer 1.3s infinite; }
+@keyframes fh-shimmer{ to{ transform:translateX(100%); } }
+@media(prefers-reduced-motion:reduce){
+  body.motion .ticket{ opacity:1; transform:none; transition:none; }
+  body.motion .skeleton::after{ animation:none; }
+}
+
 </style>
 
 </head>
@@ -574,6 +616,8 @@ dialog[open]{animation:viewin .2s ease-out}
   </div>
 </header>
 
+<div id="announceBanner" class="announce-banner" role="region" aria-label="Announcement" hidden></div>
+
 <main id="main">
 
 <!-- ================= HOME ================= -->
@@ -600,6 +644,8 @@ dialog[open]{animation:viewin .2s ease-out}
     <span class="nowchip" id="nowChip" hidden></span>
     <time id="nextupTime" datetime=""></time>
   </div>
+
+  <section id="ftvCard" class="ftvcard" aria-labelledby="h-ftv" hidden></section>
 
   <section aria-labelledby="h-events">
     <div class="sechead">
@@ -1117,6 +1163,13 @@ dialog[open]{animation:viewin .2s ease-out}
   <form method="dialog" style="text-align:right; margin-top:12px">
     <button class="btn gold" style="font-size:15px">Done</button>
   </form>
+</dialog>
+
+<dialog id="announceDialog" class="announce-modal" aria-labelledby="anTitle">
+  <button type="button" class="announce-x" id="anDismiss" aria-label="Close">&times;</button>
+  <h3 id="anTitle" style="margin-bottom:8px">Announcement</h3>
+  <p id="anBody" style="margin:0 0 14px; color:var(--ink-soft)"></p>
+  <div id="anFoot" style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap"></div>
 </dialog>
 
 <nav class="bottomnav" aria-label="Primary">
@@ -1638,6 +1691,16 @@ function tickCountdown(){
   timeEl.dateTime = next.when.toISOString();
   timeEl.textContent = d>0 ? (d+"d "+h+"h "+m+"m") : (h+"h "+m+"m "+s+"s");
 }
+/* Flickr photos on an event card. */
+function eventPhotos(e, now){
+  var url = e.photos || e.flickr || "";
+  if(/^https?:\/\//.test(url)){
+    return '<a class="btn gold evphotos" href="'+clubEsc(url)+'" target="_blank" rel="noopener">'+
+      '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="11" r="2" stroke="currentColor" stroke-width="2"/><path d="M4 18l5-4 3 2 4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg> View photos</a>';
+  }
+  if(e.end && e.end < now){ return '<p class="note evphotos-soon">Photos coming soon</p>'; }
+  return "";
+}
 /* Upcoming events — rendered from EVENTS, past events auto-hidden in PST. */
 function renderEvents(){
   const grid = document.getElementById("eventList");
@@ -1654,7 +1717,7 @@ function renderEvents(){
       '<div class="body"><h3>'+clubEsc(e.name)+'</h3>'+
       (meta?'<p class="meta">'+meta+'</p>':"")+
       (e.desc?'<p>'+clubEsc(e.desc)+'</p>':"")+
-      tags+'</div></article>';
+      tags+eventPhotos(e,now)+'</div></article>';
   }).join("");
   staggered.delete("eventList"); staggerOnce("eventList");
 }
@@ -1676,7 +1739,7 @@ function applyEvents(data){
     const when = parseEvDate(r.date,false); if(!r.name || !when) return;
     const end = parseEvDate(r.endDate,true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
     const tags = String(r.tags||"").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
-    list.push({ name:r.name, when:when, end:end, time:r.time||"", loc:r.location||"", desc:r.description||"", tags:tags, featured:!!r.featured });
+    list.push({ name:r.name, when:when, end:end, time:r.time||"", loc:r.location||"", desc:r.description||"", tags:tags, featured:!!r.featured, photos:r.photos||r.flickr||"" });
   });
   eventsCurated = true;
   EVENTS = list.filter(function(e){ return e.featured; }).sort(function(a,b){ return a.when-b.when; });
@@ -1717,6 +1780,7 @@ function loadSports(){
 const SENIOR_NIGHTS = [
   { sport:"Football", date:"2026-10-22", opponent:"Los Altos" }, // Football + Cheer senior night
   { sport:"Field Hockey", date:"2026-10-26" }, // Girls Field Hockey senior night, 6 PM
+  { sport:"Girls Tennis", date:"2026-10-29" }, // Girls Tennis senior night, 4-7 PM
 ];
 function isSeniorNight(g){
   if(!g) return false;
@@ -2533,9 +2597,107 @@ setInterval(()=>{
   if(m!==lastMin){ lastMin=m; tickNowChip(); if(pickedDay==="auto") renderToday(); }
 }, 1000);
 if(EVENTS_API){ setInterval(loadEventsApi, 5*60*1000); }
+/* =====================================================
+   #9 Announcements — priority banner + modal (ASB-editable seed).
+   priority: "high" => modal (once per session); "med"/"low" => top banner.
+   Dismissable; dismissal holds for the session. */
+const ANNOUNCEMENTS = [
+  { id:"welcome-2627", title:"Welcome back, Firebirds!", body:"Tap around for events, the bell schedule, spirit points, and clubs.", link:"", priority:"low", start:"2026-08-20", end:"2026-09-15", audience:"all" }
+  // { id:"homecoming", title:"Homecoming is coming!", body:"Get your tickets before Friday.", link:"", priority:"high", start:"2026-10-20", end:"2026-10-31", audience:"all" }
+];
+const announceDismissed = new Set();
+let announceShown = false;
+function anPrio(p){ return p==="high"?3:(p==="med"||p==="medium")?2:1; }
+function activeAnnounce(){
+  const now = nowPST();
+  return ANNOUNCEMENTS.filter(function(a){
+    if(!a.id || announceDismissed.has(a.id)) return false;
+    const st = a.start?parseEvDate(a.start,false):null, en = a.end?parseEvDate(a.end,true):null;
+    if(st && now < st) return false;
+    if(en && now > en) return false;
+    return true;
+  }).sort(function(a,b){ return anPrio(b.priority)-anPrio(a.priority); });
+}
+function renderAnnounce(){
+  const list = activeAnnounce(); if(!list.length) return;
+  const a = list[0];
+  if(a.priority==="high" && !announceShown){ announceShown = true; showAnnounceModal(a); return; }
+  showAnnounceBanner(a);
+}
+function anLink(a){ return /^https?:\/\//.test(a.link||"") ? '<a class="btn gold" href="'+clubEsc(a.link)+'" target="_blank" rel="noopener">Learn more</a>' : ""; }
+function showAnnounceBanner(a){
+  const b = document.getElementById("announceBanner"); if(!b) return;
+  b.innerHTML = '<div class="announce-in"><span class="announce-dot" aria-hidden="true"></span>'+
+    '<div class="announce-copy"><b>'+clubEsc(a.title)+'</b>'+(a.body?' <span>'+clubEsc(a.body)+'</span>':"")+'</div>'+
+    anLink(a)+'<button type="button" class="announce-x" aria-label="Dismiss announcement">&times;</button></div>';
+  b.hidden = false;
+  b.querySelector(".announce-x").onclick = function(){ announceDismissed.add(a.id); b.hidden = true; b.innerHTML=""; renderAnnounce(); };
+}
+function showAnnounceModal(a){
+  const d = document.getElementById("announceDialog"); if(!d){ showAnnounceBanner(a); return; }
+  d.querySelector("#anTitle").textContent = a.title;
+  d.querySelector("#anBody").textContent = a.body||"";
+  const foot = d.querySelector("#anFoot"); foot.innerHTML = anLink(a)+'<button type="button" class="btn primary" id="anClose">Got it</button>';
+  foot.querySelector("#anClose").onclick = function(){ announceDismissed.add(a.id); d.close(); };
+  d.querySelector("#anDismiss").onclick = function(){ announceDismissed.add(a.id); d.close(); };
+  if(!d.open) d.showModal();
+}
+
+/* =====================================================
+   #7 FTV morning announcement summaries — home card + archive. Newest first. */
+const FTV_FEED = [
+  // { date:"2026-09-02", bullets:["Rally Friday during Tutorial","Club Rush in the quad"], full:"Full text." }
+];
+function ftvDateLabel(d){ const m=String(d).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(!m) return d; const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; return MO[+m[2]-1]+" "+(+m[3]); }
+function renderFTV(){
+  const card = document.getElementById("ftvCard"); if(!card) return;
+  if(!FTV_FEED.length){
+    card.hidden = false;
+    card.innerHTML = '<div class="sechead"><h2 id="h-ftv">FTV morning announcements</h2><span class="rule" aria-hidden="true"></span></div>'+
+      '<div class="card"><p class="note" style="margin:0">Today&rsquo;s FTV recap will show here once ASB posts it.</p></div>';
+    return;
+  }
+  const t = FTV_FEED[0];
+  const bullets = (t.bullets||[]).map(function(x){ return '<li>'+clubEsc(x)+'</li>'; }).join("");
+  const rest = FTV_FEED.slice(1,15).map(function(d){
+    const bl = (d.bullets||[]).map(function(x){ return '<li>'+clubEsc(x)+'</li>'; }).join("");
+    return '<details class="ftv-day"><summary>'+ftvDateLabel(d.date)+'</summary><ul>'+bl+'</ul>'+(d.full?'<p>'+clubEsc(d.full)+'</p>':"")+'</details>';
+  }).join("");
+  card.hidden = false;
+  card.innerHTML = '<div class="sechead"><h2 id="h-ftv">FTV morning announcements</h2><span class="rule" aria-hidden="true"></span></div>'+
+    '<div class="card ftv-today"><p class="ftv-date">'+ftvDateLabel(t.date)+'</p><ul class="ftv-bullets">'+bullets+'</ul>'+
+    (t.full?'<details class="ftv-full"><summary>Full announcements</summary><p>'+clubEsc(t.full)+'</p></details>':"")+
+    (rest?'<details class="ftv-archive"><summary>Past days</summary>'+rest+'</details>':"")+'</div>';
+}
+
+/* =====================================================
+   #3 Motion mode — revertable. OFF by default keeps the current look. */
+let motionOn = false;
+function initMotion(){
+  const btn = document.getElementById("motionToggle");
+  if(btn) btn.addEventListener("click", function(){ setMotion(!motionOn); });
+}
+function setMotion(on){
+  motionOn = on;
+  document.body.classList.toggle("motion", on);
+  const btn = document.getElementById("motionToggle");
+  if(btn){ btn.setAttribute("aria-pressed", String(on)); btn.textContent = on ? "Motion mode: On" : "Motion mode: Off"; }
+  if(on) observeReveals();
+}
+function observeReveals(){
+  if(!motionOn || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const els = document.querySelectorAll("body.motion .ticket:not(.in), body.motion .reveal:not(.in)");
+  if(!("IntersectionObserver" in window)){ els.forEach(function(el){ el.classList.add("in"); }); return; }
+  const io = new IntersectionObserver(function(es){ es.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add("in"); io.unobserve(en.target); } }); }, { threshold:0.1 });
+  els.forEach(function(el){ io.observe(el); });
+}
+
 const boot = parseHash();
 if(boot.view==="give") fillGive(boot.params);
 show(boot.view || "home", false);
+renderAnnounce();
+renderFTV();
+initMotion();
 
 // Fire Bucks off: hide the Firebird Card section in More (code kept in the repo).
 if(!FEATURES.fireBucks){

@@ -528,3 +528,45 @@ dialog[open]{animation:viewin .2s ease-out}
 @media (prefers-reduced-motion:reduce){
   .ticket:hover, .card.club:hover, .asbcard-qr:hover{transform:none}
 }
+
+/* ---------- #9 Announcements: banner + modal ---------- */
+.announce-banner{ background:var(--cardinal); color:#fff; border-bottom:3px solid var(--gold); }
+.announce-in{ max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:10px 16px; }
+.announce-dot{ width:10px; height:10px; border-radius:50%; background:var(--gold); flex:0 0 auto; box-shadow:0 0 0 4px rgba(255,201,31,.25); }
+.announce-copy{ flex:1 1 auto; font-size:14.5px; line-height:1.35; }
+.announce-copy b{ font-weight:700; }
+.announce-copy span{ opacity:.92; }
+.announce-banner .btn.gold{ padding:6px 12px; font-size:13.5px; }
+.announce-x{ background:none; border:none; color:#fff; font-size:26px; line-height:1; cursor:pointer; padding:0 4px; border-radius:6px; }
+.announce-x:hover{ background:rgba(255,255,255,.15); }
+.announce-modal{ border:2px solid var(--ink); border-radius:16px; padding:22px; max-width:440px; box-shadow:8px 8px 0 var(--ink); position:relative; }
+.announce-modal::backdrop{ background:rgba(39,21,16,.5); }
+.announce-modal .announce-x{ position:absolute; top:8px; right:10px; color:var(--ink); }
+
+/* ---------- #7 FTV card ---------- */
+.ftvcard .ftv-today{ padding:14px 16px; }
+.ftv-date{ font-family:"Barlow Condensed",sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--cardinal-dark); margin:0 0 8px; }
+.ftv-bullets{ margin:0; padding-left:20px; }
+.ftv-bullets li{ margin:4px 0; }
+.ftv-full summary, .ftv-archive summary, .ftv-day summary{ cursor:pointer; font-weight:700; margin-top:10px; color:var(--cardinal); }
+.ftv-day{ margin:8px 0; padding-left:8px; border-left:3px solid var(--gold-soft); }
+
+/* ---------- #8 event photos button ---------- */
+.evphotos{ margin-top:10px; padding:6px 12px; font-size:13.5px; }
+.evphotos-soon{ margin:10px 0 0; font-style:italic; }
+
+/* ---------- #3 Motion mode ---------- */
+body.motion .ticket{ opacity:0; transform:translateY(24px); transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1); }
+body.motion .ticket.in{ opacity:1; transform:none; }
+body.motion .ticket:hover{ transform:translateY(-5px); }
+@media(min-width:800px){
+  body.motion #eventList.stagger{ display:flex; overflow-x:auto; gap:16px; scroll-snap-type:x mandatory; padding-bottom:10px; grid-template-columns:none; }
+  body.motion #eventList.stagger > .ticket{ flex:0 0 320px; scroll-snap-align:center; }
+}
+body.motion .skeleton{ position:relative; overflow:hidden; background:#efe7d6; border-radius:14px; min-height:96px; }
+body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,201,31,.45),transparent); animation:fh-shimmer 1.3s infinite; }
+@keyframes fh-shimmer{ to{ transform:translateX(100%); } }
+@media(prefers-reduced-motion:reduce){
+  body.motion .ticket{ opacity:1; transform:none; transition:none; }
+  body.motion .skeleton::after{ animation:none; }
+}
