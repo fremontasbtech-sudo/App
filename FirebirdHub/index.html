@@ -251,8 +251,30 @@
     <button type="button" data-cat="recruiting" aria-pressed="false">Recruiting now</button>
   </div>
 
+  <div class="clubfilters">
+    <label class="sr" for="fDay">Meeting day</label>
+    <select id="fDay" aria-label="Filter by meeting day">
+      <option value="">Any day</option>
+      <option value="Monday">Monday</option>
+      <option value="Tuesday">Tuesday</option>
+      <option value="Wednesday">Wednesday</option>
+      <option value="Thursday">Thursday</option>
+      <option value="Friday">Friday</option>
+    </select>
+    <label class="sr" for="fCommit">Commitment</label>
+    <select id="fCommit" aria-label="Filter by commitment">
+      <option value="">Any commitment</option>
+      <option value="low">Low commitment</option>
+      <option value="medium">Medium commitment</option>
+      <option value="high">High commitment</option>
+    </select>
+    <button type="button" class="filtchip" id="fRecruit" aria-pressed="false">Recruiting only</button>
+    <button type="button" class="btn gold matchbtn" id="findClubBtn">Find your club</button>
+  </div>
+
   <div class="grid cols3 stagger" id="clubGrid" aria-live="polite"></div>
   <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the filters.</p>
+  <dialog id="matchDialog" class="quiz" aria-labelledby="quizTitle" aria-modal="true"><div id="quizBody"></div></dialog>
 
   <section style="margin-top:var(--space-5)" aria-labelledby="h-cevents">
     <div class="sechead">

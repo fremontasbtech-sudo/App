@@ -781,9 +781,15 @@ function clubMeetingLine(c){
 function renderClubs(){
   const q = document.getElementById("clubSearch").value.trim().toLowerCase();
   const grid = document.getElementById("clubGrid");
+  const fDay=(document.getElementById("fDay")||{}).value||"";
+  const fCommit=(document.getElementById("fCommit")||{}).value||"";
+  const fRec=document.getElementById("fRecruit")&&document.getElementById("fRecruit").getAttribute("aria-pressed")==="true";
   const list = CLUBS.filter(function(c){
     const catOk = clubCat==="all" || (clubCat==="recruiting" ? c.recruiting : (c.cat===clubCat));
-    return catOk && String(c.name||"").toLowerCase().includes(q);
+    const dayOk = !fDay || String(c.day||"").toLowerCase().indexOf(fDay.slice(0,3).toLowerCase())>=0;
+    const comOk = !fCommit || String(c.commitment||"").toLowerCase()===fCommit;
+    const recOk = !fRec || !!c.recruiting;
+    return catOk && dayOk && comOk && recOk && String(c.name||"").toLowerCase().includes(q);
   });
   grid.innerHTML = list.map(function(c){
     const meet = clubMeetingLine(c);
@@ -836,12 +842,104 @@ async function syncClubs(){
   }catch(e){ /* offline or blocked: keep the seed list */ }
 }
 document.getElementById("clubSearch").addEventListener("input", renderClubs);
-document.querySelectorAll(".chips button").forEach(b=>
+document.querySelectorAll("[data-cat]").forEach(b=>
   b.addEventListener("click", ()=>{
     clubCat = b.dataset.cat;
-    document.querySelectorAll(".chips button").forEach(x=>x.setAttribute("aria-pressed", x===b ? "true":"false"));
+    document.querySelectorAll("[data-cat]").forEach(x=>x.setAttribute("aria-pressed", x===b ? "true":"false"));
     renderClubs();
   }));
+
+/* Club filter controls + "Find your club" matcher quiz (#4) */
+["fDay","fCommit"].forEach(function(id){ const el=document.getElementById(id); if(el) el.addEventListener("change", renderClubs); });
+(function(){ const r=document.getElementById("fRecruit"); if(r) r.addEventListener("click", function(){ r.setAttribute("aria-pressed", r.getAttribute("aria-pressed")==="true"?"false":"true"); renderClubs(); }); })();
+
+const MATCH_QS = [
+  {q:"What are you most into?", multi:true, opts:[
+    {t:"Making things & tech", tags:["stem","coding","build","hands-on"]},
+    {t:"Art & performance", tags:["art","creative","arts","dance","performance"]},
+    {t:"Helping the community", tags:["service","volunteer","community"]},
+    {t:"Sports & staying active", tags:["sports","active","team","outdoor"]},
+    {t:"Culture & identity", tags:["culture","community"]},
+    {t:"Games & strategy", tags:["games","strategy","competition"]}
+  ]},
+  {q:"How much time can you give?", opts:[
+    {t:"A little", tags:["chill"], commit:"low"},
+    {t:"A solid amount", tags:[], commit:"medium"},
+    {t:"I'm all in", tags:["competition"], commit:"high"}
+  ]},
+  {q:"Pick your energy", opts:[
+    {t:"Social & group", tags:["social","team","community"]},
+    {t:"Focused & solo", tags:["solo","strategy","academic"]}
+  ]},
+  {q:"Competitive or chill?", opts:[
+    {t:"Competitive", tags:["competition","team"]},
+    {t:"Keep it chill", tags:["chill"]}
+  ]},
+  {q:"How do you like to spend time?", opts:[
+    {t:"Hands-on making", tags:["hands-on","build","creative","paint"]},
+    {t:"Talking & ideas", tags:["academic","strategy","community"]}
+  ]},
+  {q:"Your main goal?", opts:[
+    {t:"Meet new people", tags:["social","community"]},
+    {t:"Build a skill", tags:["stem","build","academic","skill"]},
+    {t:"Give back", tags:["service","volunteer"]},
+    {t:"Just have fun", tags:["chill","games","fun"]}
+  ]}
+];
+let quizStep=0, quizPrefs={}, quizCommit="", quizSel=[];
+function openMatch(){ quizStep=0; quizPrefs={}; quizCommit=""; renderQuizStep(); const d=document.getElementById("matchDialog"); if(d && !d.open) d.showModal(); }
+function addTags(tags,commit){ (tags||[]).forEach(function(t){ quizPrefs[t]=(quizPrefs[t]||0)+1; }); if(commit) quizCommit=commit; }
+function advance(){ quizStep++; if(quizStep>=MATCH_QS.length) renderQuizResults(); else renderQuizStep(); }
+function renderQuizStep(){
+  const body=document.getElementById("quizBody"); if(!body) return;
+  const Q=MATCH_QS[quizStep]; quizSel=[];
+  const pct=Math.round(quizStep/MATCH_QS.length*100);
+  body.innerHTML='<div class="quizhead"><span class="quizprog"><span style="width:'+pct+'%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div>'+
+    '<h2 id="quizTitle" class="quizq">'+clubEsc(Q.q)+'</h2>'+
+    (Q.multi?'<p class="quizhint">Pick any that fit</p>':"")+
+    '<div class="quizopts">'+Q.opts.map(function(o,i){ return '<button type="button" class="quizopt" data-i="'+i+'">'+clubEsc(o.t)+'</button>'; }).join("")+'</div>'+
+    (Q.multi?'<button type="button" class="btn primary quiznext" id="quizNext">Next</button>':"")+
+    '<p class="quizstepn">Question '+(quizStep+1)+' of '+MATCH_QS.length+'</p>';
+  body.querySelector("#quizClose").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
+  body.querySelectorAll(".quizopt").forEach(function(btn){
+    btn.onclick=function(){
+      const o=Q.opts[+btn.dataset.i];
+      if(Q.multi){ btn.classList.toggle("on"); const idx=quizSel.indexOf(o); if(idx>=0) quizSel.splice(idx,1); else quizSel.push(o); }
+      else { addTags(o.tags,o.commit); advance(); }
+    };
+  });
+  const nx=body.querySelector("#quizNext"); if(nx) nx.onclick=function(){ quizSel.forEach(function(o){ addTags(o.tags,o.commit); }); advance(); };
+}
+function scoreClubs(){
+  const total=Object.keys(quizPrefs).reduce(function(a,k){return a+quizPrefs[k];},0)||1;
+  return CLUBS.map(function(c){
+    const tags=String(c.tags||"").split(/[;,]/).map(function(t){return t.trim().toLowerCase();}).filter(Boolean);
+    let sc=0, hits=[];
+    tags.forEach(function(t){ if(quizPrefs[t]){ sc+=quizPrefs[t]; hits.push(t); } });
+    if(quizCommit && String(c.commitment||"").toLowerCase()===quizCommit) sc+=1.5;
+    return {club:c, score:sc, pct:Math.max(10,Math.min(99,Math.round(sc/total*100))), hits:hits};
+  }).sort(function(a,b){ return b.score-a.score; });
+}
+function renderQuizResults(){
+  const ranked=scoreClubs().filter(function(r){return r.score>0;}).slice(0,3);
+  const body=document.getElementById("quizBody"); if(!body) return;
+  let html='<div class="quizhead"><span class="quizprog"><span style="width:100%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div><h2 class="quizq">Your top matches</h2>';
+  if(!ranked.length){ html+='<p class="note">No strong match yet — browse all clubs, more are being added.</p>'; }
+  else html+=ranked.map(function(r){
+    const c=r.club;
+    const reason=r.hits.length?("Matches your interest in "+r.hits.slice(0,3).map(clubCap).join(", ")+"."):"A solid all-round pick.";
+    return '<div class="matchcard"><div class="matchtop"><h3>'+clubEsc(c.name)+'</h3><span class="matchpct">'+r.pct+'% match</span></div>'+
+      '<p class="matchcat">'+clubEsc(c.cat)+(c.commitment?" &middot; "+clubEsc(clubCap(c.commitment))+" commitment":"")+'</p>'+
+      '<p class="matchwhy">'+clubEsc(reason)+'</p>'+
+      (/^https?:\/\//i.test(c.interestUrl||"")?'<a class="cbtn gold" href="'+clubEsc(c.interestUrl)+'" target="_blank" rel="noopener">Interest form</a>':"")+'</div>';
+  }).join("");
+  html+='<div class="quizactions"><button type="button" class="btn ghost" id="quizRetake">Retake</button><button type="button" class="btn primary" id="quizDone">Browse all clubs</button></div>';
+  body.innerHTML=html;
+  body.querySelector("#quizClose").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
+  body.querySelector("#quizRetake").onclick=openMatch;
+  body.querySelector("#quizDone").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
+}
+(function(){ const b=document.getElementById("findClubBtn"); if(b) b.addEventListener("click", openMatch); })();
 
 /* =====================================================
    Google sign-in (real, via Google Identity Services)

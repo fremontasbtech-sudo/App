@@ -362,6 +362,36 @@ textarea{resize:vertical}
 .cbtn.gold{background:var(--gold); color:var(--ink)}
 .cbtn:hover{transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--ink)}
 @media (prefers-reduced-motion: reduce){ .cbtn:hover{transform:none} }
+
+/* Club filter + matcher quiz (#4) */
+.clubfilters{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3)}
+.clubfilters select{padding:8px 10px; border:2px solid var(--ink); border-radius:10px; background:#fff; font:inherit; min-height:40px; color:var(--ink)}
+.filtchip{font-size:13px; font-weight:700; padding:8px 12px; border:2px solid var(--ink); border-radius:999px; background:#fff; color:var(--ink); min-height:40px; cursor:pointer}
+.filtchip[aria-pressed="true"]{background:#DCEFE1; color:#14532D; border-color:#14532D}
+.matchbtn{margin-left:auto}
+dialog.quiz{border:2px solid var(--ink); border-radius:16px; padding:20px; max-width:460px; width:92%; box-shadow:8px 8px 0 rgba(39,21,16,.18); background:var(--paper); color:var(--ink)}
+dialog.quiz::backdrop{background:rgba(39,21,16,.45)}
+.quizhead{display:flex; align-items:center; gap:12px; margin-bottom:14px}
+.quizprog{flex:1; height:8px; background:rgba(39,21,16,.12); border-radius:999px; overflow:hidden}
+.quizprog span{display:block; height:100%; background:var(--gold); transition:width .3s ease}
+.quizx{background:none; border:none; font-size:26px; line-height:1; cursor:pointer; color:var(--ink)}
+.quizq{font-size:22px; margin:0 0 4px}
+.quizhint{margin:0 0 10px; color:var(--ink-soft); font-size:13px}
+.quizopts{display:flex; flex-direction:column; gap:10px; margin-bottom:12px}
+.quizopt{text-align:left; padding:12px 14px; border:2px solid var(--ink); border-radius:12px; background:#fff; font:inherit; font-weight:600; cursor:pointer; min-height:46px}
+.quizopt:hover{transform:translate(-1px,-1px); box-shadow:2px 2px 0 var(--ink)}
+.quizopt.on{background:var(--gold)}
+.quiznext{width:100%; justify-content:center}
+.quizstepn{text-align:center; color:var(--ink-soft); font-size:12px; margin:8px 0 0}
+.matchcard{border:2px solid var(--ink); border-radius:12px; padding:14px; margin-bottom:12px; background:#fff; box-shadow:3px 3px 0 var(--ink)}
+.matchtop{display:flex; justify-content:space-between; align-items:baseline; gap:8px}
+.matchtop h3{font-size:18px}
+.matchpct{font-family:var(--font-display); font-weight:700; color:var(--cardinal); white-space:nowrap}
+.matchcat{font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--flame); margin:2px 0}
+.matchwhy{font-size:14px; margin:6px 0 10px}
+.quizactions{display:flex; gap:10px; margin-top:6px}
+.quizactions .btn{flex:1; justify-content:center}
+@media (prefers-reduced-motion: reduce){ .quizopt:hover{transform:none} }
 .steps{counter-reset:s; list-style:none; padding:0; margin:0; display:grid; gap:12px}
 .steps li{display:flex; gap:12px; align-items:flex-start}
 .steps li::before{
