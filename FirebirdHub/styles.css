@@ -332,6 +332,16 @@ textarea{resize:vertical}
 .club .cat{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--flame)}
 .club .meets{font-size:13.5px; color:var(--ink-soft)}
 .recruit{font-size:11.5px; font-weight:700; letter-spacing:.06em; background:#DCEFE1; color:#14532D; border:1.5px solid #14532D; padding:2px 9px; border-radius:999px; flex:none}
+.club .cmeta{display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:2px 0}
+.club .ctag{font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft); border:1.5px solid rgba(39,21,16,.25); padding:2px 8px; border-radius:999px}
+.club .meets.soon{color:var(--ink-soft); font-style:italic}
+.club .cadv{font-size:13px; color:var(--ink-soft); margin:2px 0 0}
+.club .cdesc{font-size:14px; line-height:1.5; margin:4px 0 0}
+.club .cactions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+.cbtn{font-size:13px; font-weight:700; padding:7px 12px; border:2px solid var(--ink); border-radius:10px; text-decoration:none; display:inline-flex; align-items:center; min-height:38px; box-shadow:2px 2px 0 var(--ink); background:#fff; color:var(--ink)}
+.cbtn.gold{background:var(--gold); color:var(--ink)}
+.cbtn:hover{transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--ink)}
+@media (prefers-reduced-motion: reduce){ .cbtn:hover{transform:none} }
 .steps{counter-reset:s; list-style:none; padding:0; margin:0; display:grid; gap:12px}
 .steps li{display:flex; gap:12px; align-items:flex-start}
 .steps li::before{

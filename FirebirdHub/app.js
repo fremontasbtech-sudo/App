@@ -115,16 +115,17 @@ const EVENTS = [
 ];
 
 /* SAMPLE club list — replace with the real Club Database export. */
-const CLUBS = [
-  { name:"Robotics", cat:"STEM", meets:"Wed lunch · Rm 210", recruiting:true },
-  { name:"Key Club", cat:"Service", meets:"Thu lunch · Rm 118", recruiting:true },
-  { name:"Art & Mural Collective", cat:"Arts", meets:"Tue after school · Art wing", recruiting:false },
-  { name:"Chess Club", cat:"STEM", meets:"Fri lunch · Library", recruiting:true },
-  { name:"Dance Crew", cat:"Arts", meets:"Mon after school · Small gym", recruiting:true },
-  { name:"Red Cross Club", cat:"Service", meets:"Wed lunch · Rm 305", recruiting:false },
-  { name:"Ultimate Frisbee", cat:"Athletics", meets:"Tue/Thu after school · Field", recruiting:true },
-  { name:"Math Club", cat:"STEM", meets:"Mon lunch · Rm 402", recruiting:false },
-  { name:"Badminton Club", cat:"Athletics", meets:"Fri after school · Main gym", recruiting:false }
+const CLUB_SHEET = ""; // paste the club Google Sheet as CSV (.../gviz/tq?tqx=out:csv&gid=0); empty = use the seed below. See the club schema doc.
+let CLUBS = [
+  { name:"Robotics", cat:"STEM", day:"Wednesday", time:"Lunch", room:"210", advisor:"", desc:"Design, build, and code competition robots. Beginners welcome, no experience needed.", interestUrl:"https://www.fremontasb.org/clubs", contactType:"instagram", contact:"@fremontclubs", recruiting:true, commitment:"high", tags:"coding,build,competition,stem,hands-on" },
+  { name:"Key Club", cat:"Service", day:"Thursday", time:"Lunch", room:"118", advisor:"", desc:"The biggest service club on campus. Volunteer around Sunnyvale and log community hours.", interestUrl:"https://www.fremontasb.org/clubs", contactType:"instagram", contact:"@fremontclubs", recruiting:true, commitment:"medium", tags:"service,volunteer,community,social,leadership" },
+  { name:"Art & Mural Collective", cat:"Arts", day:"Tuesday", time:"After school", room:"Art wing", advisor:"", desc:"Paint campus murals and make art together. All skill levels welcome.", interestUrl:"", contactType:"", contact:"", recruiting:false, commitment:"low", tags:"art,creative,paint,chill,hands-on" },
+  { name:"Chess Club", cat:"STEM", day:"Friday", time:"Lunch", room:"Library", advisor:"", desc:"Casual and ranked games every week. Learn openings or just play.", interestUrl:"", contactType:"", contact:"", recruiting:true, commitment:"low", tags:"strategy,games,chill,solo,competition" },
+  { name:"Dance Crew", cat:"Arts", day:"Monday", time:"After school", room:"Small gym", advisor:"", desc:"Learn choreography and perform at rallies and Multicultural Night.", interestUrl:"https://www.fremontasb.org/clubs", contactType:"instagram", contact:"@fremontclubs", recruiting:true, commitment:"high", tags:"dance,performance,arts,social,active" },
+  { name:"Red Cross Club", cat:"Service", day:"Wednesday", time:"Lunch", room:"305", advisor:"", desc:"Run blood drives and health drives that help the wider community.", interestUrl:"", contactType:"", contact:"", recruiting:false, commitment:"medium", tags:"service,health,volunteer,community" },
+  { name:"Ultimate Frisbee", cat:"Athletics", day:"Tue/Thu", time:"After school", room:"Field", advisor:"", desc:"Pickup and league ultimate. Come run around, no tryouts.", interestUrl:"", contactType:"", contact:"", recruiting:true, commitment:"medium", tags:"sports,active,team,outdoor,chill" },
+  { name:"Math Club", cat:"STEM", day:"", time:"", room:"", advisor:"", desc:"Contest math and problem-solving sessions.", interestUrl:"", contactType:"", contact:"", recruiting:false, commitment:"medium", tags:"math,competition,stem,solo,academic" },
+  { name:"Badminton Club", cat:"Athletics", day:"Friday", time:"After school", room:"Main gym", advisor:"", desc:"Doubles and singles for all levels. Rackets provided.", interestUrl:"", contactType:"", contact:"", recruiting:false, commitment:"low", tags:"sports,active,team,chill" }
 ];
 
 /* =====================================================
@@ -654,20 +655,70 @@ document.getElementById("fbMsg").addEventListener("input", e=>{ if(e.target.valu
    Clubs — search + filter
 ===================================================== */
 let clubCat = "all";
+function clubEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m];});}
+function clubCap(s){s=String(s||"");return s?s[0].toUpperCase()+s.slice(1):"";}
+function clubMeetingLine(c){
+  const dt=[c.day,c.time].filter(Boolean).map(clubEsc);
+  let where="";
+  if(c.room){ const r=String(c.room).trim(); where = /^\d+$/.test(r) ? "Rm "+clubEsc(r) : clubEsc(r); }
+  return dt.concat(where?[where]:[]).join(" &middot; ");
+}
 function renderClubs(){
   const q = document.getElementById("clubSearch").value.trim().toLowerCase();
   const grid = document.getElementById("clubGrid");
-  const list = CLUBS.filter(c=>{
-    const catOk = clubCat==="all" || (clubCat==="recruiting" ? c.recruiting : c.cat===clubCat);
-    return catOk && c.name.toLowerCase().includes(q);
+  const list = CLUBS.filter(function(c){
+    const catOk = clubCat==="all" || (clubCat==="recruiting" ? c.recruiting : (c.cat===clubCat));
+    return catOk && String(c.name||"").toLowerCase().includes(q);
   });
-  grid.innerHTML = list.map(c=>`
-    <div class="card club">
-      <div class="row1"><h3>${c.name}</h3>${c.recruiting?'<span class="recruit">Recruiting</span>':""}</div>
-      <span class="cat">${c.cat}</span>
-      <span class="meets">${c.meets}</span>
-    </div>`).join("");
+  grid.innerHTML = list.map(function(c){
+    const meet = clubMeetingLine(c);
+    const acts=[];
+    if(/^https?:\/\//i.test(c.interestUrl||"")) acts.push('<a class="cbtn gold" href="'+clubEsc(c.interestUrl)+'" target="_blank" rel="noopener">Interest form</a>');
+    const contact=String(c.contact||"").trim();
+    if(contact){
+      const isEmail=(String(c.contactType||"").toLowerCase()==="email")||(/@/.test(contact)&&/\./.test(contact)&&contact[0]!=="@");
+      if(isEmail) acts.push('<a class="cbtn ghost" href="mailto:'+clubEsc(contact)+'">Email</a>');
+      else{ const h=contact.replace(/^@/,""); acts.push('<a class="cbtn ghost" href="https://instagram.com/'+clubEsc(h)+'" target="_blank" rel="noopener">@'+clubEsc(h)+'</a>'); }
+    }
+    return '<div class="card club">'+
+      '<div class="row1"><h3>'+clubEsc(c.name)+'</h3>'+(c.recruiting?'<span class="recruit">Recruiting</span>':"")+'</div>'+
+      '<div class="cmeta"><span class="cat">'+clubEsc(c.cat)+'</span>'+(c.commitment?'<span class="ctag">'+clubEsc(clubCap(c.commitment))+' commitment</span>':"")+'</div>'+
+      (meet?'<p class="meets">'+meet+'</p>':'<p class="meets soon">Meeting info coming soon</p>')+
+      (c.advisor?'<p class="cadv">Advisor: '+clubEsc(c.advisor)+'</p>':"")+
+      (c.desc?'<p class="cdesc">'+clubEsc(c.desc)+'</p>':"")+
+      (acts.length?'<div class="cactions">'+acts.join("")+'</div>':"")+
+    '</div>';
+  }).join("");
   document.getElementById("clubEmpty").hidden = list.length>0;
+}
+async function syncClubs(){
+  if(!CLUB_SHEET) return;
+  try{
+    const res=await fetch(CLUB_SHEET);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows=parseSheetRows(await res.text());
+    if(rows.length<2) return;
+    const head=rows[0].map(function(h){return String(h).trim().toLowerCase();});
+    const gi=function(n){return head.indexOf(n);};
+    const col=function(r,names){ for(var k=0;k<names.length;k++){ var i=gi(names[k]); if(i>=0) return String(r[i]||"").trim(); } return ""; };
+    const byName=new Map();
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,["name","club","club name"]); if(!name) continue;
+      byName.set(name.toLowerCase(), {
+        name:name, cat:col(r,["category","cat"])||"Club",
+        day:col(r,["meetingday","day"]), time:col(r,["meetingtime","time"]),
+        room:col(r,["room"]), advisor:col(r,["advisor"]),
+        desc:col(r,["description","desc"]),
+        interestUrl:col(r,["interestformurl","interestform","interesturl","interest form"]),
+        contactType:col(r,["contacttype"]),
+        contact:col(r,["contact","contactvalue","email","instagram"]),
+        recruiting:/^(y|t|1)/i.test(col(r,["recruiting"])),
+        commitment:col(r,["commitment"]).toLowerCase(),
+        tags:col(r,["tags"])
+      });
+    }
+    const list=[...byName.values()];
+    if(list.length){ CLUBS=list; renderClubs(); }
+  }catch(e){ /* offline or blocked: keep the seed list */ }
 }
 document.getElementById("clubSearch").addEventListener("input", renderClubs);
 document.querySelectorAll(".chips button").forEach(b=>
@@ -774,6 +825,7 @@ renderClubs();
 initSchedule();
 renderToday();
 syncScoreboard();
+syncClubs();
 tickClock(); tickCountdown(); tickNowChip();
 let lastMin = new Date().getMinutes();
 setInterval(()=>{
