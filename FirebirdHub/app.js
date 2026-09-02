@@ -102,16 +102,16 @@ const SPECIAL_WEEKS = [
 ];
 
 /* Upcoming events for the countdown (local time). */
-const EVENTS = [
-  { name: "BTS Spirit Week", when: new Date(2026,7,24,8,30) },
-  { name: "BTS Rally", when: new Date(2026,7,28,8,30) },
-  { name: "Beach Bash Social", when: new Date(2026,7,28,18,15) },
-  { name: "Clubs Day", when: new Date(2026,8,16,8,30) },
-  { name: "Firebird Football", when: new Date(2026,9,12,8,30) },
-  { name: "Homecoming Week", when: new Date(2026,9,19,8,30) },
-  { name: "Multicultural Night", when: new Date(2026,9,28,18,0) },
-  { name: "Club Trivia Night", when: new Date(2027,0,27,18,0) },
-  { name: "Club Grub Day", when: new Date(2027,3,21,8,30) }
+let EVENTS = [
+  { name:"BTS Spirit Week", when:new Date(2026,7,24,8,30), end:new Date(2026,7,28,23,59), time:"All week", loc:"Campus", desc:"Survivor-themed spirit week: Mon Island, Tue Outwit, Wed Outlast, Thu Outplay, Fri Tribe.", tags:["Spirit","Dress up"] },
+  { name:"BTS Rally", when:new Date(2026,7,28,8,30), end:new Date(2026,7,28,23,59), time:"During school", loc:"Gym", desc:"First rally of the year - wear your class colors and sit with your class.", tags:["Rally","Spirit"] },
+  { name:"Beach Bash: Back-to-School Social", when:new Date(2026,7,28,18,15), end:new Date(2026,7,28,23,59), time:"6:15-8:15 PM", loc:"Cafeteria + outside", desc:"Kona Ice, photobooth, dance floor, spikeball, cornhole, and decorating.", tags:["Social","Free"] },
+  { name:"Clubs Day", when:new Date(2026,8,16,12,0), end:new Date(2026,8,16,23,59), time:"Lunch", loc:"The quad", desc:"Fall club fair - meet all 80+ clubs and sign up in person.", tags:["Clubs"] },
+  { name:"Firebird Football", when:new Date(2026,9,12,8,30), end:new Date(2026,9,16,23,59), time:"Week of Oct 12-16", loc:"Fields", desc:"Class vs class football all week; Homecoming Court nominations open Monday.", tags:["Class comp","Spirit"] },
+  { name:"Homecoming Week", when:new Date(2026,9,19,8,30), end:new Date(2026,9,23,23,59), time:"All week", loc:"Campus", desc:"Hallway decorations, spirit days, royalty vote, Friday rally, game, and dance.", tags:["Homecoming","Dance"] },
+  { name:"Multicultural Night", when:new Date(2026,9,28,18,0), end:new Date(2026,9,28,23,59), time:"Evening", loc:"TBA", desc:"Performances and food celebrating Fremont's cultures, hosted with culture and identity clubs.", tags:["Clubs","Culture"] },
+  { name:"Club Trivia Night", when:new Date(2027,0,27,18,0), end:new Date(2027,0,27,23,59), time:"Evening", loc:"TBA", desc:"Team trivia hosted by the Clubs Commission.", tags:["Clubs"] },
+  { name:"Club Grub Day", when:new Date(2027,3,21,12,0), end:new Date(2027,3,21,23,59), time:"Lunch", loc:"The quad", desc:"Clubs sell food on campus - come hungry and support your favorite clubs.", tags:["Clubs","Food"] }
 ];
 
 /* SAMPLE club list — replace with the real Club Database export. */
@@ -189,9 +189,11 @@ function staggerOnce(id){
 /* =====================================================
    Countdown to the next event
 ===================================================== */
+function nowPST(){ return new Date(new Date().toLocaleString("en-US",{timeZone:"America/Los_Angeles"})); }
 function tickCountdown(){
-  const now = new Date();
-  const next = EVENTS.find(e=> e.when > now);
+  const now = nowPST();
+  const future = EVENTS.filter(function(e){ return e.when > now; });
+  const next = future.length ? future.reduce(function(a,b){ return a.when<b.when?a:b; }) : null;
   const nameEl = document.getElementById("nextupName");
   const timeEl = document.getElementById("nextupTime");
   if(!next){ nameEl.textContent = "More events coming soon"; timeEl.textContent = ""; return; }
@@ -199,7 +201,51 @@ function tickCountdown(){
   const d = Math.floor(ms/86400000), h = Math.floor(ms/3600000)%24, m = Math.floor(ms/60000)%60, s = Math.floor(ms/1000)%60;
   nameEl.textContent = "Next up: " + next.name;
   timeEl.dateTime = next.when.toISOString();
-  timeEl.textContent = d>0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`;
+  timeEl.textContent = d>0 ? (d+"d "+h+"h "+m+"m") : (h+"h "+m+"m "+s+"s");
+}
+/* Upcoming events — rendered from EVENTS, past events auto-hidden in PST. */
+function renderEvents(){
+  const grid = document.getElementById("eventList");
+  if(!grid) return;
+  const now = nowPST();
+  const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const list = EVENTS.filter(function(e){ return e.end >= now; }).sort(function(a,b){ return a.when-b.when; });
+  if(!list.length){ grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
+  grid.innerHTML = list.map(function(e){
+    const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
+    const tags = (e.tags||[]).map(function(t){ return '<span class="tag">'+clubEsc(t)+'</span>'; }).join("");
+    return '<article class="ticket">'+
+      '<div class="stub" aria-hidden="true"><span class="mo">'+MO[e.when.getMonth()]+'</span><span class="day">'+e.when.getDate()+'</span></div>'+
+      '<div class="body"><h3>'+clubEsc(e.name)+'</h3>'+
+      (meta?'<p class="meta">'+meta+'</p>':"")+
+      (e.desc?'<p>'+clubEsc(e.desc)+'</p>':"")+
+      tags+'</div></article>';
+  }).join("");
+  staggered.delete("eventList"); staggerOnce("eventList");
+}
+/* Live-pull events from the Google Sheet (ASB-editable); falls back to the seed. */
+const EVENTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&gid=0";
+function parseEvDate(s,isEnd){
+  const m = String(s||"").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(!m) return null;
+  return isEnd ? new Date(+m[1],+m[2]-1,+m[3],23,59) : new Date(+m[1],+m[2]-1,+m[3],8,0);
+}
+async function syncEvents(){
+  if(!EVENTS_SHEET) return;
+  try{
+    const res = await fetch(EVENTS_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = parseSheetRows(await res.text()); if(rows.length<2) return;
+    const head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
+    const gi = function(n){ return head.indexOf(n); };
+    const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
+    const list = [];
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,"name"); const when=parseEvDate(col(r,"date"),false); if(!name||!when) continue;
+      const end = parseEvDate(col(r,"enddate"),true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
+      const tags = col(r,"tags").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
+      list.push({ name:name, when:when, end:end, time:col(r,"time"), loc:col(r,"location")||col(r,"place"), desc:col(r,"description")||col(r,"desc"), tags:tags });
+    }
+    if(list.length){ EVENTS = list.sort(function(a,b){ return a.when-b.when; }); renderEvents(); tickCountdown(); }
+  }catch(e){ /* offline or blocked: keep the seed */ }
 }
 
 /* =====================================================
@@ -832,6 +878,8 @@ initSchedule();
 renderToday();
 syncScoreboard();
 syncClubs();
+renderEvents();
+syncEvents();
 tickClock(); tickCountdown(); tickNowChip();
 let lastMin = new Date().getMinutes();
 setInterval(()=>{
