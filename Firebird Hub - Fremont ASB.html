@@ -264,6 +264,26 @@ table.sched{border-radius:0}
 /* ---------- Spirit ---------- */
 .scoreboard{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:var(--space-4)}
 @media (min-width:640px){ .scoreboard{grid-template-columns:repeat(4,1fr)} }
+
+/* Spirit bar race (#10) — animated leaderboard. Class colors are editable here. */
+:root{ --cls-sr:#8F1106; --cls-jr:#E0A400; --cls-so:#2A6F4E; --cls-fr:#3B5BA5; }
+.barrace{display:flex; flex-direction:column; gap:14px; margin-bottom:var(--space-4)}
+.brow{position:relative}
+.binfo{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; gap:8px}
+.bcls{font-family:var(--font-display); text-transform:uppercase; letter-spacing:.06em; font-size:16px}
+.crown{font-family:var(--font-body); text-transform:none; letter-spacing:0; font-size:11px; font-weight:700; background:var(--gold); color:var(--ink); border:1.5px solid var(--ink); border-radius:999px; padding:1px 8px; margin-left:8px; white-space:nowrap}
+.bpts{font-family:var(--font-display); font-weight:700; font-size:26px; color:var(--ink); font-variant-numeric:tabular-nums}
+.btrack{height:30px; background:rgba(39,21,16,.08); border:2px solid var(--ink); border-radius:10px; overflow:hidden; position:relative}
+.bfill{height:100%; width:0; background:var(--c); border-right:2px solid var(--ink); border-radius:0 8px 8px 0; transition:width 1.1s cubic-bezier(.22,1,.36,1)}
+.brow.lead .btrack{box-shadow:0 0 0 3px rgba(255,201,31,.55)}
+.brow.lead .bfill{animation:leadPulse 2.2s ease-in-out infinite}
+@keyframes leadPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.12)}}
+.bgap{font-size:12.5px; color:var(--ink-soft); margin-top:3px}
+.brow.flash .btrack{animation:overtake .9s ease}
+@keyframes overtake{0%{box-shadow:0 0 0 0 rgba(255,201,31,.9)}100%{box-shadow:0 0 0 14px rgba(255,201,31,0)}}
+.confetti{position:absolute; top:50%; width:8px; height:8px; border:1px solid var(--ink); pointer-events:none; z-index:2; animation:conf 1s ease-out forwards; transform:translate(-50%,-50%)}
+@keyframes conf{0%{opacity:1; transform:translate(-50%,-50%) rotate(0)}100%{opacity:0; transform:translate(calc(-50% + var(--x)),-120px) rotate(var(--r))}}
+@media (prefers-reduced-motion: reduce){ .bfill{transition:none} .brow.lead .bfill{animation:none} }
 .score{
   background:var(--card); border:2px solid var(--ink); border-radius:var(--radius);
   box-shadow:3px 3px 0 rgba(39,21,16,.14); padding:12px; text-align:center; position:relative;
@@ -621,12 +641,7 @@ dialog[open]{animation:viewin .2s ease-out}
     <span class="rule" aria-hidden="true"></span>
   </div>
 
-  <div class="scoreboard" aria-label="Class standings">
-    <div class="score lead"><div class="cls">Seniors</div><div class="pts">318</div></div>
-    <div class="score"><div class="cls">Juniors</div><div class="pts">276</div></div>
-    <div class="score"><div class="cls">Sophomores</div><div class="pts">231</div></div>
-    <div class="score"><div class="cls">Freshmen</div><div class="pts">204</div></div>
-  </div>
+  <div class="barrace" id="barRace" aria-label="Class spirit standings"></div>
 
   <div class="grid cols2">
     <div class="card">
@@ -2263,26 +2278,51 @@ function parseSheetRows(text){
   if(cell.length||row.length){row.push(cell);rows.push(row);}
   return rows;
 }
+const CLSVAR = { "Seniors":"--cls-sr","Juniors":"--cls-jr","Sophomores":"--cls-so","Freshmen":"--cls-fr" };
+let spiritStandings = [{cls:"Seniors",pts:318},{cls:"Juniors",pts:276},{cls:"Sophomores",pts:231},{cls:"Freshmen",pts:204}];
+let prevLeaderCls = null;
+function confettiBurst(el){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors=["#8F1106","#FFC91F","#2A6F4E","#3B5BA5"];
+  for(let i=0;i<16;i++){ const p=document.createElement("span"); p.className="confetti";
+    p.style.setProperty("--x",(Math.random()*160-80)+"px"); p.style.setProperty("--r",(Math.random()*360)+"deg");
+    p.style.background=colors[i%4]; p.style.left=(20+Math.random()*60)+"%"; el.appendChild(p);
+    setTimeout(function(){ p.remove(); },1100); }
+}
+function renderBarRace(){
+  const box=document.getElementById("barRace");
+  if(!box) return;
+  const list=spiritStandings.slice().sort(function(a,b){ return b.pts-a.pts; });
+  const max=Math.max(1, list[0].pts), leader=list[0];
+  box.innerHTML=list.map(function(s,i){
+    const gap = i===0
+      ? ("Leading"+(list[1] && list[0].pts>list[1].pts ? " by "+(list[0].pts-list[1].pts) : ""))
+      : ((leader.pts-s.pts)+" behind");
+    const cvar=CLSVAR[s.cls]||"--cardinal";
+    return '<div class="brow'+(i===0?" lead":"")+'" style="--c:var('+cvar+')">'+
+      '<div class="binfo"><span class="bcls">'+clubEsc(s.cls)+(i===0?' <span class="crown">Projected winner</span>':'')+'</span><span class="bpts">'+s.pts+'</span></div>'+
+      '<div class="btrack"><div class="bfill" data-w="'+Math.round(s.pts/max*100)+'"></div></div>'+
+      '<div class="bgap">'+gap+'</div>'+
+    '</div>';
+  }).join("");
+  requestAnimationFrame(function(){ box.querySelectorAll(".bfill").forEach(function(f){ f.style.width=f.dataset.w+"%"; }); });
+  if(prevLeaderCls && prevLeaderCls!==leader.cls){ const L=box.querySelector(".brow.lead"); if(L){ L.classList.add("flash"); confettiBurst(L); } }
+  prevLeaderCls=leader.cls;
+}
 async function syncScoreboard(){
-  const board=document.querySelector(".scoreboard");
-  if(!board) return;
-  const GRADES=["Seniors","Juniors","Sophomores","Freshmen"];
+  renderBarRace();
   try{
-    const res=await fetch(SPIRIT_SHEET);
-    if(!res.ok) throw new Error("HTTP "+res.status);
+    const res=await fetch(SPIRIT_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
     const rows=parseSheetRows(await res.text());
-    const standings=GRADES.map(label=>{
-      const r=rows.find(x=>(x[0]||"").trim().toLowerCase()===label.toLowerCase());
+    const GRADES=["Seniors","Juniors","Sophomores","Freshmen"];
+    const standings=GRADES.map(function(label){
+      const r=rows.find(function(x){ return (x[0]||"").trim().toLowerCase()===label.toLowerCase(); });
       if(!r) return null;
-      const pts=r.slice(1).reduce((sum,c)=>{ const n=Number(String(c).replace(/[^\d.-]/g,"")); return sum+(Number.isFinite(n)?n:0); },0);
-      return {label,pts};
+      const pts=r.slice(1).reduce(function(sum,c){ const n=Number(String(c).replace(/[^\d.-]/g,"")); return sum+(Number.isFinite(n)?n:0); },0);
+      return {cls:label, pts:pts};
     }).filter(Boolean);
-    if(!standings.length) return;
-    standings.sort((a,b)=>b.pts-a.pts);
-    board.innerHTML=standings.map((s,i)=>
-      '<div class="score'+(i===0?" lead":"")+'"><div class="cls">'+s.label+'</div><div class="pts">'+s.pts+'</div></div>'
-    ).join("");
-  }catch(e){ }
+    if(standings.length){ spiritStandings=standings; renderBarRace(); }
+  }catch(e){ /* offline or blocked: keep the current standings */ }
 }
 
 /* =====================================================

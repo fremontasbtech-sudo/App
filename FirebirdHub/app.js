@@ -900,26 +900,51 @@ function parseSheetRows(text){
   if(cell.length||row.length){row.push(cell);rows.push(row);}
   return rows;
 }
+const CLSVAR = { "Seniors":"--cls-sr","Juniors":"--cls-jr","Sophomores":"--cls-so","Freshmen":"--cls-fr" };
+let spiritStandings = [{cls:"Seniors",pts:318},{cls:"Juniors",pts:276},{cls:"Sophomores",pts:231},{cls:"Freshmen",pts:204}];
+let prevLeaderCls = null;
+function confettiBurst(el){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const colors=["#8F1106","#FFC91F","#2A6F4E","#3B5BA5"];
+  for(let i=0;i<16;i++){ const p=document.createElement("span"); p.className="confetti";
+    p.style.setProperty("--x",(Math.random()*160-80)+"px"); p.style.setProperty("--r",(Math.random()*360)+"deg");
+    p.style.background=colors[i%4]; p.style.left=(20+Math.random()*60)+"%"; el.appendChild(p);
+    setTimeout(function(){ p.remove(); },1100); }
+}
+function renderBarRace(){
+  const box=document.getElementById("barRace");
+  if(!box) return;
+  const list=spiritStandings.slice().sort(function(a,b){ return b.pts-a.pts; });
+  const max=Math.max(1, list[0].pts), leader=list[0];
+  box.innerHTML=list.map(function(s,i){
+    const gap = i===0
+      ? ("Leading"+(list[1] && list[0].pts>list[1].pts ? " by "+(list[0].pts-list[1].pts) : ""))
+      : ((leader.pts-s.pts)+" behind");
+    const cvar=CLSVAR[s.cls]||"--cardinal";
+    return '<div class="brow'+(i===0?" lead":"")+'" style="--c:var('+cvar+')">'+
+      '<div class="binfo"><span class="bcls">'+clubEsc(s.cls)+(i===0?' <span class="crown">Projected winner</span>':'')+'</span><span class="bpts">'+s.pts+'</span></div>'+
+      '<div class="btrack"><div class="bfill" data-w="'+Math.round(s.pts/max*100)+'"></div></div>'+
+      '<div class="bgap">'+gap+'</div>'+
+    '</div>';
+  }).join("");
+  requestAnimationFrame(function(){ box.querySelectorAll(".bfill").forEach(function(f){ f.style.width=f.dataset.w+"%"; }); });
+  if(prevLeaderCls && prevLeaderCls!==leader.cls){ const L=box.querySelector(".brow.lead"); if(L){ L.classList.add("flash"); confettiBurst(L); } }
+  prevLeaderCls=leader.cls;
+}
 async function syncScoreboard(){
-  const board=document.querySelector(".scoreboard");
-  if(!board) return;
-  const GRADES=["Seniors","Juniors","Sophomores","Freshmen"];
+  renderBarRace();
   try{
-    const res=await fetch(SPIRIT_SHEET);
-    if(!res.ok) throw new Error("HTTP "+res.status);
+    const res=await fetch(SPIRIT_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
     const rows=parseSheetRows(await res.text());
-    const standings=GRADES.map(label=>{
-      const r=rows.find(x=>(x[0]||"").trim().toLowerCase()===label.toLowerCase());
+    const GRADES=["Seniors","Juniors","Sophomores","Freshmen"];
+    const standings=GRADES.map(function(label){
+      const r=rows.find(function(x){ return (x[0]||"").trim().toLowerCase()===label.toLowerCase(); });
       if(!r) return null;
-      const pts=r.slice(1).reduce((sum,c)=>{ const n=Number(String(c).replace(/[^\d.-]/g,"")); return sum+(Number.isFinite(n)?n:0); },0);
-      return {label,pts};
+      const pts=r.slice(1).reduce(function(sum,c){ const n=Number(String(c).replace(/[^\d.-]/g,"")); return sum+(Number.isFinite(n)?n:0); },0);
+      return {cls:label, pts:pts};
     }).filter(Boolean);
-    if(!standings.length) return;           // sheet unreadable/empty → keep placeholders
-    standings.sort((a,b)=>b.pts-a.pts);
-    board.innerHTML=standings.map((s,i)=>
-      '<div class="score'+(i===0?" lead":"")+'"><div class="cls">'+s.label+'</div><div class="pts">'+s.pts+'</div></div>'
-    ).join("");
-  }catch(e){ /* offline / blocked → leave the hardcoded standings in place */ }
+    if(standings.length){ spiritStandings=standings; renderBarRace(); }
+  }catch(e){ /* offline or blocked: keep the current standings */ }
 }
 
 /* =====================================================
