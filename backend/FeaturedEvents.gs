@@ -60,7 +60,7 @@ function feEventsSheet_(ss){
 }
 
 function feEvents_(){
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById("11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0");
   var sh = feEventsSheet_(ss);
   var lastRow = sh.getLastRow(), lastCol = sh.getLastColumn();
   if (lastRow < 2) return [];
