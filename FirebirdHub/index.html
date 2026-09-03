@@ -431,8 +431,13 @@
   </div>
   <p class="note" id="sportsUpdated" aria-live="polite"></p>
   <p class="note" style="margin:0 0 14px; font-size:14px"><a href="https://www.fremonthsathletics.org" target="_blank" rel="noopener" style="font-weight:700">Full schedules, rosters &amp; live updates at fremonthsathletics.org &rarr;</a></p>
-  <div class="chips" id="sportChips" role="group" aria-label="Filter by sport">
-    <button type="button" data-sport="all" aria-pressed="true">All sports</button>
+  <div class="sportfilters" id="sportFilters">
+    <label class="selwrap"><span>Sport</span>
+      <select id="sportSelect" aria-label="Filter by sport"><option value="all">All sports</option></select>
+    </label>
+    <label class="selwrap"><span>Level</span>
+      <select id="levelSelect" aria-label="Filter by level"><option value="all">All levels</option></select>
+    </label>
   </div>
   <div id="sportsBody" aria-live="polite">
     <p class="note">Loading Fremont Athletics…</p>

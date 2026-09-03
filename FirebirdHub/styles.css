@@ -570,3 +570,19 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
   body.motion .ticket{ opacity:1; transform:none; transition:none; }
   body.motion .skeleton::after{ animation:none; }
 }
+
+/* Sports filter dropdowns (sport + level) */
+.sportfilters{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:var(--space-3)}
+.sportfilters .selwrap{display:flex; flex-direction:column; gap:4px; flex:1 1 160px; min-width:150px}
+.sportfilters .selwrap>span{font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft)}
+.sportfilters select{
+  appearance:none; -webkit-appearance:none;
+  font:inherit; font-weight:700; color:var(--ink);
+  background:var(--card, #fff);
+  border:2px solid var(--cardinal); border-radius:12px;
+  padding:12px 40px 12px 14px; width:100%; cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238F1106' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat:no-repeat; background-position:right 14px center;
+}
+.sportfilters select:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+@media(max-width:520px){ .sportfilters .selwrap{flex:1 1 100%} }

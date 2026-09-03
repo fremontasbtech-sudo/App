@@ -588,6 +588,22 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
   body.motion .skeleton::after{ animation:none; }
 }
 
+
+/* Sports filter dropdowns (sport + level) */
+.sportfilters{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:var(--space-3)}
+.sportfilters .selwrap{display:flex; flex-direction:column; gap:4px; flex:1 1 160px; min-width:150px}
+.sportfilters .selwrap>span{font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft)}
+.sportfilters select{
+  appearance:none; -webkit-appearance:none;
+  font:inherit; font-weight:700; color:var(--ink);
+  background:var(--card, #fff);
+  border:2px solid var(--cardinal); border-radius:12px;
+  padding:12px 40px 12px 14px; width:100%; cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238F1106' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat:no-repeat; background-position:right 14px center;
+}
+.sportfilters select:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+@media(max-width:520px){ .sportfilters .selwrap{flex:1 1 100%} }
 </style>
 
 </head>
@@ -1003,8 +1019,13 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
   </div>
   <p class="note" id="sportsUpdated" aria-live="polite"></p>
   <p class="note" style="margin:0 0 14px; font-size:14px"><a href="https://www.fremonthsathletics.org" target="_blank" rel="noopener" style="font-weight:700">Full schedules, rosters &amp; live updates at fremonthsathletics.org &rarr;</a></p>
-  <div class="chips" id="sportChips" role="group" aria-label="Filter by sport">
-    <button type="button" data-sport="all" aria-pressed="true">All sports</button>
+  <div class="sportfilters" id="sportFilters">
+    <label class="selwrap"><span>Sport</span>
+      <select id="sportSelect" aria-label="Filter by sport"><option value="all">All sports</option></select>
+    </label>
+    <label class="selwrap"><span>Level</span>
+      <select id="levelSelect" aria-label="Filter by level"><option value="all">All levels</option></select>
+    </label>
   </div>
   <div id="sportsBody" aria-live="polite">
     <p class="note">Loading Fremont Athletics…</p>
@@ -1740,6 +1761,7 @@ async function syncEventsSheet(){
     const rows = parseSheetRows(await res.text()); if(rows.length<2) return;
     const head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
     const gi = function(n){ return head.indexOf(n); };
+  for(let c=0;c<rows[0].length;c++){ const m0=String(rows[0][c]||"").match(/Auto-updated\s+(.*)/); if(m0){ sportsUpdatedLabel = m0[1].replace(/\s+—.*/,"").trim(); } }
     const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
     const hasFeat = gi("featured")>=0;
     const list = [];
@@ -1760,53 +1782,122 @@ async function syncEventsSheet(){
    Live bell-schedule clock + special-schedule sync
 ===================================================== */
 /* =====================================================
-   Sports — live games + scores from Fremont Athletics
-   (the public Apps Script JSON endpoint the athletics site uses).
-   Auto-updates on each load; no spreadsheet or key needed.
+   Sports — FULL season from the Sports tab of the events
+   spreadsheet (SportsSync writes every game, by season/sport,
+   chronological, with scores + senior nights). The app reads
+   that tab live via gviz CSV, so it always shows the complete
+   season — not the athletics feed's ~4-week window.
 ===================================================== */
-const SPORTS_API = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec";
-let sportsData = null, sportFilter = "all", sportsLoaded = false; let sportsShowAll = false;
-function loadSports(){
-  if(sportsLoaded) return; sportsLoaded = true;
-  const cb = "fhsSportsCb_" + Math.random().toString(36).slice(2);
-  window[cb] = function(data){ sportsData = data; renderSports(); try{ delete window[cb]; }catch(e){} };
-  const s = document.createElement("script");
-  s.src = SPORTS_API + "?view=results&callback=" + cb;
-  s.onerror = function(){ sportsLoaded = false; const g=document.getElementById("sportsBody"); if(g) g.innerHTML = '<p class="note">Could not load Fremont Athletics right now. Try again later.</p>'; };
-  document.head.appendChild(s);
+const SPORTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&sheet=Sports";
+let sportsGames = null, sportsUpdatedLabel = "", sportFilter = "all", sportLevel = "all", sportsLoaded = false; let sportsShowAll = false;
+
+/* Fall-first order for the sport dropdown. */
+const SPORT_ORDER = ["Football","Cross Country","Field Hockey","Flag Football","Girls Tennis","Girls Volleyball","Boys Water Polo","Girls Water Polo","Boys Basketball","Girls Basketball","Boys Soccer","Girls Soccer","Wrestling","Badminton","Baseball","Softball","Golf","Swimming & Diving","Boys Tennis","Track & Field","Boys Volleyball"];
+function sportRank(s){ const i = SPORT_ORDER.indexOf(s); return i<0 ? 900 : i; }
+function levelRank(l){ return /varsity/i.test(l)?0 : /jv/i.test(l)?1 : /frosh|fresh/i.test(l)?2 : 3; }
+/* What a sport calls its contests. */
+function eventNoun(sport, plural){
+  const s = String(sport||"");
+  if(/cross country|track|swim|dive|wrestl/i.test(s)) return plural?"meets":"meet";
+  if(/tennis|badminton|golf/i.test(s)) return plural?"matches":"match";
+  return plural?"games":"game";
 }
-/* Senior Night labeling: auto-detects from the game's status/matchup text once
-   athletics sets it; add known ones to SENIOR_NIGHTS to badge them early. */
+function sportTimeMin(t){ const m=String(t||"").match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 9999; let h=+m[1]%12; if(/PM/i.test(m[3])) h+=12; return h*60+(+m[2]); }
+function todayKeyPST(){ const d=nowPST(); const mm=("0"+(d.getMonth()+1)).slice(-2), dd=("0"+d.getDate()).slice(-2); return d.getFullYear()+"-"+mm+"-"+dd; }
+
+async function loadSports(){
+  if(sportsLoaded) return; sportsLoaded = true;
+  try{
+    const res = await fetch(SPORTS_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
+    const rows = parseSheetRows(await res.text());
+    sportsGames = rowsToGames(rows);
+    renderSports();
+  }catch(e){
+    sportsLoaded = false;
+    const g=document.getElementById("sportsBody");
+    if(g) g.innerHTML = '<p class="note">Could not load the sports schedule right now. Try again later.</p>';
+  }
+}
+function rowsToGames(rows){
+  sportsUpdatedLabel = "";
+  if(!rows || rows.length<2) return [];
+  const head = rows[0].map(function(h){ return String(h).trim().toLowerCase(); });
+  const gi = function(n){ return head.indexOf(n); };
+  const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
+  const out=[];
+  for(let i=1;i<rows.length;i++){ const r=rows[i];
+    // grab the off-table timestamp cell if present
+    for(let c=0;c<r.length;c++){ const m=String(r[c]||"").match(/Auto-updated\s+(.*)/); if(m){ sportsUpdatedLabel = m[1].replace(/\s+—.*/,"").trim(); } }
+    const sport=col(r,"sport"), date=col(r,"date");
+    if(!sport || !/^\d{4}-\d{1,2}-\d{1,2}/.test(date)) continue; // skip season/sport divider rows
+    out.push({
+      sport:sport, date:date, time:col(r,"time"), level:col(r,"level"),
+      home:/home/i.test(col(r,"homeaway")), homeAway:col(r,"homeaway"),
+      opponent:col(r,"opponent"), location:col(r,"location"), type:col(r,"type"),
+      section:col(r,"section").toLowerCase(), score:col(r,"score"),
+      senior:/^(yes|true|1|y)$/i.test(col(r,"seniornight")),
+      league:/league/i.test(col(r,"type"))
+    });
+  }
+  return out;
+}
+/* Senior Night: the sheet flags it (seniorNight=YES); keep the known-dates
+   fallback too so it badges even before the sheet marks it. */
 const SENIOR_NIGHTS = [
-  { sport:"Football", date:"2026-10-22", opponent:"Los Altos" }, // Football + Cheer senior night
-  { sport:"Field Hockey", date:"2026-10-26" }, // Girls Field Hockey senior night, 6 PM
-  { sport:"Girls Tennis", date:"2026-10-29" }, // Girls Tennis senior night, 4-7 PM
+  { sport:"Football", date:"2026-10-22", opponent:"Los Altos" },
+  { sport:"Field Hockey", date:"2026-10-26" },
+  { sport:"Girls Tennis", date:"2026-10-29" },
 ];
 function isSeniorNight(g){
   if(!g) return false;
-  const txt = [g.status, g.matchup, g.opponent, g.note, g.title, g.name].filter(Boolean).join(" ");
+  if(g.senior) return true;
+  const txt = [g.title, g.status, g.matchup, g.opponent].filter(Boolean).join(" ");
   if(/senior\s*(night|day)/i.test(txt)) return true;
   const d = String(g.date||"");
   return SENIOR_NIGHTS.some(function(s){ return s.date===d && (!s.sport || s.sport===g.sport); });
 }
 function renderSports(){
   const body = document.getElementById("sportsBody");
-  if(!body || !sportsData || !sportsData.programs){ if(body) body.innerHTML='<p class="note">No sports data available right now.</p>'; return; }
+  if(!body) return;
+  if(!sportsGames){ body.innerHTML='<p class="note">Loading…</p>'; return; }
+  if(!sportsGames.length){ body.innerHTML='<p class="note">No sports schedule available right now.</p>'; return; }
   const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const progs = sportsData.programs;
-  const chips = document.getElementById("sportChips");
-  const sports = progs.map(function(p){ return p.sport; });
-  chips.innerHTML = '<button type="button" data-sport="all" aria-pressed="'+(sportFilter==="all")+'">All sports</button>' +
-    sports.map(function(sp){ return '<button type="button" data-sport="'+clubEsc(sp)+'" aria-pressed="'+(sportFilter===sp)+'">'+clubEsc(sp)+'</button>'; }).join("");
-  document.getElementById("sportsUpdated").textContent = sportsData.updatedLabel ? ("Updated "+sportsData.updatedLabel) : "";
-  const inFilter = function(p){ return sportFilter==="all" || p.sport===sportFilter; };
+
+  // populate the two dropdowns
+  const sports = Array.from(new Set(sportsGames.map(function(g){return g.sport;})))
+    .sort(function(a,b){ return sportRank(a)-sportRank(b) || a.localeCompare(b); });
+  const sportSel = document.getElementById("sportSelect");
+  if(sportSel){
+    if(sportFilter!=="all" && sports.indexOf(sportFilter)<0) sportFilter="all";
+    sportSel.innerHTML = '<option value="all">All sports</option>' +
+      sports.map(function(s){ return '<option value="'+clubEsc(s)+'"'+(sportFilter===s?' selected':'')+'>'+clubEsc(s)+'</option>'; }).join("");
+    sportSel.value = sportFilter;
+  }
+  const levelPool = sportsGames.filter(function(g){ return sportFilter==="all"||g.sport===sportFilter; });
+  const levels = Array.from(new Set(levelPool.map(function(g){return g.level;}).filter(Boolean)))
+    .sort(function(a,b){ return levelRank(a)-levelRank(b) || a.localeCompare(b); });
+  const lvlSel = document.getElementById("levelSelect");
+  if(lvlSel){
+    if(sportLevel!=="all" && levels.indexOf(sportLevel)<0) sportLevel="all";
+    lvlSel.innerHTML = '<option value="all">All levels</option>' +
+      levels.map(function(l){ return '<option value="'+clubEsc(l)+'"'+(sportLevel===l?' selected':'')+'>'+clubEsc(l)+'</option>'; }).join("");
+    lvlSel.value = sportLevel;
+  }
+  const upd = document.getElementById("sportsUpdated");
+  if(upd) upd.textContent = sportsUpdatedLabel ? ("Updated "+sportsUpdatedLabel) : "";
+
+  const today = todayKeyPST();
+  const inFilter = function(g){ return (sportFilter==="all"||g.sport===sportFilter) && (sportLevel==="all"||g.level===sportLevel); };
   let upcoming=[], results=[];
-  progs.filter(inFilter).forEach(function(p){
-    (p.upcoming||[]).forEach(function(g){ upcoming.push(g); });
-    (p.results||[]).forEach(function(g){ results.push(g); });
+  sportsGames.filter(inFilter).forEach(function(g){
+    const isResult = g.section==="result" || (g.date && g.date < today);
+    if(isResult) results.push(g); else upcoming.push(g);
   });
-  upcoming.sort(function(a,b){ return String(a.date||"").localeCompare(String(b.date||"")); });
-  results.sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
+  upcoming.sort(function(a,b){ return String(a.date).localeCompare(String(b.date)) || sportTimeMin(a.time)-sportTimeMin(b.time); });
+  results.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)) || sportTimeMin(b.time)-sportTimeMin(a.time); });
+
+  const nounP = sportFilter==="all" ? "games" : eventNoun(sportFilter, true);
+  const cap = function(s){ return s.charAt(0).toUpperCase()+s.slice(1); };
   function card(g, isResult){
     const sr = isSeniorNight(g);
     const m = String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
@@ -1815,11 +1906,12 @@ function renderSports(){
     if(g.league) tags.push('<span class="tag">League</span>');
     if(sr) tags.unshift('<span class="tag sr">&#9733; Senior Night</span>');
     let line2;
-    if(isResult){ const sc = g.score||g.result||g.finalScore||""; line2 = sc ? ('Final: '+clubEsc(sc)) : 'Final score pending'; }
+    if(isResult){ const sc = g.score||""; line2 = sc ? ('Final: '+clubEsc(sc)) : 'Final score pending'; }
     else { line2 = [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; "); }
+    const vs = g.opponent ? ((/away/i.test(g.homeAway)?'at ':'vs ')+clubEsc(g.opponent)) : "";
     return '<article class="ticket'+(sr?' sr':'')+'"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
       '<div class="body"><h3>'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h3>'+
-      '<p class="meta">'+clubEsc(g.matchup||g.opponent||"")+'</p>'+
+      (vs?('<p class="meta">'+vs+'</p>'):"")+
       (line2?('<p>'+line2+'</p>'):"")+
       tags.join(" ")+'</div></article>';
   }
@@ -1828,13 +1920,13 @@ function renderSports(){
   const evd = function(g){ const mm=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return mm?new Date(+mm[1],+mm[2]-1,+mm[3],23,59):null; };
   const firstWeek = upcoming.filter(function(g){ const d=evd(g); return d && d<=weekEnd; });
   const shown = sportsShowAll ? upcoming : (firstWeek.length ? firstWeek : upcoming.slice(0,4));
-  let html = '<section aria-labelledby="h-upgames"><div class="sechead"><h2 id="h-upgames" style="font-size:20px">Upcoming games</h2><span class="rule" aria-hidden="true"></span></div>';
+  let html = '<section aria-labelledby="h-upgames"><div class="sechead"><h2 id="h-upgames" style="font-size:20px">Upcoming '+cap(nounP)+'</h2><span class="rule" aria-hidden="true"></span></div>';
   if(upcoming.length){
     html += '<div class="grid cols2">'+shown.map(function(g){return card(g,false);}).join("")+'</div>';
     if(!sportsShowAll && upcoming.length>shown.length){
-      html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">View all '+upcoming.length+' upcoming games</button></div>';
+      html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">View all '+upcoming.length+' upcoming '+nounP+'</button></div>';
     }
-  } else { html += '<p class="note">No upcoming games listed right now.</p>'; }
+  } else { html += '<p class="note">No upcoming '+nounP+' listed right now.</p>'; }
   html += '</section>';
   if(results.length){
     html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-results"><div class="sechead"><h2 id="h-results" style="font-size:20px">Recent results</h2><span class="rule" aria-hidden="true"></span></div>';
@@ -1842,9 +1934,9 @@ function renderSports(){
   }
   body.innerHTML = html;
 }
-document.getElementById("sportChips").addEventListener("click", function(e){
-  const b = e.target.closest("button[data-sport]"); if(!b) return;
-  sportFilter = b.dataset.sport; sportsShowAll = false; renderSports();
+document.addEventListener("change", function(e){
+  if(e.target && e.target.id==="sportSelect"){ sportFilter = e.target.value; sportLevel="all"; sportsShowAll = false; renderSports(); }
+  else if(e.target && e.target.id==="levelSelect"){ sportLevel = e.target.value; sportsShowAll = false; renderSports(); }
 });
 document.getElementById("sportsBody").addEventListener("click", function(e){
   if(e.target.closest("#sportsViewAll")){ sportsShowAll = true; renderSports(); }
