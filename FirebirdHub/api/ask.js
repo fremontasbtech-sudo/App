@@ -5,7 +5,7 @@
  * the app uses (events + sports), so it always knows the newest events/games with
  * no manual updates. Set GEMINI_API_KEY in the firebirdhub Vercel project env.
  */
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-3.6-flash";
 const SHEET = "11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0";
 const EVENTS_CSV = "https://docs.google.com/spreadsheets/d/" + SHEET + "/gviz/tq?tqx=out:csv&gid=0";
 const SPORTS_CSV = "https://docs.google.com/spreadsheets/d/" + SHEET + "/gviz/tq?tqx=out:csv&sheet=Sports";
@@ -117,7 +117,6 @@ export default async function handler(req, res){
     const data = await r.json();
     let answer = "";
     try{ answer = data.candidates[0].content.parts.map(p=>p.text||"").join(" ").trim(); }catch(e){}
-    if(!answer && body && body.debug){ res.status(200).json({ answer: "DEBUG "+JSON.stringify({error:data&&data.error, pf:data&&data.promptFeedback, fr:data&&data.candidates&&data.candidates[0]&&data.candidates[0].finishReason, keys:Object.keys(data||{})}).slice(0,500) }); return; }
     if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, sports, or Fire Bucks.";
     res.status(200).json({ answer });
   }catch(e){
