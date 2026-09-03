@@ -1923,6 +1923,8 @@ function eventNoun(sport, plural){
   if(/tennis|badminton|golf/i.test(s)) return plural?"matches":"match";
   return plural?"games":"game";
 }
+function isMeetSport(s){ return /cross country|track|swim|dive|wrestl/i.test(String(s||"")); }
+function oppText(sport, opponent, homeAway){ if(!opponent) return "TBA"; return isMeetSport(sport) ? clubEsc(opponent) : ((/away/i.test(homeAway)?"at ":"vs ")+clubEsc(opponent)); }
 function sportTimeMin(t){ const m=String(t||"").match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 9999; let h=+m[1]%12; if(/PM/i.test(m[3])) h+=12; return h*60+(+m[2]); }
 function todayKeyPST(){ const d=nowPST(); const mm=("0"+(d.getMonth()+1)).slice(-2), dd=("0"+d.getDate()).slice(-2); return d.getFullYear()+"-"+mm+"-"+dd; }
 
@@ -2005,7 +2007,18 @@ function rowsToGames(rows){
       league:/league/i.test(col(r,"type"))
     });
   }
-  return out;
+  var seen={}, dd=[];
+  out.forEach(function(g){
+    var base=[g.sport,g.date,g.level].join("|").toLowerCase();
+    var k=isMeetSport(g.sport)?base:(base+"|"+String(g.time||"").toLowerCase());
+    if(!(k in seen)){ seen[k]=dd.length; dd.push(g); return; }
+    var cur=dd[seen[k]];
+    var score=function(x){ return (x.opponent?2:0)+(x.score?1:0)+String(x.opponent||"").length*0.001; };
+    var keep=score(g)>score(cur)?g:cur;
+    keep.push=cur.push||g.push; keep.senior=cur.senior||g.senior; if(!keep.score) keep.score=cur.score||g.score;
+    dd[seen[k]]=keep;
+  });
+  return dd;
 }
 const SENIOR_NIGHTS = [
   { sport:"Football", date:"2026-10-22", opponent:"Los Altos" },
@@ -2080,8 +2093,7 @@ function renderSports(){
     let line2;
     if(isResult){ const sc = g.score||""; line2 = sc ? ('Final: '+clubEsc(sc)) : 'Final score pending'; }
     else { line2 = [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; "); }
-    const isMeet = /cross country|track|swim|dive|wrestl/i.test(g.sport||"");
-    const vs = g.opponent ? (isMeet ? clubEsc(g.opponent) : ((/away/i.test(g.homeAway)?'at ':'vs ')+clubEsc(g.opponent))) : "";
+    const vs = g.opponent ? oppText(g.sport, g.opponent, g.homeAway) : "";
     return '<article class="ticket'+(sr?' sr':'')+'"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
       '<div class="body"><h3>'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h3>'+
       (vs?('<p class="meta">'+vs+'</p>'):"")+
@@ -2107,7 +2119,7 @@ function renderSports(){
     if(seasonSports.length){
       html += '<div class="sportgrid">'+seasonSports.map(function(sp){
         const s=sportSummary(sp); const rec=recordStr(s);
-        const nx = s.next ? (fmtDateShort(s.next.date)+' &middot; '+(/away/i.test(s.next.homeAway)?'at ':'vs ')+clubEsc(s.next.opponent||'TBA')) : ('No upcoming '+eventNoun(sp,true));
+        const nx = s.next ? (fmtDateShort(s.next.date)+' &middot; '+oppText(sp, s.next.opponent, s.next.homeAway)) : ('No upcoming '+eventNoun(sp,true));
         return '<button type="button" class="sportcard" data-sportpick="'+clubEsc(sp)+'">'+
           '<div class="sportcard-top"><span class="sportcard-name">'+clubEsc(sp)+'</span>'+(rec?('<span class="sportcard-rec">'+rec+'</span>'):'')+'</div>'+
           '<div class="sportcard-next"><span class="sportcard-lbl">NEXT</span> '+nx+'</div>'+
@@ -2136,7 +2148,7 @@ function renderSports(){
     const s=sportSummary(sportFilter); const rec=recordStr(s);
     html += '<section class="sporthero"><div class="sporthero-top"><h2>'+clubEsc(sportFilter)+'</h2>'+(rec?('<span class="sportcard-rec big">'+rec+'</span>'):'')+'</div>'+
       '<p class="sporthero-meta">'+(currentSeason().charAt(0).toUpperCase()+currentSeason().slice(1))+' season'+(s.levels.length?(' &middot; '+s.levels.map(clubEsc).join(", ")):'')+'</p>'+
-      (s.next?('<p class="sporthero-next"><b>Next '+eventNoun(sportFilter,false)+':</b> '+fmtDateShort(s.next.date)+(s.next.time?(' at '+clubEsc(s.next.time)):'')+' &middot; '+(/away/i.test(s.next.homeAway)?'at ':'vs ')+clubEsc(s.next.opponent||'TBA')+(s.next.location?(' &middot; '+clubEsc(s.next.location)):'')+'</p>'):'')+
+      (s.next?('<p class="sporthero-next"><b>Next '+eventNoun(sportFilter,false)+':</b> '+fmtDateShort(s.next.date)+(s.next.time?(' at '+clubEsc(s.next.time)):'')+' &middot; '+oppText(sportFilter, s.next.opponent, s.next.homeAway)+(s.next.location?(' &middot; '+clubEsc(s.next.location)):'')+'</p>'):'')+
       '<p style="margin:10px 0 0"><a class="btn ghost" style="font-size:13px" href="'+sportPage(sportFilter)+'" target="_blank" rel="noopener">Team page &amp; roster &rarr;</a></p></section>';
 
     const inFilter = function(g){ return g.sport===sportFilter && (sportLevel==="all"||g.level===sportLevel); };
@@ -3134,7 +3146,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     panel.hidden = true; if(back) back.hidden=true;
   });
   document.addEventListener("keydown", function(e){
-    if(e.key==="Escape"){ var p=document.getElementById("askPanel"); if(p && !p.hidden) p.hidden=true; }
+    if(e.key==="Escape"){ var p=document.getElementById("askPanel"); if(p && !p.hidden){ p.hidden=true; var b=document.getElementById("askBack"); if(b) b.hidden=true; } }
   });
 })();
 </script>

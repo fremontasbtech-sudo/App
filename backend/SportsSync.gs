@@ -64,9 +64,9 @@ function syncSports(){
     if(s) g.score = s;
   });
   var seen = {};
-  games.forEach(function(g){ seen[gkey_(g)] = true; });
+  games.forEach(function(g){ seen[gkeyLoose_(g)] = true; });
   api.games.forEach(function(x){
-    if(seasonOf_(x.sport) && !seen[gkey_(x)]){ games.push(x); seen[gkey_(x)] = true; }
+    if(seasonOf_(x.sport) && !seen[gkeyLoose_(x)]){ games.push(x); seen[gkeyLoose_(x)] = true; }
   });
 
   var out=[HEADER], banners=[], heads=[], seniors=[], pushed=[];
@@ -223,6 +223,8 @@ function normSport_(s){
 }
 function skey_(sport,date,level){ return (String(sport)+"|"+String(date)+"|"+String(level)).toLowerCase(); }
 function gkey_(g){ return (String(g.sport)+"|"+String(g.date)+"|"+String(g.level||"")+"|"+String(g.opponent||"")).toLowerCase(); }
+function isMeet_(s){ return /cross country|track|swim|dive|wrestl/i.test(String(s||"")); }
+function gkeyLoose_(g){ var base=(String(g.sport)+"|"+String(g.date)+"|"+String(g.level||"")).toLowerCase(); return isMeet_(g.sport) ? base : base+"|"+String(g.time||"").toLowerCase(); }
 function isSenior_(g){ return SENIOR_NIGHTS.some(function(s){ return s.sport===g.sport && s.date===g.date; }); }
 function dayName_(date){ var m=String(date||"").match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return ""; var d=new Date(+m[1],+m[2]-1,+m[3]); return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]; }
 function timeMin_(t){ var m=String(t||"").match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 9999; var h=+m[1]%12; if(/PM/i.test(m[3])) h+=12; return h*60+(+m[2]); }
