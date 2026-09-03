@@ -1502,8 +1502,12 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
 /* Ask Firebird: dismiss on outside-click or Escape */
 (function(){
   document.addEventListener("click", function(e){
-    var panel=document.getElementById("askPanel"), fab=document.getElementById("askFab");
-    if(!panel || panel.hidden) return;
+    var panel=document.getElementById("askPanel");
+    if(!panel) return;
+    // X button (delegated so it works even if the direct binding missed)
+    if(e.target.closest && e.target.closest("#askClose")){ panel.hidden = true; return; }
+    if(panel.hidden) return;
+    // outside-click closes
     if(e.target.closest && (e.target.closest("#askPanel") || e.target.closest("#askFab"))) return;
     panel.hidden = true;
   });
