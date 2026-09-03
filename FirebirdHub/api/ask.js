@@ -60,7 +60,9 @@ export default async function handler(req, res){
     let answer = "";
     try{ answer = data.candidates[0].content.parts.map(function(p){return p.text||"";}).join(" ").trim(); }catch(e){}
     if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, sports, or Fire Bucks.";
-    res.status(200).json({ answer: answer });
+    const out = { answer: answer };
+    if(body && body.debug){ out.debug = { httpStatus: r.status, err: (data && data.error) ? data.error : null, feedback: (data && data.promptFeedback) ? data.promptFeedback : null, finish: (data && data.candidates && data.candidates[0]) ? data.candidates[0].finishReason : null }; }
+    res.status(200).json(out);
   }catch(e){
     res.status(200).json({ answer:"Ask Firebird is having a moment. Try again in a bit, or check the tabs for schedule, clubs, sports, and Fire Bucks." });
   }

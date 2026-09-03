@@ -386,7 +386,7 @@ function rowsToGames(rows){
       opponent:(function(o){o=String(o||"").replace(/^\s*(vs\.?|at)\s+/i,"").trim(); return /^opponent$/i.test(o)?"":o;})(col(r,"opponent")), location:col(r,"location"), type:col(r,"type"),
       section:col(r,"section").toLowerCase(), score:col(r,"score"),
       senior:/^(yes|true|1|y)$/i.test(col(r,"seniornight")),
-      push:/^\s*y(es)?\s*$/i.test(col(r,"push")),
+      push:/^\s*y(es)?\s*$/i.test( (gi("push")>=0?col(r,"push"):String(r[0]||"").trim()) ),
       kind:col(r,"kind") || (/scrimmage/i.test(col(r,"type"))?"Scrimmage":"Game"),
       league:/league/i.test(col(r,"type"))
     });
