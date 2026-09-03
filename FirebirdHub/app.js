@@ -363,7 +363,7 @@ function rowsToGames(rows){
     out.push({
       sport:sport, date:date, time:col(r,"time"), level:col(r,"level"),
       home:/home/i.test(col(r,"homeaway")), homeAway:col(r,"homeaway"),
-      opponent:col(r,"opponent"), location:col(r,"location"), type:col(r,"type"),
+      opponent:(function(o){o=String(o||"").replace(/^\s*(vs\.?|at)\s+/i,"").trim(); return /^opponent$/i.test(o)?"":o;})(col(r,"opponent")), location:col(r,"location"), type:col(r,"type"),
       section:col(r,"section").toLowerCase(), score:col(r,"score"),
       senior:/^(yes|true|1|y)$/i.test(col(r,"seniornight")),
       push:/^\s*y(es)?\s*$/i.test(col(r,"push")),
