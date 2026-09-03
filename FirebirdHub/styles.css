@@ -641,3 +641,7 @@ html.bigtext{zoom:1.12}
 .sporthero-meta{margin:4px 0 0; color:var(--gold-soft,#FFE9A8); font-size:13px; font-weight:700}
 .sporthero-next{margin:12px 0 0; font-size:14px; background:rgba(255,255,255,.14); padding:9px 12px; border-radius:10px}
 .sporthero .btn.ghost{background:#fff; color:var(--cardinal); border-color:#fff}
+
+/* chatbot backdrop + bigger close target */
+.askback{position:fixed; inset:0; z-index:59; background:rgba(39,21,16,.08)}
+.askx{padding:6px 12px; font-size:26px; min-width:40px; min-height:40px; line-height:1; display:inline-flex; align-items:center; justify-content:center}

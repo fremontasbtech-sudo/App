@@ -1481,8 +1481,10 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   var log=document.getElementById("askLog"), form=document.getElementById("askForm"), input=document.getElementById("askInput");
   var close=document.getElementById("askClose");
   var lastSend=0, busy=false;
-  function open(){ panel.hidden=false; setTimeout(function(){ input && input.focus(); },50); }
-  function hide(){ panel.hidden=true; }
+  var back=document.getElementById("askBack");
+  function open(){ panel.hidden=false; if(back) back.hidden=false; setTimeout(function(){ input && input.focus(); },50); }
+  function hide(){ panel.hidden=true; if(back) back.hidden=true; }
+  if(back) back.addEventListener("click", hide);
   fab.addEventListener("click", function(){ panel.hidden ? open() : hide(); });
   close && close.addEventListener("click", hide);
   function add(text, who){ var d=document.createElement("div"); d.className="askmsg "+who; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
@@ -1506,11 +1508,12 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     var panel=document.getElementById("askPanel");
     if(!panel) return;
     // X button (delegated so it works even if the direct binding missed)
-    if(e.target.closest && e.target.closest("#askClose")){ panel.hidden = true; return; }
+    var back=document.getElementById("askBack");
+    if(e.target.closest && e.target.closest("#askClose")){ panel.hidden = true; if(back) back.hidden=true; return; }
     if(panel.hidden) return;
     // outside-click closes
     if(e.target.closest && (e.target.closest("#askPanel") || e.target.closest("#askFab"))) return;
-    panel.hidden = true;
+    panel.hidden = true; if(back) back.hidden=true;
   });
   document.addEventListener("keydown", function(e){
     if(e.key==="Escape"){ var p=document.getElementById("askPanel"); if(p && !p.hidden) p.hidden=true; }
