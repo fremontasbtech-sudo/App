@@ -279,7 +279,7 @@ async function syncEventsSheet(){
    Auto-updates on each load; no spreadsheet or key needed.
 ===================================================== */
 const SPORTS_API = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec";
-let sportsData = null, sportFilter = "all", sportsLoaded = false;
+let sportsData = null, sportFilter = "all", sportsLoaded = false; let sportsShowAll = false;
 function loadSports(){
   if(sportsLoaded) return; sportsLoaded = true;
   const cb = "fhsSportsCb_" + Math.random().toString(36).slice(2);
@@ -340,8 +340,18 @@ function renderSports(){
       (line2?('<p>'+line2+'</p>'):"")+
       tags.join(" ")+'</div></article>';
   }
+  const nowS = nowPST();
+  const weekEnd = new Date(nowS.getTime()+7*86400000);
+  const evd = function(g){ const mm=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return mm?new Date(+mm[1],+mm[2]-1,+mm[3],23,59):null; };
+  const firstWeek = upcoming.filter(function(g){ const d=evd(g); return d && d<=weekEnd; });
+  const shown = sportsShowAll ? upcoming : (firstWeek.length ? firstWeek : upcoming.slice(0,4));
   let html = '<section aria-labelledby="h-upgames"><div class="sechead"><h2 id="h-upgames" style="font-size:20px">Upcoming games</h2><span class="rule" aria-hidden="true"></span></div>';
-  html += upcoming.length ? ('<div class="grid cols2">'+upcoming.map(function(g){return card(g,false);}).join("")+'</div>') : '<p class="note">No upcoming games listed right now.</p>';
+  if(upcoming.length){
+    html += '<div class="grid cols2">'+shown.map(function(g){return card(g,false);}).join("")+'</div>';
+    if(!sportsShowAll && upcoming.length>shown.length){
+      html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">View all '+upcoming.length+' upcoming games</button></div>';
+    }
+  } else { html += '<p class="note">No upcoming games listed right now.</p>'; }
   html += '</section>';
   if(results.length){
     html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-results"><div class="sechead"><h2 id="h-results" style="font-size:20px">Recent results</h2><span class="rule" aria-hidden="true"></span></div>';
@@ -351,7 +361,10 @@ function renderSports(){
 }
 document.getElementById("sportChips").addEventListener("click", function(e){
   const b = e.target.closest("button[data-sport]"); if(!b) return;
-  sportFilter = b.dataset.sport; renderSports();
+  sportFilter = b.dataset.sport; sportsShowAll = false; renderSports();
+});
+document.getElementById("sportsBody").addEventListener("click", function(e){
+  if(e.target.closest("#sportsViewAll")){ sportsShowAll = true; renderSports(); }
 });
 
 function todayKey(){
@@ -1215,6 +1228,7 @@ show(boot.view || "home", false);
 renderAnnounce();
 renderFTV();
 initMotion();
+loadSports(); /* preload sports */
 
 // Fire Bucks off: hide the Firebird Card section in More (code kept in the repo).
 if(!FEATURES.fireBucks){

@@ -1,25 +1,42 @@
 /**
  * Firebird Hub — Sports auto-sync (Apps Script)
- * Pulls Fremont HS Athletics games from the public games endpoint and writes them
- * into a "Sports" tab of THIS spreadsheet, ORGANIZED BY SPORT then chronological,
- * fully categorized, refreshed on a time trigger so it is ALWAYS current.
- * Known senior-night rows are highlighted RED automatically.
+ * Builds a "Sports" tab in THIS spreadsheet with the FULL season for every team,
+ * organized by sport then chronological, fully categorized. Games only (practices
+ * are filtered out). Known senior-night rows are highlighted RED.
+ *
+ * Primary source: each team's official .ics calendar (the complete season).
+ * Fallback: the athletics games JSON, if the .ics feeds can't be read.
  *
  * SETUP (in the "Firebird Hub — Events (26-27)" spreadsheet, personal account):
- *   1. Extensions -> Apps Script. Replace this file's contents, Save.
- *   2. Pick setupSportsSync -> Run. Authorize when asked.
- *      Fills the Sports tab now AND refreshes every 3 hours.
- *   Winter/spring sports appear automatically once athletics publishes their dates.
+ *   1. Extensions -> Apps Script. Put this in a file named SportsSync.gs, Save.
+ *      (If a SportsSync already exists, replace its contents. If you can't find it,
+ *       just add this file to the SAME project as FeaturedEvents.)
+ *   2. Function dropdown -> setupSportsSync -> Run. Authorize when asked.
+ *      Fills the Sports tab now and refreshes every 3 hours.
  */
-var SPORTS_ENDPOINT = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec?view=results";
 var SPORTS_TAB = "Sports";
 var EVENTS_ID = "11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0";
+var ICS_BASE = "https://fremontathletics.org/fhs-ics.php?team=";
+var SPORTS_ENDPOINT = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec?view=results";
 
-/* Known senior nights (sport + date). These rows are highlighted red. */
+/* Every team + its display name. Winter/spring feeds are empty until posted; they
+   are skipped automatically, then fill in on their own once athletics publishes. */
+var TEAMS = [
+  ["cross-country","Cross Country"],["field-hockey","Field Hockey"],
+  ["flag-football","Flag Football"],["football","Football"],
+  ["girls-tennis","Girls Tennis"],["girls-volleyball","Girls Volleyball"],
+  ["boys-water-polo","Boys Water Polo"],["girlswaterpolo","Girls Water Polo"],
+  ["boys-basketball","Boys Basketball"],["girls-basketball","Girls Basketball"],
+  ["boys-soccer","Boys Soccer"],["girls-soccer","Girls Soccer"],["wrestling","Wrestling"],
+  ["badminton","Badminton"],["baseball","Baseball"],["golf","Golf"],["softball","Softball"],
+  ["swimming-and-diving","Swimming & Diving"],["boys-tennis","Boys Tennis"],
+  ["track-and-field","Track & Field"],["boys-volleyball","Boys Volleyball"]
+];
+
 var SENIOR_NIGHTS = [
-  { sport: "Football",     date: "2026-10-22" },
-  { sport: "Field Hockey", date: "2026-10-26" },
-  { sport: "Girls Tennis", date: "2026-10-29" }
+  { sport:"Football",     date:"2026-10-22" },
+  { sport:"Field Hockey", date:"2026-10-26" },
+  { sport:"Girls Tennis", date:"2026-10-29" }
 ];
 
 function setupSportsSync(){
@@ -30,71 +47,109 @@ function setupSportsSync(){
   ScriptApp.newTrigger("syncSports").timeBased().everyHours(3).create();
 }
 
-function ssIsSenior_(sport, date, g){
-  var txt = [g.status, g.matchup, g.opponent, g.note].filter(String).join(" ");
-  if(/senior\s*(night|day)/i.test(txt)) return true;
-  return SENIOR_NIGHTS.some(function(s){ return s.sport === sport && s.date === date; });
-}
-
 function syncSports(){
-  var res = UrlFetchApp.fetch(SPORTS_ENDPOINT, {muteHttpExceptions:true});
-  var data = JSON.parse(res.getContentText());
-  if(!data || !data.programs) return;
-
-  var header = ["sport","date","day","time","level","homeAway","opponent","location","type","section","score","result","seniorNight","title"];
-  var rows = [];        // data rows
-  var seniorFlags = []; // parallel: true if row is a senior night
-
-  data.programs.forEach(function(p){
-    var games = [];
-    (p.results||[]).forEach(function(g){ games.push(gameObj_(g, p, "result")); });
-    (p.upcoming||[]).forEach(function(g){ games.push(gameObj_(g, p, "upcoming")); });
-    games.forEach(function(o){ rows.push(o.row); seniorFlags.push(o.senior); });
+  var all = [];
+  TEAMS.forEach(function(t){
+    try{
+      var r = UrlFetchApp.fetch(ICS_BASE + encodeURIComponent(t[0]), {
+        muteHttpExceptions: true, followRedirects: true,
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh) FirebirdHub/1.0", "Accept": "text/calendar, text/plain, */*" }
+      });
+      if(r.getResponseCode() === 200){
+        var txt = r.getContentText();
+        if(txt && txt.indexOf("VEVENT") >= 0) all = all.concat(parseIcs_(txt, t[1]));
+      }
+    }catch(e){}
   });
 
-  // Organize: by sport (A-Z), then by date, then time.
-  var order = rows.map(function(r,i){ return { r:r, s:seniorFlags[i] }; });
-  order.sort(function(a,b){
-    if(a.r[0] !== b.r[0]) return a.r[0] < b.r[0] ? -1 : 1;      // sport
-    if(a.r[1] !== b.r[1]) return String(a.r[1]) < String(b.r[1]) ? -1 : 1; // date
-    return String(a.r[3]).localeCompare(String(b.r[3]));        // time
+  var usedIcs = all.length > 0;
+  if(!usedIcs) all = fromApi_();   // fallback when the .ics feeds are unreadable
+
+  // Sort by sport, then date, then time.
+  all.sort(function(a,b){
+    if(a.sport !== b.sport) return a.sport < b.sport ? -1 : 1;
+    if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return timeMin_(a.time) - timeMin_(b.time);
   });
 
-  var out = [header];
-  order.forEach(function(o){ out.push(o.r); });
+  var header = ["sport","date","day","time","level","homeAway","opponent","location","type","section","score","seniorNight","title"];
+  var out = [header], flags = [];
+  var today = todayStr_();
+  all.forEach(function(g){
+    var senior = isSenior_(g);
+    var section = (g.date && g.date < today) ? "result" : "upcoming";
+    var title = ((senior ? "★ SENIOR NIGHT — " : "") + g.sport + (g.level?(" "+g.level):"") +
+                 (g.homeAway?(" "+g.homeAway):"") + (g.opponent?(" vs "+g.opponent):"")).trim();
+    out.push([ g.sport, g.date||"", dayName_(g.date), g.time||"", g.level||"", g.homeAway||"",
+               g.opponent||"", g.location||"", g.type||"", section, g.score||"", senior?"YES":"", title ]);
+    flags.push(senior);
+  });
 
   var ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(EVENTS_ID);
   var sh = ss.getSheetByName(SPORTS_TAB) || ss.insertSheet(SPORTS_TAB);
   sh.clear();
-  sh.getRange(1, 1, out.length, header.length).setValues(out);
-  sh.getRange(1, 1, 1, header.length).setFontWeight("bold");
+  sh.getRange(1,1,out.length,header.length).setValues(out);
+  sh.getRange(1,1,1,header.length).setFontWeight("bold");
   sh.setFrozenRows(1);
+  if(flags.length){
+    var bg = flags.map(function(f){ var row=[]; for(var c=0;c<header.length;c++) row.push(f?"#f4c7c3":"#ffffff"); return row; });
+    sh.getRange(2,1,bg.length,header.length).setBackgrounds(bg);
+  }
+  sh.getRange(1, header.length + 2).setValue("Auto-updated " + new Date() + (usedIcs ? " (full season)" : " (games feed)"));
+}
 
-  // Highlight senior-night rows red (data rows start at sheet row 2).
-  var white = "#ffffff", red = "#f4c7c3"; // light red fill, readable
-  var bg = order.map(function(o){
-    var row = []; for(var c=0;c<header.length;c++) row.push(o.s ? red : white);
-    return row;
+/* ---- .ics parsing (games only) ---- */
+function parseIcs_(txt, sport){
+  txt = txt.replace(/\r\n/g,"\n").replace(/\n[ \t]/g,""); // unfold folded lines
+  var blocks = txt.split("BEGIN:VEVENT").slice(1);
+  var games = [];
+  blocks.forEach(function(bl){
+    var g = function(re){ var m = bl.match(re); return m ? m[1].trim() : ""; };
+    var summary = unesc_(g(/\nSUMMARY[^:\n]*:(.*)/));
+    if(!summary) return;
+    if(/\bpractice\b/i.test(summary)) return;           // no practices
+    var dt = g(/\nDTSTART[^:\n]*:([0-9T]+)/);
+    var dm = dt.match(/(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/);
+    if(!dm) return;
+    var date = dm[1]+"-"+dm[2]+"-"+dm[3];
+    var time = "";
+    if(dm[4]){ var h=+dm[4], mi=dm[5], ap=h>=12?"PM":"AM", h12=h%12; if(h12===0) h12=12; time=h12+":"+mi+" "+ap; }
+    var loc = unesc_(g(/\nLOCATION[^:\n]*:(.*)/));
+    var level=(summary.match(/\b(Varsity|JV|Frosh(?:\/Soph)?|Freshman)\b/i)||[])[1]||"";
+    var away = /\bat\b/i.test(summary), home = /\bvs\.?\b/i.test(summary) || /\bhome\b/i.test(summary);
+    var homeAway = away ? "Away" : (home ? "Home" : "");
+    var type=(summary.match(/\b(League|Non[- ]?League|Tournament|Scrimmage)\b/i)||[])[1]||"";
+    var opp=""; var om = summary.match(/(?:vs\.?|at)\s+([^\n]+?)(?:\s*[-–—(].*)?$/i); if(om) opp = om[1].trim();
+    var sc = summary.match(/\b([WLT])\s*[,: ]\s*(\d+\s*[-–]\s*\d+)/i);
+    games.push({ sport:sport, level:level, date:date, time:time, homeAway:homeAway, opponent:opp,
+                 location:loc, type:type, score: sc ? (sc[1].toUpperCase()+" "+sc[2].replace(/\s/g,"")) : "" });
   });
-  if(bg.length) sh.getRange(2, 1, bg.length, header.length).setBackgrounds(bg);
+  return games;
+}
+function unesc_(s){ return String(s||"").replace(/\\,/g,",").replace(/\\;/g,";").replace(/\\n/gi," ").replace(/\\\\/g,"\\"); }
 
-  sh.getRange(1, header.length + 2).setValue("Auto-updated " + new Date());
+/* ---- fallback: games JSON ---- */
+function fromApi_(){
+  try{
+    var res = UrlFetchApp.fetch(SPORTS_ENDPOINT, {muteHttpExceptions:true});
+    var data = JSON.parse(res.getContentText());
+    if(!data || !data.programs) return [];
+    var out = [];
+    data.programs.forEach(function(p){
+      (p.results||[]).concat(p.upcoming||[]).forEach(function(x){
+        out.push({ sport:p.sport, level:x.level||"", date:x.date||"", time:x.time||"",
+          homeAway:x.home?"Home":"Away", opponent:x.opponent||"", location:x.location||"",
+          type:x.league?"League":"Non-league", score:(x.score||x.wlWord||"")});
+      });
+    });
+    return out;
+  }catch(e){ return []; }
 }
 
-function gameObj_(g, p, section){
-  var sport = g.sport || p.sport || "";
-  var date = g.date || "";
-  var day = "";
-  var m = String(date).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(m){ var dd = new Date(+m[1], +m[2]-1, +m[3]); day = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][dd.getDay()]; }
-  var homeAway = g.home ? "Home" : "Away";
-  var type = g.league ? "League" : "Non-league";
-  var score = g.score || g.finalScore || "";
-  var result = g.wlWord || g.wl || (g.won === true ? "Win" : (g.won === false ? "Loss" : ""));
-  var senior = ssIsSenior_(sport, date, g);
-  var title = ((senior ? "★ SENIOR NIGHT — " : "") + sport + (g.level ? (" " + g.level) : "") + " " + homeAway +
-               (g.opponent ? (" vs " + g.opponent) : "")).trim();
-  var row = [ sport, date, day, g.time || "", g.level || "", homeAway, g.opponent || "",
-              g.location || "", type, section, score, result, (senior ? "YES" : ""), title ];
-  return { row: row, senior: senior };
+/* ---- helpers ---- */
+function isSenior_(g){
+  return SENIOR_NIGHTS.some(function(s){ return s.sport===g.sport && s.date===g.date; });
 }
+function dayName_(date){ var m=String(date||"").match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return ""; var d=new Date(+m[1],+m[2]-1,+m[3]); return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]; }
+function timeMin_(t){ var m=String(t||"").match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 9999; var h=+m[1]%12; if(/PM/i.test(m[3])) h+=12; return h*60+(+m[2]); }
+function todayStr_(){ var d=new Date(new Date().toLocaleString("en-US",{timeZone:"America/Los_Angeles"})); var mm=("0"+(d.getMonth()+1)).slice(-2), dd=("0"+d.getDate()).slice(-2); return d.getFullYear()+"-"+mm+"-"+dd; }
