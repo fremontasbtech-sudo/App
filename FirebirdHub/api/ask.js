@@ -13,7 +13,6 @@ const SPORTS_CSV = "https://docs.google.com/spreadsheets/d/" + SHEET + "/gviz/tq
 const STATIC_FACTS = `
 Firebird Hub is the student app for Fremont High School (FHS), Sunnyvale, CA (FUHSD). Mascot: the Firebird, named Felipe. Colors: cardinal red & gold.
 BELL SCHEDULE: block schedule. Mon = all 7 periods (short). Tue/Thu = "A" day (periods 1,3,5,7 + Tutorial). Wed/Fri = "B" day (periods 2,4,6 + Tutorial). Exact bell times + a live "current period / time left" clock are on the Schedule tab.
-FIRE BUCKS: FHS spirit currency. Earn: +5 dress up on a spirit day, +20 attend a rally or game, +15 rep a club at Club Rush. A teacher scans your card QR to grant them. Spend on: dress-down/hat pass, front-of-lunch-line pass, school store & dance discounts. Set up your card on the More tab.
 CLUBS: 80+ clubs — browse, filter, and take the "Find your club" quiz on the Clubs tab. Club Rush / Clubs Day is the fall in-person club fair.
 MEETS vs GAMES: Cross Country, Track, and Swimming are MEETS held at a venue (e.g., Rancho San Antonio, Hayward HS, Baylands Park) or a named invite (e.g., Firebird XC Invite). They are NOT head-to-head games against a single opponent — for these the opponent field is really the meet name or venue, so describe them as a meet at/named that place, never as 'vs an opponent'.
 SPORTS: full schedules, scores, and results are on the Sports tab (filter by sport & level). Register/clearance, team shop, boosters/donate, and contact links are there too.
@@ -76,7 +75,8 @@ async function liveContext(){
 function buildSystem(live){
   return `You are "Ask Felipe" (Felipe is the Fremont Firebird mascot), the assistant inside the Fremont High School student app (Firebird Hub).
 RULES:
-- Answer ONLY about Fremont High School: bell schedule, spirit weeks, clubs, events, sports, Fire Bucks, and using this app. Politely decline anything off-topic in one sentence and steer back.
+- Answer ONLY about Fremont High School: bell schedule, spirit weeks, clubs, events, sports, and using this app. Politely decline anything off-topic in one sentence and steer back.
+- Do NOT mention Fire Bucks, the Firebird Card, or any spirit currency — that feature is not available. If someone asks about it, say it isn't available right now and steer back to schedule, clubs, events, or sports.
 - Be brief, warm, student-facing. 1-4 sentences. No markdown headers, no emoji.
 - Use the DATA below as the source of truth for dates, games, opponents, and scores. It is live and current as of today (${todayISO()}). If a specific detail (an exact bell time, a club's room) isn't given, say so and point to the right tab. Never invent times, dates, opponents, or scores.
 - When asked "next game/event", pick the SOONEST dated item from the DATA that matches.
@@ -120,9 +120,9 @@ export default async function handler(req, res){
     const data = await r.json();
     let answer = "";
     try{ answer = data.candidates[0].content.parts.map(p=>p.text||"").join(" ").trim(); }catch(e){}
-    if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, sports, or Fire Bucks.";
+    if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, or sports.";
     res.status(200).json({ answer });
   }catch(e){
-    res.status(200).json({ answer:"Felipe is having a moment. Try again in a bit, or check the tabs for schedule, clubs, sports, and Fire Bucks." });
+    res.status(200).json({ answer:"Felipe is having a moment. Try again in a bit, or check the tabs for schedule, clubs, and sports." });
   }
 }
