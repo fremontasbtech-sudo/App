@@ -222,7 +222,7 @@ function renderEvents(){
   if(!grid) return;
   const now = nowPST();
   const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const horizon = new Date(now.getTime()+45*86400000); // only the next ~6 weeks
+  const horizon = new Date(now.getTime()+28*86400000); // only the next 4 weeks
   let list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; });
   // merge featured (push=y) upcoming sports games so they show on Home too
   try{
