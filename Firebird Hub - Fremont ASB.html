@@ -1998,6 +1998,7 @@ function rowsToGames(rows){
     for(let c=0;c<r.length;c++){ const m=String(r[c]||"").match(/Auto-updated\s+(.*)/); if(m){ sportsUpdatedLabel = m[1].replace(/\s+—.*/,"").trim(); } }
     const sport=col(r,"sport"), date=col(r,"date");
     if(!sport || !/^\d{4}-\d{1,2}-\d{1,2}/.test(date)) continue;
+    if(/rancho\s*san\s*antonio/i.test(r.join(" "))) continue; // Rancho San Antonio = XC practice, not an event
     out.push({
       sport:sport, date:date, time:col(r,"time"), level:col(r,"level"),
       home:/home/i.test(col(r,"homeaway")), homeAway:col(r,"homeaway"),
