@@ -223,7 +223,22 @@ function renderEvents(){
   const now = nowPST();
   const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const horizon = new Date(now.getTime()+45*86400000); // only the next ~6 weeks
-  const list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; }).sort(function(a,b){ return a.when-b.when; });
+  let list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; });
+  // merge featured (push=y) upcoming sports games so they show on Home too
+  try{
+    if(typeof sportsGames!=="undefined" && sportsGames){
+      const tks = todayKeyPST();
+      sportsGames.forEach(function(g){
+        if(!g.push) return;
+        if(g.section==="result" || (g.date && g.date < tks)) return;
+        const m=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(!m) return;
+        const when=new Date(+m[1],+m[2]-1,+m[3],8,0); if(when>horizon) return;
+        list.push({ name:(g.sport+(g.level?(" "+g.level):"")+(g.opponent?((/away/i.test(g.homeAway)?" at ":" vs ")+g.opponent):"")),
+          when:when, end:new Date(+m[1],+m[2]-1,+m[3],23,59), time:g.time, loc:g.location, desc:"", tags:["Sports","Featured"], photos:"" });
+      });
+    }
+  }catch(e){}
+  list = list.sort(function(a,b){ return a.when-b.when; });
   if(!list.length){ grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
   grid.innerHTML = list.map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
@@ -276,21 +291,18 @@ async function syncEventsSheet(){
    Live bell-schedule clock + special-schedule sync
 ===================================================== */
 /* =====================================================
-   Sports — FULL season from the Sports tab of the events
-   spreadsheet (SportsSync writes every game, by season/sport,
-   chronological, with scores + senior nights). The app reads
-   that tab live via gviz CSV, so it always shows the complete
-   season — not the athletics feed's ~4-week window.
+   Sports — in-season teams, full season from the Sports tab.
+   Only the sports currently in season show in the app; the rest
+   stay in the spreadsheet as data for later. Featured (push=y)
+   games surface regardless of season.
 ===================================================== */
 const SPORTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&sheet=Sports";
 const SPORTS_FEED = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec";
 let sportsGames = null, sportsUpdatedLabel = "", sportFilter = "all", sportLevel = "all", sportsLoaded = false; let sportsShowAll = false;
 
-/* Fall-first order for the sport dropdown. */
 const SPORT_ORDER = ["Football","Cross Country","Field Hockey","Flag Football","Girls Tennis","Girls Volleyball","Boys Water Polo","Girls Water Polo","Boys Basketball","Girls Basketball","Boys Soccer","Girls Soccer","Wrestling","Badminton","Baseball","Softball","Golf","Swimming & Diving","Boys Tennis","Track & Field","Boys Volleyball"];
 function sportRank(s){ const i = SPORT_ORDER.indexOf(s); return i<0 ? 900 : i; }
 function levelRank(l){ return /varsity/i.test(l)?0 : /jv/i.test(l)?1 : /frosh|fresh/i.test(l)?2 : 3; }
-/* What a sport calls its contests. */
 function eventNoun(sport, plural){
   const s = String(sport||"");
   if(/cross country|track|swim|dive|wrestl/i.test(s)) return plural?"meets":"meet";
@@ -300,13 +312,20 @@ function eventNoun(sport, plural){
 function sportTimeMin(t){ const m=String(t||"").match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 9999; let h=+m[1]%12; if(/PM/i.test(m[3])) h+=12; return h*60+(+m[2]); }
 function todayKeyPST(){ const d=nowPST(); const mm=("0"+(d.getMonth()+1)).slice(-2), dd=("0"+d.getDate()).slice(-2); return d.getFullYear()+"-"+mm+"-"+dd; }
 
+/* Season handling — show only in-season sports; keep the rest as data. */
+const SEASON_OF = {};
+[["fall",["Football","Cross Country","Field Hockey","Flag Football","Girls Tennis","Girls Volleyball","Boys Water Polo","Girls Water Polo"]],
+ ["winter",["Boys Basketball","Girls Basketball","Boys Soccer","Girls Soccer","Wrestling"]],
+ ["spring",["Badminton","Baseball","Softball","Golf","Swimming & Diving","Boys Tennis","Track & Field","Boys Volleyball"]]
+].forEach(function(pair){ pair[1].forEach(function(s){ SEASON_OF[s]=pair[0]; }); });
+function currentSeason(){ const m=nowPST().getMonth()+1; if(m>=8&&m<=10) return "fall"; if(m>=11||m<=2) return "winter"; return "spring"; }
+function sportSeason(s){ return SEASON_OF[s]||"other"; }
+const SPORT_SLUG = {"Football":"football","Cross Country":"cross-country","Field Hockey":"field-hockey","Flag Football":"flag-football","Girls Tennis":"girls-tennis","Girls Volleyball":"girls-volleyball","Boys Water Polo":"boys-water-polo","Girls Water Polo":"girlswaterpolo","Boys Basketball":"boys-basketball","Girls Basketball":"girls-basketball","Boys Soccer":"boys-soccer","Girls Soccer":"girls-soccer","Wrestling":"wrestling","Badminton":"badminton","Baseball":"baseball","Softball":"softball","Golf":"golf","Swimming & Diving":"swimming-and-diving","Boys Tennis":"boys-tennis","Track & Field":"track-and-field","Boys Volleyball":"boys-volleyball"};
+function sportPage(s){ return "https://www.fremonthsathletics.org/" + (SPORT_SLUG[s]||""); }
 
-/* Live results overlay: the athletics feed carries scores for games that
-   already happened (real scores, or a note like "2-0 W" for scrimmages).
-   Merge those onto the sheet games so results show without waiting on the sync. */
 function fhsBestResult(x){
   if(x.score && !/scrimmage/i.test(x.score) && !x.noScore) return x.score;
-  if(x.note && /(\d+\s*[-\u2013]\s*\d+)|\bwin\b|\bloss\b|\btie\b|\bW\b|\bL\b/i.test(x.note)) return x.note;
+  if(x.note && /(\d+\s*[-–]\s*\d+)|\bwin\b|\bloss\b|\btie\b|\bW\b|\bL\b/i.test(x.note)) return x.note;
   if(x.wlWord && !/no score/i.test(x.wlWord)) return x.wlWord;
   if(x.score && !/scrimmage/i.test(x.score)) return x.score;
   return "";
@@ -329,7 +348,7 @@ function fhsOverlayScores(feed){
 }
 function loadSportsScores(){
   const cb="fhsScoreCb_"+Math.random().toString(36).slice(2);
-  window[cb]=function(data){ try{ fhsOverlayScores(data); renderSports(); }catch(e){} try{delete window[cb];}catch(e){} };
+  window[cb]=function(data){ try{ fhsOverlayScores(data); renderSports(); if(typeof renderEvents==="function") renderEvents(); }catch(e){} try{delete window[cb];}catch(e){} };
   const s=document.createElement("script");
   s.src=SPORTS_FEED+"?view=results&callback="+cb;
   s.onerror=function(){};
@@ -338,10 +357,11 @@ function loadSportsScores(){
 async function loadSports(){
   if(sportsLoaded) return; sportsLoaded = true;
   try{
-    const res = await fetch(SPORTS_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
+    const res = await fetch(SPORTS_SHEET + "&_cb=" + Date.now()); if(!res.ok) throw new Error("HTTP "+res.status);
     const rows = parseSheetRows(await res.text());
     sportsGames = rowsToGames(rows);
     renderSports();
+    if(typeof renderEvents==="function") renderEvents();
     loadSportsScores();
   }catch(e){
     sportsLoaded = false;
@@ -357,10 +377,9 @@ function rowsToGames(rows){
   const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
   const out=[];
   for(let i=1;i<rows.length;i++){ const r=rows[i];
-    // grab the off-table timestamp cell if present
     for(let c=0;c<r.length;c++){ const m=String(r[c]||"").match(/Auto-updated\s+(.*)/); if(m){ sportsUpdatedLabel = m[1].replace(/\s+—.*/,"").trim(); } }
     const sport=col(r,"sport"), date=col(r,"date");
-    if(!sport || !/^\d{4}-\d{1,2}-\d{1,2}/.test(date)) continue; // skip season/sport divider rows
+    if(!sport || !/^\d{4}-\d{1,2}-\d{1,2}/.test(date)) continue;
     out.push({
       sport:sport, date:date, time:col(r,"time"), level:col(r,"level"),
       home:/home/i.test(col(r,"homeaway")), homeAway:col(r,"homeaway"),
@@ -374,8 +393,6 @@ function rowsToGames(rows){
   }
   return out;
 }
-/* Senior Night: the sheet flags it (seniorNight=YES); keep the known-dates
-   fallback too so it badges even before the sheet marks it. */
 const SENIOR_NIGHTS = [
   { sport:"Football", date:"2026-10-22", opponent:"Los Altos" },
   { sport:"Field Hockey", date:"2026-10-26" },
@@ -389,26 +406,44 @@ function isSeniorNight(g){
   const d = String(g.date||"");
   return SENIOR_NIGHTS.some(function(s){ return s.date===d && (!s.sport || s.sport===g.sport); });
 }
+const SP_MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDateShort(date){ const m=String(date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return m?(SP_MO[+m[2]-1]+" "+(+m[3])):"TBA"; }
+function isResultGame(g,today){ return g.section==="result" || (g.date && g.date < today); }
+function sportSummary(sport){
+  const today=todayKeyPST();
+  const gs=sportsGames.filter(function(g){ return g.sport===sport; });
+  const ups=gs.filter(function(g){ return !isResultGame(g,today); }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date))||sportTimeMin(a.time)-sportTimeMin(b.time); });
+  const res=gs.filter(function(g){ return isResultGame(g,today); });
+  let w=0,l=0,t=0;
+  res.forEach(function(g){ const sc=String(g.score||""); if(/\bwin\b|(^|[^a-z])W([^a-z]|$)/i.test(sc))w++; else if(/\bloss\b|(^|[^a-z])L([^a-z]|$)/i.test(sc))l++; else if(/\btie\b|(^|[^a-z])T([^a-z]|$)/i.test(sc))t++; });
+  return { next: ups[0]||null, wins:w, losses:l, ties:t, upcomingCount:ups.length, levels: Array.from(new Set(gs.map(function(g){return g.level;}).filter(Boolean))).sort(function(a,b){return levelRank(a)-levelRank(b);}) };
+}
+function recordStr(s){ return (s.wins+s.losses+s.ties)>0 ? (s.wins+"-"+s.losses+(s.ties?("-"+s.ties):"")) : ""; }
+
 function renderSports(){
   const body = document.getElementById("sportsBody");
   if(!body) return;
   if(!sportsGames){ body.innerHTML='<p class="note">Loading…</p>'; return; }
   if(!sportsGames.length){ body.innerHTML='<p class="note">No sports schedule available right now.</p>'; return; }
-  const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const today = todayKeyPST();
+  const season = currentSeason();
 
-  // populate the two dropdowns
-  const sports = Array.from(new Set(sportsGames.map(function(g){return g.sport;})))
+  // in-season sports only (data for other seasons stays in the sheet)
+  const allSports = Array.from(new Set(sportsGames.map(function(g){return g.sport;})));
+  const seasonSports = allSports.filter(function(s){ return sportSeason(s)===season; })
     .sort(function(a,b){ return sportRank(a)-sportRank(b) || a.localeCompare(b); });
+  const pickable = seasonSports.slice();
+  if(sportFilter!=="all" && pickable.indexOf(sportFilter)<0) sportFilter="all";
+
+  // dropdowns
   const sportSel = document.getElementById("sportSelect");
   if(sportSel){
-    if(sportFilter!=="all" && sports.indexOf(sportFilter)<0) sportFilter="all";
     sportSel.innerHTML = '<option value="all">All sports</option>' +
-      sports.map(function(s){ return '<option value="'+clubEsc(s)+'"'+(sportFilter===s?' selected':'')+'>'+clubEsc(s)+'</option>'; }).join("");
+      pickable.map(function(s){ return '<option value="'+clubEsc(s)+'"'+(sportFilter===s?' selected':'')+'>'+clubEsc(s)+'</option>'; }).join("");
     sportSel.value = sportFilter;
   }
-  const levelPool = sportsGames.filter(function(g){ return sportFilter==="all"||g.sport===sportFilter; });
-  const levels = Array.from(new Set(levelPool.map(function(g){return g.level;}).filter(Boolean)))
-    .sort(function(a,b){ return levelRank(a)-levelRank(b) || a.localeCompare(b); });
+  const levelPool = sportsGames.filter(function(g){ return (sportFilter==="all"? sportSeason(g.sport)===season : g.sport===sportFilter); });
+  const levels = Array.from(new Set(levelPool.map(function(g){return g.level;}).filter(Boolean))).sort(function(a,b){ return levelRank(a)-levelRank(b) || a.localeCompare(b); });
   const lvlSel = document.getElementById("levelSelect");
   if(lvlSel){
     if(sportLevel!=="all" && levels.indexOf(sportLevel)<0) sportLevel="all";
@@ -419,22 +454,10 @@ function renderSports(){
   const upd = document.getElementById("sportsUpdated");
   if(upd) upd.textContent = sportsUpdatedLabel ? ("Updated "+sportsUpdatedLabel) : "";
 
-  const today = todayKeyPST();
-  const inFilter = function(g){ return (sportFilter==="all"||g.sport===sportFilter) && (sportLevel==="all"||g.level===sportLevel); };
-  let upcoming=[], results=[];
-  sportsGames.filter(inFilter).forEach(function(g){
-    const isResult = g.section==="result" || (g.date && g.date < today);
-    if(isResult) results.push(g); else upcoming.push(g);
-  });
-  upcoming.sort(function(a,b){ return String(a.date).localeCompare(String(b.date)) || sportTimeMin(a.time)-sportTimeMin(b.time); });
-  results.sort(function(a,b){ return String(b.date).localeCompare(String(a.date)) || sportTimeMin(b.time)-sportTimeMin(a.time); });
-
-  const nounP = sportFilter==="all" ? "games" : eventNoun(sportFilter, true);
-  const cap = function(s){ return s.charAt(0).toUpperCase()+s.slice(1); };
-  function card(g, isResult){
+  function gameCard(g, isResult){
     const sr = isSeniorNight(g);
     const m = String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    const mo = m?MO[+m[2]-1]:"TBA", day = m?+m[3]:"";
+    const mo = m?SP_MO[+m[2]-1]:"TBA", day = m?+m[3]:"";
     const tags = ['<span class="tag'+(g.home?' free':'')+'">'+(g.home?'Home':'Away')+'</span>'];
     if(g.league) tags.push('<span class="tag">League</span>');
     if(/scrimmage/i.test(g.kind||g.type||"")) tags.push('<span class="tag">Scrimmage</span>');
@@ -450,30 +473,77 @@ function renderSports(){
       (line2?('<p>'+line2+'</p>'):"")+
       tags.join(" ")+'</div></article>';
   }
-  const nowS = nowPST();
-  const weekEnd = new Date(nowS.getTime()+7*86400000);
-  const evd = function(g){ const mm=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return mm?new Date(+mm[1],+mm[2]-1,+mm[3],23,59):null; };
-  const firstWeek = upcoming.filter(function(g){ const d=evd(g); return d && d<=weekEnd; });
-  const shown = sportsShowAll ? upcoming : (firstWeek.length ? firstWeek : upcoming.slice(0,4));
+
   let html = "";
+
+  // Featured (push=y) — any season
   const pushed = sportsGames.filter(function(g){ return g.push; });
   if(pushed.length){
-    const pu = pushed.filter(function(g){ return !(g.section==="result" || (g.date && g.date < today)); }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
-    const pr = pushed.filter(function(g){ return g.section==="result" || (g.date && g.date < today); }).sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
-    const pcards = pu.map(function(g){return card(g,false);}).concat(pr.map(function(g){return card(g,true);})).join("");
+    const pu = pushed.filter(function(g){ return !isResultGame(g,today); }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+    const pr = pushed.filter(function(g){ return isResultGame(g,today); }).sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
+    const pcards = pu.map(function(g){return gameCard(g,false);}).concat(pr.map(function(g){return gameCard(g,true);})).join("");
     html += '<section aria-labelledby="h-featured" style="margin-bottom:var(--space-5)"><div class="sechead"><h2 id="h-featured" style="font-size:20px">&#9733; Featured</h2><span class="rule" aria-hidden="true"></span></div><div class="grid cols2">'+pcards+'</div></section>';
   }
-  html += '<section aria-labelledby="h-upgames"><div class="sechead"><h2 id="h-upgames" style="font-size:20px">Upcoming '+cap(nounP)+'</h2><span class="rule" aria-hidden="true"></span></div>';
-  if(upcoming.length){
-    html += '<div class="grid cols2">'+shown.map(function(g){return card(g,false);}).join("")+'</div>';
-    if(!sportsShowAll && upcoming.length>shown.length){
-      html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">View all '+upcoming.length+' upcoming '+nounP+'</button></div>';
+
+  if(sportFilter==="all"){
+    // Welcoming season overview — varied sport cards
+    const seasonLabel = season.charAt(0).toUpperCase()+season.slice(1);
+    html += '<section aria-labelledby="h-inseason"><div class="sechead"><h2 id="h-inseason" style="font-size:20px">'+seasonLabel+' teams</h2><span class="rule" aria-hidden="true"></span></div>';
+    if(seasonSports.length){
+      html += '<div class="sportgrid">'+seasonSports.map(function(sp){
+        const s=sportSummary(sp); const rec=recordStr(s);
+        const nx = s.next ? (fmtDateShort(s.next.date)+' &middot; '+(/away/i.test(s.next.homeAway)?'at ':'vs ')+clubEsc(s.next.opponent||'TBA')) : ('No upcoming '+eventNoun(sp,true));
+        return '<button type="button" class="sportcard" data-sportpick="'+clubEsc(sp)+'">'+
+          '<div class="sportcard-top"><span class="sportcard-name">'+clubEsc(sp)+'</span>'+(rec?('<span class="sportcard-rec">'+rec+'</span>'):'')+'</div>'+
+          '<div class="sportcard-next"><span class="sportcard-lbl">NEXT</span> '+nx+'</div>'+
+          '<span class="sportcard-cta">View '+eventNoun(sp,true)+' &rarr;</span></button>';
+      }).join("")+'</div>';
+    } else {
+      html += '<p class="note">No '+seasonLabel.toLowerCase()+' teams are posted yet — check back when the season starts.</p>';
     }
-  } else { html += '<p class="note">No upcoming '+nounP+' listed right now.</p>'; }
-  html += '</section>';
-  if(results.length){
-    html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-results"><div class="sechead"><h2 id="h-results" style="font-size:20px">Recent results</h2><span class="rule" aria-hidden="true"></span></div>';
-    html += '<div class="grid cols2">'+results.slice(0,12).map(function(g){return card(g,true);}).join("")+'</div></section>';
+    html += '</section>';
+
+    // This week across in-season sports
+    const nowS = nowPST(); const weekEnd = new Date(nowS.getTime()+7*86400000);
+    const evd = function(g){ const mm=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return mm?new Date(+mm[1],+mm[2]-1,+mm[3],23,59):null; };
+    let up = sportsGames.filter(function(g){ return sportSeason(g.sport)===season && !isResultGame(g,today) && (sportLevel==="all"||g.level===sportLevel); })
+      .sort(function(a,b){ return String(a.date).localeCompare(String(b.date))||sportTimeMin(a.time)-sportTimeMin(b.time); });
+    const week = up.filter(function(g){ const d=evd(g); return d && d<=weekEnd; });
+    const shown = sportsShowAll ? up : (week.length?week:up.slice(0,6));
+    html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-thisweek"><div class="sechead"><h2 id="h-thisweek" style="font-size:20px">This week</h2><span class="rule" aria-hidden="true"></span></div>';
+    if(up.length){
+      html += '<div class="grid cols2">'+shown.map(function(g){return gameCard(g,false);}).join("")+'</div>';
+      if(!sportsShowAll && up.length>shown.length) html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">View all '+up.length+' upcoming</button></div>';
+    } else html += '<p class="note">No upcoming games this week.</p>';
+    html += '</section>';
+  } else {
+    // Single sport — header with info, then schedule + results
+    const s=sportSummary(sportFilter); const rec=recordStr(s);
+    html += '<section class="sporthero"><div class="sporthero-top"><h2>'+clubEsc(sportFilter)+'</h2>'+(rec?('<span class="sportcard-rec big">'+rec+'</span>'):'')+'</div>'+
+      '<p class="sporthero-meta">'+(currentSeason().charAt(0).toUpperCase()+currentSeason().slice(1))+' season'+(s.levels.length?(' &middot; '+s.levels.map(clubEsc).join(", ")):'')+'</p>'+
+      (s.next?('<p class="sporthero-next"><b>Next '+eventNoun(sportFilter,false)+':</b> '+fmtDateShort(s.next.date)+(s.next.time?(' at '+clubEsc(s.next.time)):'')+' &middot; '+(/away/i.test(s.next.homeAway)?'at ':'vs ')+clubEsc(s.next.opponent||'TBA')+(s.next.location?(' &middot; '+clubEsc(s.next.location)):'')+'</p>'):'')+
+      '<p style="margin:10px 0 0"><a class="btn ghost" style="font-size:13px" href="'+sportPage(sportFilter)+'" target="_blank" rel="noopener">Team page &amp; roster &rarr;</a></p></section>';
+
+    const inFilter = function(g){ return g.sport===sportFilter && (sportLevel==="all"||g.level===sportLevel); };
+    let upcoming=[], results=[];
+    sportsGames.filter(inFilter).forEach(function(g){ if(isResultGame(g,today)) results.push(g); else upcoming.push(g); });
+    upcoming.sort(function(a,b){ return String(a.date).localeCompare(String(b.date))||sportTimeMin(a.time)-sportTimeMin(b.time); });
+    results.sort(function(a,b){ return String(b.date).localeCompare(String(a.date))||sportTimeMin(b.time)-sportTimeMin(a.time); });
+    const nounP = eventNoun(sportFilter, true);
+    const nowS = nowPST(); const weekEnd = new Date(nowS.getTime()+7*86400000);
+    const evd = function(g){ const mm=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return mm?new Date(+mm[1],+mm[2]-1,+mm[3],23,59):null; };
+    const week = upcoming.filter(function(g){ const d=evd(g); return d && d<=weekEnd; });
+    const shown = sportsShowAll ? upcoming : (week.length?week:upcoming.slice(0,4));
+    html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-upsp"><div class="sechead"><h2 id="h-upsp" style="font-size:20px">Upcoming '+nounP+'</h2><span class="rule" aria-hidden="true"></span></div>';
+    if(upcoming.length){
+      html += '<div class="grid cols2">'+shown.map(function(g){return gameCard(g,false);}).join("")+'</div>';
+      if(!sportsShowAll && upcoming.length>shown.length) html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">View all '+upcoming.length+' '+nounP+'</button></div>';
+    } else html += '<p class="note">No upcoming '+nounP+' listed right now.</p>';
+    html += '</section>';
+    if(results.length){
+      html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-resp"><div class="sechead"><h2 id="h-resp" style="font-size:20px">Recent results</h2><span class="rule" aria-hidden="true"></span></div>';
+      html += '<div class="grid cols2">'+results.slice(0,12).map(function(g){return gameCard(g,true);}).join("")+'</div></section>';
+    }
   }
   body.innerHTML = html;
 }
@@ -482,6 +552,8 @@ document.addEventListener("change", function(e){
   else if(e.target && e.target.id==="levelSelect"){ sportLevel = e.target.value; sportsShowAll = false; renderSports(); }
 });
 document.getElementById("sportsBody").addEventListener("click", function(e){
+  var pick = e.target.closest && e.target.closest("[data-sportpick]");
+  if(pick){ sportFilter = pick.getAttribute("data-sportpick"); sportLevel="all"; sportsShowAll=false; renderSports(); var sv=document.getElementById("view-sports"); if(sv) window.scrollTo(0,0); return; }
   if(e.target.closest("#sportsViewAll")){ sportsShowAll = true; renderSports(); }
 });
 
@@ -1424,5 +1496,18 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
       .then(function(d){ t.remove(); add((d&&d.answer)||"Hmm, try asking that a different way.","bot"); })
       .catch(function(){ t.remove(); add("Couldn't reach Ask Firebird right now. Check the Schedule, Clubs, Sports, or More tabs.","bot"); })
       .finally(function(){ busy=false; });
+  });
+})();
+
+/* Ask Firebird: dismiss on outside-click or Escape */
+(function(){
+  document.addEventListener("click", function(e){
+    var panel=document.getElementById("askPanel"), fab=document.getElementById("askFab");
+    if(!panel || panel.hidden) return;
+    if(e.target.closest && (e.target.closest("#askPanel") || e.target.closest("#askFab"))) return;
+    panel.hidden = true;
+  });
+  document.addEventListener("keydown", function(e){
+    if(e.key==="Escape"){ var p=document.getElementById("askPanel"); if(p && !p.hidden) p.hidden=true; }
   });
 })();

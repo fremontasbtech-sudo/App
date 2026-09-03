@@ -623,3 +623,21 @@ html.bigtext{zoom:1.12}
 .askform .btn{font-size:14px; padding:8px 14px}
 .askdis{margin:0; padding:0 12px 10px; font-size:11px; color:var(--ink-soft,#7a6a5f)}
 @media(max-width:560px){ .askfab{bottom:78px} .askpanel{bottom:140px} }
+/* Sports — season sport cards + hero */
+.sportgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px}
+.sportcard{text-align:left; font:inherit; cursor:pointer; background:var(--card,#fff); border:2px solid var(--line,#e4d9c4); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:8px; min-height:110px; transition:transform .1s ease, border-color .1s ease}
+.sportcard:hover{border-color:var(--cardinal); transform:translateY(-2px)}
+.sportcard:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+.sportcard-top{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.sportcard-name{font-weight:800; font-size:16px; color:var(--cardinal)}
+.sportcard-rec{font-weight:800; font-size:13px; background:var(--gold-soft,#FFE9A8); color:var(--ink); border-radius:999px; padding:2px 9px; white-space:nowrap}
+.sportcard-rec.big{font-size:15px; padding:3px 12px}
+.sportcard-next{font-size:13px; color:var(--ink-soft)}
+.sportcard-lbl{font-size:10px; font-weight:800; letter-spacing:.05em; color:var(--cardinal); background:var(--gold-soft,#FFE9A8); border-radius:4px; padding:1px 5px; margin-right:4px}
+.sportcard-cta{font-size:12px; font-weight:800; color:var(--cardinal); margin-top:auto}
+.sporthero{background:linear-gradient(135deg,var(--cardinal,#8F1106),var(--cardinal-dark,#5F0C03)); color:#fff; border-radius:18px; padding:18px; margin-bottom:var(--space-3)}
+.sporthero-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
+.sporthero h2{margin:0; color:#fff; font-size:22px}
+.sporthero-meta{margin:4px 0 0; color:var(--gold-soft,#FFE9A8); font-size:13px; font-weight:700}
+.sporthero-next{margin:12px 0 0; font-size:14px; background:rgba(255,255,255,.14); padding:9px 12px; border-radius:10px}
+.sporthero .btn.ghost{background:#fff; color:var(--cardinal); border-color:#fff}
