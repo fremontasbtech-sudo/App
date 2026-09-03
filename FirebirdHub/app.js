@@ -1398,3 +1398,31 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   });
   applyLang(); applyTextSize();
 })();
+
+/* =====================================================
+   Ask Firebird — chatbot UI (calls /api/ask, Gemini-backed)
+===================================================== */
+(function(){
+  var fab=document.getElementById("askFab"), panel=document.getElementById("askPanel");
+  if(!fab||!panel) return;
+  var log=document.getElementById("askLog"), form=document.getElementById("askForm"), input=document.getElementById("askInput");
+  var close=document.getElementById("askClose");
+  var lastSend=0, busy=false;
+  function open(){ panel.hidden=false; setTimeout(function(){ input && input.focus(); },50); }
+  function hide(){ panel.hidden=true; }
+  fab.addEventListener("click", function(){ panel.hidden ? open() : hide(); });
+  close && close.addEventListener("click", hide);
+  function add(text, who){ var d=document.createElement("div"); d.className="askmsg "+who; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    var q=(input.value||"").trim(); if(!q||busy) return;
+    var now=Date.now(); if(now-lastSend<1500){ return; } lastSend=now;
+    add(q,"me"); input.value=""; busy=true;
+    var t=add("Firebird is thinking…","bot typing");
+    fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})})
+      .then(function(r){return r.json();})
+      .then(function(d){ t.remove(); add((d&&d.answer)||"Hmm, try asking that a different way.","bot"); })
+      .catch(function(){ t.remove(); add("Couldn't reach Ask Firebird right now. Check the Schedule, Clubs, Sports, or More tabs.","bot"); })
+      .finally(function(){ busy=false; });
+  });
+})();
