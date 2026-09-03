@@ -1490,11 +1490,11 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     var q=(input.value||"").trim(); if(!q||busy) return;
     var now=Date.now(); if(now-lastSend<1500){ return; } lastSend=now;
     add(q,"me"); input.value=""; busy=true;
-    var t=add("Firebird is thinking…","bot typing");
+    var t=add("Felipe is thinking…","bot typing");
     fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})})
       .then(function(r){return r.json();})
       .then(function(d){ t.remove(); add((d&&d.answer)||"Hmm, try asking that a different way.","bot"); })
-      .catch(function(){ t.remove(); add("Couldn't reach Ask Firebird right now. Check the Schedule, Clubs, Sports, or More tabs.","bot"); })
+      .catch(function(){ t.remove(); add("Couldn't reach Felipe right now. Check the Schedule, Clubs, Sports, or More tabs.","bot"); })
       .finally(function(){ busy=false; });
   });
 })();
