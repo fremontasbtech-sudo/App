@@ -39,6 +39,9 @@ Everything wired together for the Fremont HS ASB app so a new conversation can p
 - Vercel serverless function. Model **`gemini-3.6-flash`** (endpoint `generativelanguage.googleapis.com/v1beta/models/<MODEL>:generateContent`). **`gemini-2.0-flash` was retired** — do not use it.
 - Reads **live** Events + Sports from the Sheet each call (cached ~5 min) and injects them as context, so it self-updates. Scoped to school topics, refuses off-topic/jailbreaks, routes self-harm to 988 + a trusted adult.
 - **Key: `GEMINI_API_KEY`** — server-side only, set in the **firebirdhub Vercel project env (Production)**. Never in client code.
+- **Answer length / cut-offs:** `generationConfig` = `{ temperature:0.25, maxOutputTokens:800, thinkingConfig:{ thinkingBudget:0 } }`. `thinkingBudget:0` disables gemini-3.x "thinking" so the whole token budget goes to the visible reply — WITHOUT it, thinking ate the budget and answers cut off mid-sentence. If answers truncate again, raise `maxOutputTokens`, keep `thinkingBudget:0`. System prompt keeps replies to 1-4 sentences.
+- **Featured games/meets (push=y):** the app's ★ Featured strip shows only ONE upcoming game/match/meet per sport (the soonest). When that one's day passes it moves to results and the next `y` of that sport surfaces automatically — so you can pre-mark several `y` and they reveal one at a time.
+- **Event window:** Home shows only events in the next **3 weeks** (`horizon = now + 21 days` in `app.js`).
 
 ## 7. Key app.js constants (current)
 ```

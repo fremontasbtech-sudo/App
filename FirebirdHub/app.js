@@ -222,7 +222,7 @@ function renderEvents(){
   if(!grid) return;
   const now = nowPST();
   const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const horizon = new Date(now.getTime()+28*86400000); // only the next 4 weeks
+  const horizon = new Date(now.getTime()+21*86400000); // only the next 3 weeks
   let list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; });
   // merge featured (push=y) upcoming sports games so they show on Home too
   try{
@@ -493,7 +493,8 @@ function renderSports(){
   // Featured (push=y) — any season
   const pushed = sportsGames.filter(function(g){ return g.push; });
   if(pushed.length){
-    const pu = pushed.filter(function(g){ return !isResultGame(g,today); }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+    var puAll = pushed.filter(function(g){ return !isResultGame(g,today); }).sort(function(a,b){ return String(a.date).localeCompare(String(b.date))||sportTimeMin(a.time)-sportTimeMin(b.time); });
+    var puSeen={}, pu=[]; puAll.forEach(function(g){ if(!puSeen[g.sport]){ puSeen[g.sport]=1; pu.push(g); } }); // one upcoming per sport; next y appears once this one's day ends
     const pr = pushed.filter(function(g){ return isResultGame(g,today); }).sort(function(a,b){ return String(b.date).localeCompare(String(a.date)); });
     const pcards = pu.map(function(g){return gameCard(g,false);}).concat(pr.map(function(g){return gameCard(g,true);})).join("");
     html += '<section aria-labelledby="h-featured" style="margin-bottom:var(--space-5)"><div class="sechead"><h2 id="h-featured" style="font-size:20px">&#9733; Featured</h2><span class="rule" aria-hidden="true"></span></div><div class="grid cols2">'+pcards+'</div></section>';
