@@ -117,6 +117,7 @@ export default async function handler(req, res){
     const data = await r.json();
     let answer = "";
     try{ answer = data.candidates[0].content.parts.map(p=>p.text||"").join(" ").trim(); }catch(e){}
+    if(!answer && body && body.debug){ res.status(200).json({ answer: "DEBUG "+JSON.stringify({error:data&&data.error, pf:data&&data.promptFeedback, fr:data&&data.candidates&&data.candidates[0]&&data.candidates[0].finishReason, keys:Object.keys(data||{})}).slice(0,500) }); return; }
     if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, sports, or Fire Bucks.";
     res.status(200).json({ answer });
   }catch(e){
