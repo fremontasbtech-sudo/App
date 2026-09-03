@@ -5,7 +5,7 @@
  *
  * Set GEMINI_API_KEY in the Vercel project (firebirdhub) → Settings → Environment Variables.
  */
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-3.6-flash";
 
 const SCHOOL_CONTEXT = `
 Firebird Hub is the student app for Fremont High School (FHS) in Sunnyvale, CA (FUHSD). Mascot: Firebird. Colors: cardinal red & gold.
