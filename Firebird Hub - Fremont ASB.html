@@ -604,6 +604,23 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
 }
 .sportfilters select:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
 @media(max-width:520px){ .sportfilters .selwrap{flex:1 1 100%} }
+
+/* Sports team-resources bar */
+.sportres{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px}
+.sportres a{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; text-decoration:none;
+  color:var(--ink); background:var(--card,#fff); border:1.5px solid var(--line,#e4d9c4); border-radius:999px; padding:7px 13px}
+.sportres a:hover{border-color:var(--cardinal); color:var(--cardinal)}
+.sportres a:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+
+/* Settings panel + segmented controls + large text */
+.settingscard .setrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line,#eee)}
+.settingscard .setrow:last-of-type{border-bottom:0}
+.settingscard .setlabel{font-weight:700}
+.segbtns{display:inline-flex; border:1.5px solid var(--cardinal); border-radius:999px; overflow:hidden}
+.segbtn{font:inherit; font-weight:700; padding:7px 14px; background:var(--card,#fff); color:var(--ink); border:0; cursor:pointer}
+.segbtn[aria-pressed="true"]{background:var(--cardinal); color:#fff}
+.segbtn:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+html.bigtext{zoom:1.12}
 </style>
 
 </head>
@@ -618,12 +635,12 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
       <span>Fremont ASB</span>
     </div>
     <nav class="topnav" aria-label="Primary">
-      <button data-nav="home" aria-current="page">Home</button>
-      <button data-nav="schedule">Schedule</button>
-      <button data-nav="spirit">Spirit</button>
-      <button data-nav="clubs">Clubs</button>
-      <button data-nav="sports">Sports</button>
-      <button data-nav="more">More</button>
+      <button data-nav="home" aria-current="page" data-i18n="nav.home">Home</button>
+      <button data-nav="schedule" data-i18n="nav.schedule">Schedule</button>
+      <button data-nav="spirit" data-i18n="nav.spirit">Spirit</button>
+      <button data-nav="clubs" data-i18n="nav.clubs">Clubs</button>
+      <button data-nav="sports" data-i18n="nav.sports">Sports</button>
+      <button data-nav="more" data-i18n="nav.more">More</button>
     </nav>
     <button class="signin" id="signinBtn" type="button">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c1.8-3.2 4.6-5 8-5s6.2 1.8 8 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -1014,16 +1031,24 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
 <!-- ================= SPORTS ================= -->
 <div class="view" id="view-sports" role="region" aria-label="Sports">
   <div class="sechead">
-    <h2>Sports</h2>
+    <h2 data-i18n="sports.title">Sports</h2>
     <span class="rule" aria-hidden="true"></span>
   </div>
   <p class="note" id="sportsUpdated" aria-live="polite"></p>
   <p class="note" style="margin:0 0 14px; font-size:14px"><a href="https://www.fremonthsathletics.org" target="_blank" rel="noopener" style="font-weight:700">Full schedules, rosters &amp; live updates at fremonthsathletics.org &rarr;</a></p>
+  <div class="sportres" id="sportRes" aria-label="Team resources">
+    <a href="https://www.fremonthsathletics.org/register-clearance" target="_blank" rel="noopener"><span aria-hidden="true">📋</span> <span data-i18n="res.register">Register</span></a>
+    <a href="https://www.fremonthsathletics.org/shop" target="_blank" rel="noopener"><span aria-hidden="true">🛍️</span> <span data-i18n="res.shop">Team shop</span></a>
+    <a href="https://fhsathleticsboosters.org/" target="_blank" rel="noopener"><span aria-hidden="true">❤️</span> <span data-i18n="res.donate">Donate</span></a>
+    <a href="https://www.fremonthsathletics.org/news" target="_blank" rel="noopener"><span aria-hidden="true">📰</span> <span data-i18n="res.news">News</span></a>
+    <a href="https://www.fremonthsathletics.org/calendar" target="_blank" rel="noopener"><span aria-hidden="true">📅</span> <span data-i18n="res.calendar">Calendar</span></a>
+    <a href="https://www.fremonthsathletics.org/contact" target="_blank" rel="noopener"><span aria-hidden="true">✉️</span> <span data-i18n="res.contact">Contact</span></a>
+  </div>
   <div class="sportfilters" id="sportFilters">
-    <label class="selwrap"><span>Sport</span>
+    <label class="selwrap"><span data-i18n="sports.sport">Sport</span>
       <select id="sportSelect" aria-label="Filter by sport"><option value="all">All sports</option></select>
     </label>
-    <label class="selwrap"><span>Level</span>
+    <label class="selwrap"><span data-i18n="sports.level">Level</span>
       <select id="levelSelect" aria-label="Filter by level"><option value="all">All levels</option></select>
     </label>
   </div>
@@ -1082,6 +1107,34 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
         <p style="margin:12px 0 4px; font-weight:700">Recent activity</p>
         <ul class="bbfeed" id="bbFeed"><li class="empty">Make your card to see your history.</li></ul>
       </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-settings">
+    <div class="sechead">
+      <h2 id="h-settings" data-i18n="settings.title">Settings</h2>
+      <span class="rule" aria-hidden="true"></span>
+    </div>
+    <div class="card settingscard">
+      <div class="setrow">
+        <span class="setlabel" data-i18n="settings.language">Language</span>
+        <div class="segbtns" role="group" aria-label="Language">
+          <button type="button" class="segbtn" data-lang="en" aria-pressed="true">English</button>
+          <button type="button" class="segbtn" data-lang="es" aria-pressed="false">Español</button>
+        </div>
+      </div>
+      <div class="setrow">
+        <span class="setlabel" data-i18n="settings.textsize">Text size</span>
+        <div class="segbtns" role="group" aria-label="Text size">
+          <button type="button" class="segbtn" data-textsize="normal" aria-pressed="true" data-i18n="settings.normal">Normal</button>
+          <button type="button" class="segbtn" data-textsize="large" aria-pressed="false" data-i18n="settings.large">Large</button>
+        </div>
+      </div>
+      <div class="setrow">
+        <span class="setlabel" data-i18n="settings.motion">Motion mode</span>
+        <button type="button" class="btn ghost" id="motionToggle2" aria-pressed="false" style="font-size:14px">Off</button>
+      </div>
+      <p class="hint" style="margin:6px 0 0" data-i18n="settings.hint">Your choices are saved on this device. Menus and buttons switch to Spanish; live listings stay in the language they were entered.</p>
     </div>
   </section>
 
@@ -1729,7 +1782,8 @@ function renderEvents(){
   if(!grid) return;
   const now = nowPST();
   const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const list = (eventsCurated ? EVENTS.slice() : EVENTS.filter(function(e){ return e.end >= now && e.when <= new Date(now.getTime()+31*86400000); })).sort(function(a,b){ return a.when-b.when; });
+  const horizon = new Date(now.getTime()+45*86400000); // only the next ~6 weeks
+  const list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; }).sort(function(a,b){ return a.when-b.when; });
   if(!list.length){ grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
   grid.innerHTML = list.map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
@@ -2859,6 +2913,53 @@ if(!FEATURES.fireBucks){
   const fbSection = document.querySelector('section[aria-labelledby="h-card"]');
   if(fbSection) fbSection.hidden = true;
 }
+
+
+
+/* =====================================================
+   Settings + Language (EN/ES) — saved per device
+===================================================== */
+var I18N = {
+  en: {},
+  es: {
+    "nav.home":"Inicio","nav.schedule":"Horario","nav.spirit":"Espíritu","nav.clubs":"Clubes","nav.sports":"Deportes","nav.more":"Más",
+    "sports.title":"Deportes","sports.sport":"Deporte","sports.level":"Nivel",
+    "res.register":"Registro","res.shop":"Tienda","res.donate":"Donar","res.news":"Noticias","res.calendar":"Calendario","res.contact":"Contacto",
+    "settings.title":"Ajustes","settings.language":"Idioma","settings.textsize":"Tamaño de texto","settings.normal":"Normal","settings.large":"Grande","settings.motion":"Modo movimiento",
+    "settings.hint":"Tus preferencias se guardan en este dispositivo. Los menús y botones cambian a español; las listas en vivo permanecen en el idioma en que se ingresaron."
+  }
+};
+var fhLang = "en", fhTextSize = "normal";
+try{ fhLang = localStorage.getItem("fhLang") || "en"; }catch(e){}
+try{ fhTextSize = localStorage.getItem("fhTextSize") || "normal"; }catch(e){}
+function fhT(key, fallback){ var d=I18N[fhLang]||{}; return d[key] || fallback; }
+function applyLang(){
+  var dict = I18N[fhLang] || {};
+  document.querySelectorAll("[data-i18n]").forEach(function(el){
+    var k = el.getAttribute("data-i18n");
+    if(!el.getAttribute("data-i18n-en")) el.setAttribute("data-i18n-en", el.textContent); // remember original English
+    el.textContent = dict[k] || el.getAttribute("data-i18n-en");
+  });
+  document.documentElement.setAttribute("lang", fhLang);
+  document.querySelectorAll("[data-lang]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-lang")===fhLang)); });
+  if(typeof renderSports==="function" && document.getElementById("sportsBody")) { try{ renderSports(); }catch(e){} }
+}
+function setLang(l){ fhLang = (l==="es"?"es":"en"); try{ localStorage.setItem("fhLang", fhLang); }catch(e){} applyLang(); }
+function applyTextSize(){
+  document.documentElement.classList.toggle("bigtext", fhTextSize==="large");
+  document.querySelectorAll("[data-textsize]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-textsize")===fhTextSize)); });
+}
+function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ localStorage.setItem("fhTextSize", fhTextSize); }catch(e){} applyTextSize(); }
+(function initSettings(){
+  document.addEventListener("click", function(e){
+    var l = e.target.closest && e.target.closest("[data-lang]");
+    if(l){ setLang(l.getAttribute("data-lang")); return; }
+    var t = e.target.closest && e.target.closest("[data-textsize]");
+    if(t){ setTextSize(t.getAttribute("data-textsize")); return; }
+    if(e.target.closest && e.target.closest("#motionToggle2") && typeof setMotion==="function"){ setMotion(!(typeof motionOn!=="undefined"&&motionOn)); }
+  });
+  applyLang(); applyTextSize();
+})();
 
 </script>
 </body>

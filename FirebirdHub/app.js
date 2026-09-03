@@ -222,7 +222,8 @@ function renderEvents(){
   if(!grid) return;
   const now = nowPST();
   const MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const list = (eventsCurated ? EVENTS.slice() : EVENTS.filter(function(e){ return e.end >= now && e.when <= new Date(now.getTime()+31*86400000); })).sort(function(a,b){ return a.when-b.when; });
+  const horizon = new Date(now.getTime()+45*86400000); // only the next ~6 weeks
+  const list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; }).sort(function(a,b){ return a.when-b.when; });
   if(!list.length){ grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
   grid.innerHTML = list.map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
@@ -1352,3 +1353,48 @@ if(!FEATURES.fireBucks){
   const fbSection = document.querySelector('section[aria-labelledby="h-card"]');
   if(fbSection) fbSection.hidden = true;
 }
+
+/* =====================================================
+   Settings + Language (EN/ES) — saved per device
+===================================================== */
+var I18N = {
+  en: {},
+  es: {
+    "nav.home":"Inicio","nav.schedule":"Horario","nav.spirit":"Espíritu","nav.clubs":"Clubes","nav.sports":"Deportes","nav.more":"Más",
+    "sports.title":"Deportes","sports.sport":"Deporte","sports.level":"Nivel",
+    "res.register":"Registro","res.shop":"Tienda","res.donate":"Donar","res.news":"Noticias","res.calendar":"Calendario","res.contact":"Contacto",
+    "settings.title":"Ajustes","settings.language":"Idioma","settings.textsize":"Tamaño de texto","settings.normal":"Normal","settings.large":"Grande","settings.motion":"Modo movimiento",
+    "settings.hint":"Tus preferencias se guardan en este dispositivo. Los menús y botones cambian a español; las listas en vivo permanecen en el idioma en que se ingresaron."
+  }
+};
+var fhLang = "en", fhTextSize = "normal";
+try{ fhLang = localStorage.getItem("fhLang") || "en"; }catch(e){}
+try{ fhTextSize = localStorage.getItem("fhTextSize") || "normal"; }catch(e){}
+function fhT(key, fallback){ var d=I18N[fhLang]||{}; return d[key] || fallback; }
+function applyLang(){
+  var dict = I18N[fhLang] || {};
+  document.querySelectorAll("[data-i18n]").forEach(function(el){
+    var k = el.getAttribute("data-i18n");
+    if(!el.getAttribute("data-i18n-en")) el.setAttribute("data-i18n-en", el.textContent); // remember original English
+    el.textContent = dict[k] || el.getAttribute("data-i18n-en");
+  });
+  document.documentElement.setAttribute("lang", fhLang);
+  document.querySelectorAll("[data-lang]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-lang")===fhLang)); });
+  if(typeof renderSports==="function" && document.getElementById("sportsBody")) { try{ renderSports(); }catch(e){} }
+}
+function setLang(l){ fhLang = (l==="es"?"es":"en"); try{ localStorage.setItem("fhLang", fhLang); }catch(e){} applyLang(); }
+function applyTextSize(){
+  document.documentElement.classList.toggle("bigtext", fhTextSize==="large");
+  document.querySelectorAll("[data-textsize]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-textsize")===fhTextSize)); });
+}
+function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ localStorage.setItem("fhTextSize", fhTextSize); }catch(e){} applyTextSize(); }
+(function initSettings(){
+  document.addEventListener("click", function(e){
+    var l = e.target.closest && e.target.closest("[data-lang]");
+    if(l){ setLang(l.getAttribute("data-lang")); return; }
+    var t = e.target.closest && e.target.closest("[data-textsize]");
+    if(t){ setTextSize(t.getAttribute("data-textsize")); return; }
+    if(e.target.closest && e.target.closest("#motionToggle2") && typeof setMotion==="function"){ setMotion(!(typeof motionOn!=="undefined"&&motionOn)); }
+  });
+  applyLang(); applyTextSize();
+})();

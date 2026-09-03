@@ -586,3 +586,20 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
 }
 .sportfilters select:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
 @media(max-width:520px){ .sportfilters .selwrap{flex:1 1 100%} }
+
+/* Sports team-resources bar (compact, does not replace the athletics site) */
+.sportres{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px}
+.sportres a{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; text-decoration:none;
+  color:var(--ink); background:var(--card,#fff); border:1.5px solid var(--line,#e4d9c4); border-radius:999px; padding:7px 13px}
+.sportres a:hover{border-color:var(--cardinal); color:var(--cardinal)}
+.sportres a:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+
+/* Settings panel + segmented controls + large text */
+.settingscard .setrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line,#eee)}
+.settingscard .setrow:last-of-type{border-bottom:0}
+.settingscard .setlabel{font-weight:700}
+.segbtns{display:inline-flex; border:1.5px solid var(--cardinal); border-radius:999px; overflow:hidden}
+.segbtn{font:inherit; font-weight:700; padding:7px 14px; background:var(--card,#fff); color:var(--ink); border:0; cursor:pointer}
+.segbtn[aria-pressed="true"]{background:var(--cardinal); color:#fff}
+.segbtn:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
+html.bigtext{zoom:1.12}
