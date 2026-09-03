@@ -4,7 +4,9 @@
  * Builds the "Sports" tab of THIS spreadsheet: FULL season for every posted
  * team, grouped FALL -> WINTER -> SPRING, each sport under a bright section
  * divider, chronological. Practices excluded. Scrimmages vs real games are
- * labeled in the "type" column. Senior nights are pale red. Live scores/results
+ * labeled in the "type" column. SENIOR NIGHTS: color a game's row RED in the
+ * Sports tab and it is registered as a senior night (badge shows in the app);
+ * your red survives refreshes. Senior rows render pale red. Live scores/results
  * merge in from the athletics feed each run.
  *
  * PUSH TO APP: the FIRST column is "push". Type y (or yes) in a game's push
@@ -54,6 +56,7 @@ function syncSports(){
   var sh = ss.getSheetByName(SPORTS_TAB) || ss.insertSheet(SPORTS_TAB);
 
   var prevPush = readPush_(sh);   // remember which games a human typed y on
+  var prevSeniorRed = readSeniorReds_(sh); // remember which games a human colored RED (= senior night)
 
   var games = parseSched_();
   var api = fetchApi_();
@@ -84,7 +87,7 @@ function syncSports(){
       heads.push(out.length+1);
       out.push(blankRow_(sp + "  \u00b7  " + noun_(sp,true).toUpperCase()));
       sg.forEach(function(g){
-        var senior = isSenior_(g);
+        var senior = isSenior_(g) || !!prevSeniorRed[gkey_(g)];
         var kind = kindOf_(g.type);
         var isPush = !!prevPush[gkey_(g)];
         var section = (g.date && g.date < today) ? "result" : "upcoming";
@@ -118,8 +121,8 @@ function syncSports(){
       .setFontWeight("bold").setFontSize(12).setHorizontalAlignment("left");
     sh.setRowHeight(r,26);
   });
-  seniors.forEach(function(r){ sh.getRange(r,1,1,NCOLS).setBackground(C_SENIOR).setFontWeight("bold"); });
   pushed.forEach(function(r){ sh.getRange(r,1,1,NCOLS).setBackground(C_PUSH).setFontWeight("bold"); });
+  seniors.forEach(function(r){ sh.getRange(r,1,1,NCOLS).setBackground(C_SENIOR).setFontWeight("bold"); });
 
   // Make the push column obvious: gold tint + a note, on every game row's push cell that is blank.
   try{
@@ -154,6 +157,41 @@ function readPush_(sh){
     }
   }catch(e){}
   return keep;
+}
+
+/* read human RED rows (senior nights) before we wipe, keyed by game identity.
+   Color the sport cell (or the row) red in the Sports tab and that game is a
+   senior night; the app then shows a "Senior Night" badge. Your red survives
+   every refresh (re-applied as pale red). Clear the red to un-mark. */
+function readSeniorReds_(sh){
+  var keep={};
+  try{
+    var lr=sh.getLastRow(), lc=sh.getLastColumn();
+    if(lr<2 || lc<2) return keep;
+    var vals=sh.getRange(1,1,lr,lc).getValues();
+    var bgs=sh.getRange(1,1,lr,lc).getBackgrounds();
+    var h=vals[0].map(function(x){return String(x).trim().toLowerCase();});
+    var ci=function(n){return h.indexOf(n);};
+    var sc=ci("sport"), dc=ci("date"), lvc=ci("level"), oc=ci("opponent");
+    if(sc<0||dc<0) return keep;
+    for(var i=1;i<vals.length;i++){
+      var dt=String(vals[i][dc]||"").trim();
+      if(!/^\d{4}-\d{1,2}-\d{1,2}/.test(dt)) continue; // data rows only (skip banners/heads)
+      // senior if the sport cell OR the opponent/location cell is reddish
+      var red = hexReddish_(bgs[i][sc]) || (oc>=0 && hexReddish_(bgs[i][oc]));
+      if(!red) continue;
+      var sp=String(vals[i][sc]||"").trim();
+      var lv=lvc>=0?String(vals[i][lvc]||"").trim():"", op=oc>=0?String(vals[i][oc]||"").trim():"";
+      if(sp&&dt) keep[(sp+"|"+dt+"|"+lv+"|"+op).toLowerCase()]=true;
+    }
+  }catch(e){}
+  return keep;
+}
+/* true for reddish backgrounds: pale senior red #F4C7C3 through solid reds (#CC0000, #FF0000...) */
+function hexReddish_(hex){
+  var m=/^#?([0-9a-fA-F]{6})$/.exec(String(hex||"").trim()); if(!m) return false;
+  var n=parseInt(m[1],16), R=(n>>16)&255, G=(n>>8)&255, B=n&255;
+  return R>=200 && (R-G)>=25 && (R-B)>=25;
 }
 
 function parseSched_(){
