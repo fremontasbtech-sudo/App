@@ -108,7 +108,7 @@ export default async function handler(req, res){
     const payload = {
       systemInstruction: { parts: [{ text: buildSystem(live) }] },
       contents: [{ role: "user", parts: [{ text: q }] }],
-      generationConfig: { temperature: 0.25, maxOutputTokens: 800, thinkingConfig: { thinkingBudget: 0 } },
+      generationConfig: { temperature: 0.25, maxOutputTokens: 2048 },
       safetySettings: [
         {category:"HARM_CATEGORY_HARASSMENT", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
         {category:"HARM_CATEGORY_HATE_SPEECH", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
