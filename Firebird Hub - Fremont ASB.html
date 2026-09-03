@@ -2076,7 +2076,8 @@ function renderSports(){
     let line2;
     if(isResult){ const sc = g.score||""; line2 = sc ? ('Final: '+clubEsc(sc)) : 'Final score pending'; }
     else { line2 = [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; "); }
-    const vs = g.opponent ? ((/away/i.test(g.homeAway)?'at ':'vs ')+clubEsc(g.opponent)) : "";
+    const isMeet = /cross country|track|swim|dive|wrestl/i.test(g.sport||"");
+    const vs = g.opponent ? (isMeet ? clubEsc(g.opponent) : ((/away/i.test(g.homeAway)?'at ':'vs ')+clubEsc(g.opponent))) : "";
     return '<article class="ticket'+(sr?' sr':'')+'"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
       '<div class="body"><h3>'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h3>'+
       (vs?('<p class="meta">'+vs+'</p>'):"")+

@@ -15,6 +15,7 @@ Firebird Hub is the student app for Fremont High School (FHS), Sunnyvale, CA (FU
 BELL SCHEDULE: block schedule. Mon = all 7 periods (short). Tue/Thu = "A" day (periods 1,3,5,7 + Tutorial). Wed/Fri = "B" day (periods 2,4,6 + Tutorial). Exact bell times + a live "current period / time left" clock are on the Schedule tab.
 FIRE BUCKS: FHS spirit currency. Earn: +5 dress up on a spirit day, +20 attend a rally or game, +15 rep a club at Club Rush. A teacher scans your card QR to grant them. Spend on: dress-down/hat pass, front-of-lunch-line pass, school store & dance discounts. Set up your card on the More tab.
 CLUBS: 80+ clubs — browse, filter, and take the "Find your club" quiz on the Clubs tab. Club Rush / Clubs Day is the fall in-person club fair.
+MEETS vs GAMES: Cross Country, Track, and Swimming are MEETS held at a venue (e.g., Rancho San Antonio, Hayward HS, Baylands Park) or a named invite (e.g., Firebird XC Invite). They are NOT head-to-head games against a single opponent — for these the opponent field is really the meet name or venue, so describe them as a meet at/named that place, never as 'vs an opponent'.
 SPORTS: full schedules, scores, and results are on the Sports tab (filter by sport & level). Register/clearance, team shop, boosters/donate, and contact links are there too.
 `.trim();
 
@@ -59,7 +60,9 @@ async function liveContext(){
     for(let i=1;i<rows.length;i++){ const r=rows[i]; const sport=g(r,"sport"), date=g(r,"date");
       if(!sport || !/^\d{4}-\d{2}-\d{2}/.test(date)) continue;
       const lvl=g(r,"level"), opp=g(r,"opponent"), ha=g(r,"homeaway"), time=g(r,"time"), loc=g(r,"location"), score=g(r,"score");
-      const line=date+" "+sport+(lvl?(" "+lvl):"")+" "+(/away/i.test(ha)?"at ":"vs ")+(opp||"opponent")+(time?(" "+time):"")+(loc?(" @ "+loc):"");
+      const isMeet=/cross country|track|swim|dive|wrestl/i.test(sport);
+      const vs = isMeet ? (opp?("meet "+opp):"meet") : ((/away/i.test(ha)?"at ":"vs ")+(opp||"opponent"));
+      const line=date+" "+sport+(lvl?(" "+lvl):"")+" "+vs+(time?(" "+time):"")+(loc?(" @ "+loc):"");
       if(date>=today) up.push(line); else if(score) res.push(date+" "+sport+(lvl?(" "+lvl):"")+" vs "+(opp||"opp")+": "+score);
     }
     up.sort(); res.sort().reverse();
