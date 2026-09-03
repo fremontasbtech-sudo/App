@@ -282,6 +282,7 @@ async function syncEventsSheet(){
    season — not the athletics feed's ~4-week window.
 ===================================================== */
 const SPORTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&sheet=Sports";
+const SPORTS_FEED = "https://script.google.com/macros/s/AKfycby_2RTRuFEiIRdoNQtzbuUQzSGCGJ3G_p7CxNrqcqOcQiPk268kXu63uLf21GIT5RfQ/exec";
 let sportsGames = null, sportsUpdatedLabel = "", sportFilter = "all", sportLevel = "all", sportsLoaded = false; let sportsShowAll = false;
 
 /* Fall-first order for the sport dropdown. */
@@ -298,6 +299,41 @@ function eventNoun(sport, plural){
 function sportTimeMin(t){ const m=String(t||"").match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 9999; let h=+m[1]%12; if(/PM/i.test(m[3])) h+=12; return h*60+(+m[2]); }
 function todayKeyPST(){ const d=nowPST(); const mm=("0"+(d.getMonth()+1)).slice(-2), dd=("0"+d.getDate()).slice(-2); return d.getFullYear()+"-"+mm+"-"+dd; }
 
+
+/* Live results overlay: the athletics feed carries scores for games that
+   already happened (real scores, or a note like "2-0 W" for scrimmages).
+   Merge those onto the sheet games so results show without waiting on the sync. */
+function fhsBestResult(x){
+  if(x.score && !/scrimmage/i.test(x.score) && !x.noScore) return x.score;
+  if(x.note && /(\d+\s*[-\u2013]\s*\d+)|\bwin\b|\bloss\b|\btie\b|\bW\b|\bL\b/i.test(x.note)) return x.note;
+  if(x.wlWord && !/no score/i.test(x.wlWord)) return x.wlWord;
+  if(x.score && !/scrimmage/i.test(x.score)) return x.score;
+  return "";
+}
+function fhsOverlayScores(feed){
+  if(!feed || !feed.programs || !sportsGames) return;
+  const map={};
+  feed.programs.forEach(function(p){
+    (p.results||[]).forEach(function(x){
+      const r=fhsBestResult(x); if(!r) return;
+      const sp=(x.sport||p.sport||"");
+      map[(sp+"|"+(x.date||"")+"|"+(x.level||"")).toLowerCase()]=r;
+      map[(sp+"|"+(x.date||"")).toLowerCase()]=r;
+    });
+  });
+  sportsGames.forEach(function(g){
+    const r=map[(g.sport+"|"+g.date+"|"+g.level).toLowerCase()] || map[(g.sport+"|"+g.date).toLowerCase()];
+    if(r){ g.score=r; g.section="result"; }
+  });
+}
+function loadSportsScores(){
+  const cb="fhsScoreCb_"+Math.random().toString(36).slice(2);
+  window[cb]=function(data){ try{ fhsOverlayScores(data); renderSports(); }catch(e){} try{delete window[cb];}catch(e){} };
+  const s=document.createElement("script");
+  s.src=SPORTS_FEED+"?view=results&callback="+cb;
+  s.onerror=function(){};
+  document.head.appendChild(s);
+}
 async function loadSports(){
   if(sportsLoaded) return; sportsLoaded = true;
   try{
@@ -305,6 +341,7 @@ async function loadSports(){
     const rows = parseSheetRows(await res.text());
     sportsGames = rowsToGames(rows);
     renderSports();
+    loadSportsScores();
   }catch(e){
     sportsLoaded = false;
     const g=document.getElementById("sportsBody");
