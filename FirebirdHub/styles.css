@@ -645,5 +645,5 @@ html.bigtext{zoom:1.12}
 .sporthero .btn.ghost{background:#fff; color:var(--cardinal); border-color:#fff}
 
 /* chatbot backdrop + bigger close target */
-.askback{position:fixed; inset:0; z-index:59; background:rgba(39,21,16,.08)}
+.askback{position:fixed; inset:0; z-index:59; background:transparent}
 .askx{padding:6px 12px; font-size:26px; min-width:40px; min-height:40px; line-height:1; display:inline-flex; align-items:center; justify-content:center}
