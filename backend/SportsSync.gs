@@ -87,9 +87,9 @@ function syncSports(){
       heads.push(out.length+1);
       out.push(blankRow_(sp + "  \u00b7  " + noun_(sp,true).toUpperCase()));
       sg.forEach(function(g){
-        var senior = isSenior_(g) || !!prevSeniorRed[gkey_(g)];
+        var senior = isSenior_(g) || !!prevSeniorRed[pkey_(g.sport,g.date,g.level)];
         var kind = kindOf_(g.type);
-        var isPush = !!prevPush[gkey_(g)];
+        var isPush = !!prevPush[pkey_(g.sport,g.date,g.level)];
         var section = (g.date && g.date < today) ? "result" : "upcoming";
         var title = ((senior?"SENIOR NIGHT - ":"") + g.sport + (g.level?(" "+g.level):"") +
                      (g.homeAway?(" "+g.homeAway):"") + (g.opponent?(" vs "+g.opponent):"")).trim();
@@ -106,6 +106,7 @@ function syncSports(){
   try{ sh.getBandings().forEach(function(b){ b.remove(); }); }catch(e){}
   try{ if(sh.getLastRow()>1) sh.getRange(2,1,Math.max(1,sh.getMaxRows()-1),NCOLS).breakApart(); }catch(e){}
 
+  sh.getRange(1,1,out.length,NCOLS).setNumberFormat("@"); // keep dates/times as literal text (ISO) so the app + push-preservation read them consistently
   sh.getRange(1,1,out.length,NCOLS).setValues(out);
   sh.getRange(1,1,1,NCOLS).setFontWeight("bold").setBackground("#5F0C03").setFontColor("#FFFFFF");
   sh.setFrozenRows(1);
@@ -151,9 +152,9 @@ function readPush_(sh){
     if(pc<0||sc<0||dc<0) return keep;
     for(var i=1;i<vals.length;i++){
       if(!/^\s*y(es)?\s*$/i.test(String(vals[i][pc]||""))) continue;
-      var sp=String(vals[i][sc]||"").trim(), dt=String(vals[i][dc]||"").trim();
-      var lv=lvc>=0?String(vals[i][lvc]||"").trim():"", op=oc>=0?String(vals[i][oc]||"").trim():"";
-      if(sp&&dt) keep[(sp+"|"+dt+"|"+lv+"|"+op).toLowerCase()]=true;
+      var sp=String(vals[i][sc]||"").trim();
+      var lv=lvc>=0?String(vals[i][lvc]||"").trim():"";
+      if(sp && dnorm_(vals[i][dc])) keep[pkey_(sp,vals[i][dc],lv)]=true;
     }
   }catch(e){}
   return keep;
@@ -175,14 +176,13 @@ function readSeniorReds_(sh){
     var sc=ci("sport"), dc=ci("date"), lvc=ci("level"), oc=ci("opponent");
     if(sc<0||dc<0) return keep;
     for(var i=1;i<vals.length;i++){
-      var dt=String(vals[i][dc]||"").trim();
-      if(!/^\d{4}-\d{1,2}-\d{1,2}/.test(dt)) continue; // data rows only (skip banners/heads)
-      // senior if the sport cell OR the opponent/location cell is reddish
+      var dt=dnorm_(vals[i][dc]);
+      if(!/^\d{4}-\d{2}-\d{2}/.test(dt)) continue; // data rows only (skip banners/heads)
       var red = hexReddish_(bgs[i][sc]) || (oc>=0 && hexReddish_(bgs[i][oc]));
       if(!red) continue;
       var sp=String(vals[i][sc]||"").trim();
-      var lv=lvc>=0?String(vals[i][lvc]||"").trim():"", op=oc>=0?String(vals[i][oc]||"").trim():"";
-      if(sp&&dt) keep[(sp+"|"+dt+"|"+lv+"|"+op).toLowerCase()]=true;
+      var lv=lvc>=0?String(vals[i][lvc]||"").trim():"";
+      if(sp) keep[pkey_(sp,vals[i][dc],lv)]=true;
     }
   }catch(e){}
   return keep;
@@ -262,6 +262,9 @@ function normSport_(s){
 }
 function skey_(sport,date,level){ return (String(sport)+"|"+String(date)+"|"+String(level)).toLowerCase(); }
 function gkey_(g){ return (String(g.sport)+"|"+String(g.date)+"|"+String(g.level||"")+"|"+String(g.opponent||"")).toLowerCase(); }
+function dnorm_(v){ if(v && typeof v.getMonth==="function"){ var m=("0"+(v.getMonth()+1)).slice(-2),d=("0"+v.getDate()).slice(-2); return v.getFullYear()+"-"+m+"-"+d; } var t=String(v||"").trim(); var mm=t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); return mm?(mm[1]+"-"+("0"+mm[2]).slice(-2)+"-"+("0"+mm[3]).slice(-2)):t; }
+/* push/senior preservation key — date-type-proof, opponent-independent so y/red survive rewrites */
+function pkey_(sport,date,level){ return (String(sport||"").trim()+"|"+dnorm_(date)+"|"+String(level||"").trim()).toLowerCase(); }
 function isMeet_(s){ return /cross country|track|swim|dive|wrestl/i.test(String(s||"")); }
 function gkeyLoose_(g){ var base=(String(g.sport)+"|"+String(g.date)+"|"+String(g.level||"")).toLowerCase(); return isMeet_(g.sport) ? base : base+"|"+String(g.time||"").toLowerCase(); }
 function isSenior_(g){ return SENIOR_NIGHTS.some(function(s){ return s.sport===g.sport && s.date===g.date; }); }
