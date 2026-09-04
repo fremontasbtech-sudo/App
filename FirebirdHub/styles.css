@@ -441,6 +441,9 @@ dialog::backdrop{background:rgba(39,21,16,.55)}
 /* ---------- Header sign-in state ---------- */
 .signin img{width:20px; height:20px; border-radius:50%; border:1.5px solid #3E2A00}
 .gsiwrap{display:flex; justify-content:center; margin-top:12px}
+[hidden]{display:none !important}
+.signin-actions{display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-top:16px}
+.signin-actions form{margin:0}
 
 /* ---------- Schedule: normal/special toggle + week view ---------- */
 .segmented{display:inline-flex; border:2px solid var(--ink); border-radius:999px; overflow:hidden; margin-bottom:var(--space-3); box-shadow:2px 2px 0 rgba(39,21,16,.14)}

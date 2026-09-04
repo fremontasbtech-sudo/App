@@ -1262,7 +1262,7 @@ function initGoogleSignin(){
   const s = document.createElement("script");
   s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.defer = true;
   s.onload = ()=>{
-    google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: onGoogleCred, auto_select: true });
+    google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: onGoogleCred, auto_select: false });
     google.accounts.id.renderButton(document.getElementById("gsiBtn"),
       { theme:"filled_black", size:"large", shape:"pill", text:"signin_with" });
   };
