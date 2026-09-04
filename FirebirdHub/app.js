@@ -1205,27 +1205,60 @@ function renderQuizResults(){
    Works as soon as CONFIG.googleClientId is set — steps in
    backend/README.md. Without it the dialog explains itself.
 ===================================================== */
-const signedIn = { name:"", email:"", picture:"" }; // in-memory only
+const SIGNIN_KEY = "fh_signin_v1";
+const signedIn = { name:"", email:"", picture:"" };
+const _signinBtn = document.getElementById("signinBtn");
+const _signinDefaultHTML = _signinBtn ? _signinBtn.innerHTML : "Sign in";
 function decodeJwt(tok){
   const part = tok.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
   return JSON.parse(decodeURIComponent(atob(part).split("").map(c=>"%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+}
+function _saveSignin(){ try{ localStorage.setItem(SIGNIN_KEY, JSON.stringify(signedIn)); }catch(e){} }
+function _clearSignin(){ try{ localStorage.removeItem(SIGNIN_KEY); }catch(e){} }
+function _loadSignin(){ try{ const s=JSON.parse(localStorage.getItem(SIGNIN_KEY)||"null"); if(s&&s.email){ signedIn.name=s.name||""; signedIn.email=s.email||""; signedIn.picture=s.picture||""; return true; } }catch(e){} return false; }
+function applySignedInUI(){
+  if(!_signinBtn) return;
+  if(signedIn.email){
+    _signinBtn.innerHTML = (signedIn.picture ? '<img src="'+signedIn.picture+'" alt="" referrerpolicy="no-referrer">' : "") + (clubEsc((signedIn.name||"").split(" ")[0]) || "Account");
+    _signinBtn.setAttribute("aria-label","Signed in as "+signedIn.email);
+  } else {
+    _signinBtn.innerHTML = _signinDefaultHTML;
+    _signinBtn.setAttribute("aria-label","Sign in");
+  }
+}
+function refreshSigninDialog(){
+  const blurb=document.getElementById("signinBlurb"), gsi=document.getElementById("gsiBtn"), note=document.getElementById("signinNote"), out=document.getElementById("signoutBtn");
+  if(signedIn.email){
+    if(blurb) blurb.textContent = "Signed in as "+signedIn.email+". Your name is on the app and your Firebird Card is prefilled.";
+    if(gsi) gsi.hidden = true; if(note) note.hidden = true; if(out) out.hidden = false;
+  } else {
+    if(blurb) blurb.textContent = "Sign in with Google to put your name on the app and prefill your Firebird Card. Photos and points still only go where you send them.";
+    if(gsi) gsi.hidden = false; if(out) out.hidden = true;
+    if(note) note.hidden = !!CONFIG.googleClientId;
+  }
 }
 function onGoogleCred(resp){
   try{
     const p = decodeJwt(resp.credential);
     signedIn.name = p.name || ""; signedIn.email = p.email || ""; signedIn.picture = p.picture || "";
-    const btn = document.getElementById("signinBtn");
-    btn.innerHTML = (signedIn.picture ? '<img src="'+signedIn.picture+'" alt="" referrerpolicy="no-referrer">' : "") +
-      (signedIn.name.split(" ")[0] || "Signed in");
+    _saveSignin(); applySignedInUI();
     const csName = document.getElementById("csName");
-    if(csName && !csName.value) csName.value = signedIn.name;   // prefill the card
-    document.getElementById("signinDialog").close();
-    document.getElementById("signinBlurb").textContent = "Signed in as "+signedIn.email+". Your name is on the app and your card is prefilled.";
+    if(csName && !csName.value) csName.value = signedIn.name;
+    refreshSigninDialog();
+    const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
   }catch(e){ /* ignore a bad credential */ }
+}
+function signOut(){
+  signedIn.name=""; signedIn.email=""; signedIn.picture="";
+  _clearSignin();
+  try{ if(window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(e){}
+  applySignedInUI(); refreshSigninDialog();
+  const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
 }
 function initGoogleSignin(){
   const note = document.getElementById("signinNote");
-  if(!CONFIG.googleClientId){ note.hidden = false; return; }
+  if(!CONFIG.googleClientId){ if(note) note.hidden = false; return; }
+  if(note) note.hidden = true;
   const s = document.createElement("script");
   s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.defer = true;
   s.onload = ()=>{
@@ -1233,13 +1266,12 @@ function initGoogleSignin(){
     google.accounts.id.renderButton(document.getElementById("gsiBtn"),
       { theme:"filled_black", size:"large", shape:"pill", text:"signin_with" });
   };
-  s.onerror = ()=>{ note.hidden = false; };
+  s.onerror = ()=>{ if(note) note.hidden = false; };
   document.head.appendChild(s);
 }
-document.getElementById("signinBtn").addEventListener("click", ()=>{
-  document.getElementById("signinDialog").showModal();
-});
-initGoogleSignin();
+if(_signinBtn) _signinBtn.addEventListener("click", ()=>{ refreshSigninDialog(); document.getElementById("signinDialog").showModal(); });
+(function(){ const out=document.getElementById("signoutBtn"); if(out) out.addEventListener("click", signOut); })();
+_loadSignin(); applySignedInUI(); initGoogleSignin();
 
 /* =====================================================
    Spirit scoreboard — live pull from the Google Sheet
