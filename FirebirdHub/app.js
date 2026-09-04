@@ -1444,12 +1444,17 @@ let motionOn = false;
 function initMotion(){
   const btn = document.getElementById("motionToggle");
   if(btn) btn.addEventListener("click", function(){ setMotion(!motionOn); });
+  var saved=false; try{ saved = localStorage.getItem("fhMotion")==="1"; }catch(e){}
+  setMotion(saved);
 }
 function setMotion(on){
   motionOn = on;
   document.body.classList.toggle("motion", on);
-  const btn = document.getElementById("motionToggle");
-  if(btn){ btn.setAttribute("aria-pressed", String(on)); btn.textContent = on ? "Motion mode: On" : "Motion mode: Off"; }
+  try{ localStorage.setItem("fhMotion", on ? "1" : "0"); }catch(e){}
+  var b1 = document.getElementById("motionToggle");
+  if(b1){ b1.setAttribute("aria-pressed", String(on)); b1.textContent = on ? "Motion mode: On" : "Motion mode: Off"; }
+  var b2 = document.getElementById("motionToggle2");
+  if(b2){ b2.setAttribute("aria-pressed", String(on)); b2.textContent = on ? "On" : "Off"; }
   if(on) observeReveals();
 }
 function observeReveals(){
