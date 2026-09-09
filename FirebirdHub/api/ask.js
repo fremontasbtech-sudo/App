@@ -139,7 +139,7 @@ export default async function handler(req, res){
     const payload = {
       systemInstruction: { parts: [{ text: buildSystem(live) }] },
       contents: [{ role: "user", parts: [{ text: q }] }],
-      generationConfig: { temperature: 0.25, maxOutputTokens: 2048 },
+      generationConfig: { temperature: 0.25, maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: "low" } },
       safetySettings: [
         {category:"HARM_CATEGORY_HARASSMENT", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
         {category:"HARM_CATEGORY_HATE_SPEECH", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
@@ -150,7 +150,7 @@ export default async function handler(req, res){
     const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
     const data = await r.json();
     let answer = "";
-    try{ answer = data.candidates[0].content.parts.map(p=>p.text||"").join(" ").trim(); }catch(e){}
+    try{ answer = (data.candidates[0].content.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join(" ").trim(); }catch(e){}
     if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, or sports.";
     res.status(200).json({ answer });
   }catch(e){
