@@ -136,21 +136,30 @@ export default async function handler(req, res){
   try{
     const live = await liveContext();
     const url = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent?key=" + key;
-    const payload = {
-      systemInstruction: { parts: [{ text: buildSystem(live) }] },
-      contents: [{ role: "user", parts: [{ text: q }] }],
-      generationConfig: { temperature: 0.25, maxOutputTokens: 2048, thinkingConfig: { thinkingLevel: "low" } },
-      safetySettings: [
-        {category:"HARM_CATEGORY_HARASSMENT", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
-        {category:"HARM_CATEGORY_HATE_SPEECH", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
-        {category:"HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
-        {category:"HARM_CATEGORY_DANGEROUS_CONTENT", threshold:"BLOCK_MEDIUM_AND_ABOVE"}
-      ]
-    };
-    const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
-    const data = await r.json();
-    let answer = "";
-    try{ answer = (data.candidates[0].content.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join(" ").trim(); }catch(e){}
+    const safetySettings = [
+      {category:"HARM_CATEGORY_HARASSMENT", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
+      {category:"HARM_CATEGORY_HATE_SPEECH", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
+      {category:"HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold:"BLOCK_MEDIUM_AND_ABOVE"},
+      {category:"HARM_CATEGORY_DANGEROUS_CONTENT", threshold:"BLOCK_MEDIUM_AND_ABOVE"}
+    ];
+    // "low" thinking keeps Felipe fast on Gemini 3. If a model/version ever rejects
+    // that config, retry once without it so Felipe never goes dark.
+    async function callGemini(useThinking){
+      const generationConfig = useThinking
+        ? { temperature:0.25, maxOutputTokens:2048, thinkingConfig:{ thinkingLevel:"low" } }
+        : { temperature:0.25, maxOutputTokens:2048 };
+      const payload = {
+        systemInstruction: { parts: [{ text: buildSystem(live) }] },
+        contents: [{ role:"user", parts:[{ text:q }] }],
+        generationConfig, safetySettings
+      };
+      const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+      const data = await r.json();
+      let a=""; try{ a=(data.candidates[0].content.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join(" ").trim(); }catch(e){}
+      return a;
+    }
+    let answer = await callGemini(true);
+    if(!answer) answer = await callGemini(false);
     if(!answer) answer = "I couldn't answer that one — try asking about the bell schedule, clubs, events, or sports.";
     res.status(200).json({ answer });
   }catch(e){
