@@ -1482,29 +1482,141 @@ if(!FEATURES.fireBucks){
 /* =====================================================
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
-var I18N = {
-  en: {},
-  es: {
-    "nav.home":"Inicio","nav.schedule":"Horario","nav.spirit":"Espíritu","nav.clubs":"Clubes","nav.sports":"Deportes","nav.more":"Más",
-    "sports.title":"Deportes","sports.sport":"Deporte","sports.level":"Nivel",
-    "res.register":"Registro","res.shop":"Tienda","res.donate":"Donar","res.news":"Noticias","res.calendar":"Calendario","res.contact":"Contacto",
-    "settings.title":"Ajustes","settings.language":"Idioma","settings.textsize":"Tamaño de texto","settings.normal":"Normal","settings.large":"Grande","settings.motion":"Modo movimiento",
-    "settings.hint":"Tus preferencias se guardan en este dispositivo. Los menús y botones cambian a español; las listas en vivo permanecen en el idioma en que se ingresaron."
-  }
+var I18N_EN_ES = {
+  "Home":"Inicio","Schedule":"Horario","Spirit":"Espíritu","Clubs":"Clubes","Sports":"Deportes","More":"Más",
+  "Sign in":"Iniciar sesión","Skip to main content":"Saltar al contenido principal",
+  "The One Nest for":"El nido central para","Everything FHS":"Todo lo de FHS",
+  "Every event, every bell, every club, in one place, for every Firebird. No app to download, and no login needed to look around.":"Cada evento, cada campana, cada club, en un solo lugar, para cada Firebird. No hay que descargar ninguna app ni iniciar sesión para explorar.",
+  "Bell schedule":"Horario de campanas","Browse clubs":"Explorar clubes","Next up":"Próximo","Upcoming events":"Próximos eventos",
+  "left":"restante","Loading…":"Cargando…","Normal week":"Semana normal","Special weeks":"Semanas especiales",
+  "Today":"Hoy","Monday":"Lunes","Tuesday":"Martes","Wednesday":"Miércoles","Thursday":"Jueves","Friday":"Viernes",
+  "A day":"Día A","B day":"Día B","Period":"Periodo","Starts":"Empieza","Ends":"Termina",
+  "Choose a special week":"Elige una semana especial","Bell schedule for the selected day":"Horario de campanas para el día seleccionado",
+  "Official 2026–27 FHS bell schedule. The special weeks (rallies, finals, CAASPP, holidays) are built right in. Dates shift a little year to year, so for the exact week trust the announcements. Go Firebirds!":"Horario oficial de campanas de FHS 2026–27. Las semanas especiales (rallies, finales, CAASPP, días feriados) ya están incluidas. Las fechas cambian un poco cada año, así que para la semana exacta confía en los anuncios. ¡Vamos Firebirds!",
+  "Spirit points":"Puntos de espíritu","How points work":"Cómo funcionan los puntos",
+  "Dress up on a spirit day (submit a photo below)":"Vístete en un día de espíritu (envía una foto abajo)",
+  "Your grade wins the rally":"Tu grado gana el rally","Your grade takes second at the rally":"Tu grado queda en segundo lugar en el rally",
+  "Your grade wins an Olympia (3v3 hoops, soccer, chess…)":"Tu grado gana una Olympia (básquetbol 3v3, fútbol, ajedrez…)",
+  "Teacher bonus, awarded by staff and added by Spirit":"Bono del maestro, otorgado por el personal y añadido por Espíritu",
+  "One dress-up submission per student per day, and duplicates are removed before points post. Photos are only seen by ASB Spirit & Tech and your advisor.":"Un envío de atuendo por estudiante por día, y los duplicados se eliminan antes de sumar puntos. Las fotos solo las ven ASB Espíritu y Tecnología y tu consejero.",
+  "Submit your dress-up":"Envía tu atuendo","Full name":"Nombre completo","Enter your first and last name.":"Escribe tu nombre y apellido.",
+  "Grade":"Grado","Choose your grade…":"Elige tu grado…","9 · Freshman":"9 · Primer año","10 · Sophomore":"10 · Segundo año","11 · Junior":"11 · Tercer año","12 · Senior":"12 · Cuarto año",
+  "Pick your grade so points go to the right class.":"Elige tu grado para que los puntos vayan a la clase correcta.",
+  "Student ID":"Identificación estudiantil","Used only to prevent duplicate submissions.":"Se usa solo para evitar envíos duplicados.",
+  "Enter your student ID (numbers only, 5–7 digits).":"Escribe tu ID estudiantil (solo números, 5–7 dígitos).",
+  "Spirit day":"Día de espíritu","Which day is this for?":"¿Para qué día es esto?",
+  "Mon · Island (beach)":"Lun · Isla (playa)","Tue · Outwit (nerd)":"Mar · Outwit (nerd)","Wed · Outlast (camo)":"Mié · Outlast (camuflaje)","Thu · Outplay (jersey)":"Jue · Outplay (jersey)","Fri · Tribe (class colors)":"Vie · Tribu (colores de clase)",
+  "Choose the spirit day you dressed up for.":"Elige el día de espíritu para el que te vestiste.",
+  "Photo of your fit":"Foto de tu atuendo","Attach a photo, since that’s how Spirit verifies the point.":"Adjunta una foto, ya que así es como Espíritu verifica el punto.",
+  "Check my fit":"Revisa mi atuendo",
+  "On-device check that reads your photo and tells you if the outfit matches the spirit day. Nothing leaves your phone, and Spirit still confirms every point.":"Revisión en tu dispositivo que lee tu foto y te dice si el atuendo coincide con el día de espíritu. Nada sale de tu teléfono, y Espíritu confirma cada punto.",
+  "Send it in · +1 pt":"Envíalo · +1 pt","Add your photo and day, then tap":"Agrega tu foto y el día, luego toca","to unlock this.":"para desbloquear esto.",
+  "All":"Todos","Arts":"Artes","Service":"Servicio","Athletics":"Atletismo","Culture":"Cultura","Recruiting now":"Reclutando ahora",
+  "Any day":"Cualquier día","Any commitment":"Cualquier compromiso","Low commitment":"Compromiso bajo","Medium commitment":"Compromiso medio","High commitment":"Compromiso alto",
+  "Recruiting only":"Solo reclutando","Find your club":"Encuentra tu club","Search clubs":"Buscar clubes",
+  "No clubs match that search. Try a different name or clear the filters.":"Ningún club coincide con esa búsqueda. Prueba otro nombre o borra los filtros.",
+  "Club events this year":"Eventos de clubes este año","Clubs Day":"Día de Clubes","Multicultural Night":"Noche Multicultural","Club Trivia Night":"Noche de Trivia de Clubes","Club Grub Day":"Día de Comida de Clubes","Clubs":"Clubes",
+  "The fall club fair. Walk the quad, meet all 80+ clubs, and sign up in person.":"La feria de clubes de otoño. Recorre el quad, conoce los más de 80 clubes e inscríbete en persona.",
+  "A night celebrating Fremont’s cultures with performances and food from our culture and identity clubs.":"Una noche que celebra las culturas de Fremont con presentaciones y comida de nuestros clubes de cultura e identidad.",
+  "Team trivia hosted by the Clubs Commission. Bring your club and test what you know.":"Trivia por equipos organizada por la Comisión de Clubes. Trae tu club y pon a prueba lo que sabes.",
+  "Clubs sell food on campus. Come hungry and support your favorite clubs.":"Los clubes venden comida en el campus. Ven con hambre y apoya a tus clubes favoritos.",
+  "Key dates & deadlines":"Fechas y plazos clave","Fall semester":"Semestre de otoño","Spring semester":"Semestre de primavera",
+  "A monthly check-in form goes out on the 1st of every month and is due at the end of that month.":"Un formulario de revisión mensual se envía el día 1 de cada mes y vence al final de ese mes.",
+  "Club info meeting slides":"Diapositivas de la reunión informativa de clubes",
+  "The full Clubs Commission info deck, with everything above in more detail.":"La presentación completa de la Comisión de Clubes, con todo lo anterior en más detalle.",
+  "Open the slides in a new tab":"Abrir las diapositivas en una pestaña nueva",
+  "How clubs work":"Cómo funcionan los clubes","Starting a new club":"Iniciar un club nuevo","Staying official":"Mantenerse oficial","Strikes":"Faltas",
+  "Find a teacher advisor who can be at every meeting.":"Encuentra a un maestro consejero que pueda asistir a cada reunión.",
+  "Hold at least one meeting a month.":"Realiza al menos una reunión al mes.",
+  "Take part in at least 2 club events a year.":"Participa en al menos 2 eventos de clubes al año.",
+  "Questions & links":"Preguntas y enlaces","Get in touch":"Ponte en contacto","on Instagram":"en Instagram",
+  "Handbook, tracker & clubs list":"Manual, registro y lista de clubes",
+  "The club handbook, accountability tracker, and the full clubs list live on the ASB site.":"El manual de clubes, el registro de responsabilidad y la lista completa de clubes están en el sitio de ASB.",
+  "Open the clubs page":"Abrir la página de clubes",
+  "Register":"Registro","Team shop":"Tienda del equipo","Donate":"Donar","News":"Noticias","Calendar":"Calendario","Contact":"Contacto",
+  "Sport":"Deporte","Level":"Nivel","All sports":"Todos los deportes","All levels":"Todos los niveles","Loading Fremont Athletics…":"Cargando Fremont Athletics…",
+  "Settings":"Ajustes","Language":"Idioma","Text size":"Tamaño de texto","Normal":"Normal","Large":"Grande","Motion mode":"Modo movimiento","Off":"Apagado","On":"Encendido",
+  "Your choices are saved on this device. Menus and buttons switch to Spanish; live listings stay in the language they were entered.":"Tus preferencias se guardan en este dispositivo. Los menús y botones cambian a español; las listas en vivo permanecen en el idioma en que se ingresaron.",
+  "Feedback & more":"Comentarios y más","Tell ASB anything":"Dile lo que sea a ASB",
+  "Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. Submitting opens our contact form in a new tab with everything already filled in.":"Ideas de eventos, preguntas o menciones. Agrega tu nombre y correo escolar para que ASB pueda dar seguimiento. Al enviar se abre nuestro formulario de contacto en una pestaña nueva con todo ya completado.",
+  "Your name":"Tu nombre","Add your first and last name.":"Agrega tu nombre y apellido.","School email":"Correo escolar",
+  "Add a valid email so ASB can reply.":"Agrega un correo válido para que ASB pueda responder.","Message":"Mensaje",
+  "Write a message first. Even one sentence helps.":"Escribe un mensaje primero. Incluso una oración ayuda.","Open the contact form":"Abrir el formulario de contacto",
+  "Find ASB":"Encuentra a ASB","for photos, FTV, resources, and store links":"para fotos, FTV, recursos y enlaces de la tienda",
+  "ASB Leadership · Fremont High School, Sunnyvale (FUHSD)":"Liderazgo de ASB · Fremont High School, Sunnyvale (FUHSD)",
+  "About this app":"Acerca de esta app",
+  "Built by the ASB Tech Commission. Spirit submissions go only to ASB Spirit, Tech, and the advisor. They’re never shared publicly, and student IDs are used solely to remove duplicate entries. Questions? Drop a note in the feedback box.":"Creada por la Comisión de Tecnología de ASB. Los envíos de espíritu van solo a ASB Espíritu, Tecnología y el consejero. Nunca se comparten públicamente, y los IDs estudiantiles se usan únicamente para eliminar entradas duplicadas. ¿Preguntas? Deja una nota en la caja de comentarios.",
+  "Motion mode: Off":"Modo movimiento: Apagado","Motion mode: On":"Modo movimiento: Encendido",
+  "Motion mode swaps the card layout for scroll animations and a swipeable events row. Off keeps the classic look.":"El modo movimiento cambia el diseño de tarjetas por animaciones de desplazamiento y una fila de eventos deslizable. Apagado mantiene el estilo clásico.",
+  "Ask Felipe":"Pregúntale a Felipe","Hi! Ask me about the bell schedule, clubs, events, or sports.":"¡Hola! Pregúntame sobre el horario de campanas, clubes, eventos o deportes.",
+  "Send":"Enviar","School questions only · answers aren't monitored live":"Solo preguntas escolares · las respuestas no se supervisan en vivo","Close":"Cerrar",
+  "Google sign-in":"Iniciar sesión con Google",
+  "Sign in with Google to put your name on the app and prefill your Firebird Card. Photos and points still only go where you send them.":"Inicia sesión con Google para poner tu nombre en la app y precargar tu Firebird Card. Las fotos y los puntos solo van a donde tú los envías.",
+  "Google sign-in is being finished setting up — it will be live shortly.":"El inicio de sesión con Google se está terminando de configurar; estará disponible pronto.",
+  "Sign out":"Cerrar sesión",
+  "Go Firebirds. Built with care by the Tech Commission at Fremont High School, FUHSD.":"¡Vamos Firebirds! Hecho con dedicación por la Comisión de Tecnología de Fremont High School, FUHSD.",
+  "Accessibility issues? Tell us in the feedback box. We fix those first.":"¿Problemas de accesibilidad? Dinos en la caja de comentarios. Esos los arreglamos primero."
+};
+var I18N_ATTR = {
+  "Search clubs by name…":"Busca clubes por nombre…",
+  "Ask about schedule, clubs, sports…":"Pregunta sobre horario, clubes, deportes…",
+  "Your name":"Tu nombre","Student ID":"Identificación estudiantil"
 };
 var fhLang = "en", fhTextSize = "normal";
 try{ fhLang = localStorage.getItem("fhLang") || "en"; }catch(e){}
 try{ fhTextSize = localStorage.getItem("fhTextSize") || "normal"; }catch(e){}
-function fhT(key, fallback){ var d=I18N[fhLang]||{}; return d[key] || fallback; }
-function applyLang(){
-  var dict = I18N[fhLang] || {};
-  document.querySelectorAll("[data-i18n]").forEach(function(el){
-    var k = el.getAttribute("data-i18n");
-    if(!el.getAttribute("data-i18n-en")) el.setAttribute("data-i18n-en", el.textContent); // remember original English
-    el.textContent = dict[k] || el.getAttribute("data-i18n-en");
+function fhT(key, fallback){ return fallback; }
+var _i18nOrig = (typeof WeakMap!=="undefined") ? new WeakMap() : null;
+function walkI18n(root, es){
+  if(!root || !_i18nOrig || !document.createTreeWalker) return;
+  var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  var n;
+  while(n = w.nextNode()){
+    var p = n.parentNode; if(!p) continue;
+    var tag = p.nodeName;
+    if(tag==="SCRIPT"||tag==="STYLE"||tag==="TEXTAREA") continue;
+    if(!_i18nOrig.has(n)) _i18nOrig.set(n, n.nodeValue);
+    var orig = _i18nOrig.get(n);
+    var key = orig.trim();
+    if(!key){ continue; }
+    if(es && I18N_EN_ES[key]!==undefined){ n.nodeValue = orig.replace(key, I18N_EN_ES[key]); }
+    else { n.nodeValue = orig; }
+  }
+}
+function applyAttrI18n(es){
+  document.querySelectorAll("[placeholder]").forEach(function(el){
+    if(!el.hasAttribute("data-ph-en")) el.setAttribute("data-ph-en", el.getAttribute("placeholder")||"");
+    var en = el.getAttribute("data-ph-en");
+    el.setAttribute("placeholder", (es && I18N_ATTR[en]) || en);
   });
+}
+var _i18nObserver = null;
+function startI18nObserver(){
+  if(_i18nObserver || typeof MutationObserver==="undefined") return;
+  _i18nObserver = new MutationObserver(function(muts){
+    if(fhLang!=="es") return;
+    for(var i=0;i<muts.length;i++){
+      var added = muts[i].addedNodes;
+      for(var j=0;j<added.length;j++){
+        var node = added[j];
+        if(node.nodeType===1) walkI18n(node, true);
+        else if(node.nodeType===3){
+          if(!_i18nOrig.has(node)) _i18nOrig.set(node, node.nodeValue);
+          var key=node.nodeValue.trim();
+          if(key && I18N_EN_ES[key]!==undefined) node.nodeValue = node.nodeValue.replace(key, I18N_EN_ES[key]);
+        }
+      }
+    }
+  });
+  try{ _i18nObserver.observe(document.body, {childList:true, subtree:true}); }catch(e){}
+}
+function applyLang(){
+  var es = (fhLang==="es");
+  walkI18n(document.body, es);
+  applyAttrI18n(es);
   document.documentElement.setAttribute("lang", fhLang);
   document.querySelectorAll("[data-lang]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-lang")===fhLang)); });
+  startI18nObserver();
   if(typeof renderSports==="function" && document.getElementById("sportsBody")) { try{ renderSports(); }catch(e){} }
 }
 function setLang(l){ fhLang = (l==="es"?"es":"en"); try{ localStorage.setItem("fhLang", fhLang); }catch(e){} applyLang(); }
