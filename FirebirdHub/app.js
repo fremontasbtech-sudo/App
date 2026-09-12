@@ -1093,6 +1093,8 @@ function guessClubCategory(name, purpose){
   return 'Special Interest';
 }
 function clubCatOf(c){ return (c.category && CLUB_CAT_SET[c.category]) ? c.category : guessClubCategory(c.name, c.purpose||c.other||c.desc); }
+var clubsReady = false;
+var CLUB_SKELETON = '<div class="card club skel"><span class="skl w80" style="height:16px"></span><span class="skl w60"></span><span class="skl w40"></span><span class="skl w80"></span><span class="skl w60"></span></div>'.repeat(6);
 var CLUB_ICON = {
   meet:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 8.5h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z"/></svg>',
   adv:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
@@ -1132,6 +1134,12 @@ function clubCardHtml(c){
 function renderClubs(){
   var grid = document.getElementById("clubGrid");
   if(!grid) return;
+  if(!clubsReady){
+    grid.innerHTML = CLUB_SKELETON;
+    var ce0 = document.getElementById("clubCount"); if(ce0) ce0.textContent = clubT("Loading clubs…","Cargando clubes…");
+    var ee0 = document.getElementById("clubEmpty"); if(ee0) ee0.hidden = true;
+    return;
+  }
   var catSel = document.getElementById("clubCat");
   var countEl = document.getElementById("clubCount");
   var all = CLUBS.filter(function(c){ return c && c.name && !c.disbanded; });
@@ -1175,38 +1183,45 @@ function renderClubs(){
   if(empty) empty.hidden = list.length > 0;
 }
 async function syncClubs(){
-  // Primary: the website API (Gemini-cleaned names/meeting/purpose). Fallback: raw gviz. Else: seed.
+  // Primary: the website API (Gemini-cleaned + categorized), fetched through its CDN cache so
+  // it loads instantly. NOTE: no per-request "?_cb" buster — that forced a cache MISS every
+  // time, so every open re-ran the slow LLM pipeline and the seed list lingered on screen.
+  // Fallback: raw gviz sheet. Else: the built-in seed. Either way we end clubs-ready.
   try{
-    const res=await fetch(CLUBS_API+"?_cb="+Date.now());
+    const res=await fetch(CLUBS_API);
     if(!res.ok) throw new Error("HTTP "+res.status);
     const data=await res.json();
     const list=(data.clubs||[]).filter(function(c){ return c && c.name && !c.disbanded; });
-    if(list.length){ CLUBS=list; renderClubs(); return; }
+    if(list.length){ CLUBS=list; clubsReady=true; renderClubs(); return; }
   }catch(e){ /* fall through to gviz */ }
-  if(!CLUB_SHEET) return;
-  try{
-    const res=await fetch(CLUB_SHEET+"&_cb="+Date.now());
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const rows=parseSheetRows(await res.text());
-    if(rows.length<2) return;
-    const head=rows[0].map(function(h){return String(h).trim().toLowerCase();});
-    const gi=function(n){return head.indexOf(n);};
-    const col=function(r,names){ for(var k=0;k<names.length;k++){ var i=gi(names[k]); if(i>=0) return String(r[i]||"").trim(); } return ""; };
-    const EMAIL_RE=/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
-    const list=[];
-    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,["club","name","club name"]); if(!name||/disband/i.test(name)) continue;
-      const emailsRaw=col(r,["email list: student advisor emails","email list","emails","email"]);
-      list.push({
-        name:name,
-        purpose:col(r,["club purpose","purpose","description","desc"]),
-        teacherAdvisor:col(r,["teacher advisor","advisor"]),
-        studentAdvisors:col(r,["student advisors","student advisor"]),
-        meetingInfo:col(r,["meeting location & times","meeting location and times","meeting"]),
-        emails:(emailsRaw.match(EMAIL_RE)||[])
-      });
-    }
-    if(list.length){ CLUBS=list; renderClubs(); }
-  }catch(e){ /* offline or blocked: keep the seed list */ }
+  if(CLUB_SHEET){
+    try{
+      const res=await fetch(CLUB_SHEET+"&_cb="+Date.now());
+      if(res.ok){
+        const rows=parseSheetRows(await res.text());
+        if(rows.length>=2){
+          const head=rows[0].map(function(h){return String(h).trim().toLowerCase();});
+          const gi=function(n){return head.indexOf(n);};
+          const col=function(r,names){ for(var k=0;k<names.length;k++){ var i=gi(names[k]); if(i>=0) return String(r[i]||"").trim(); } return ""; };
+          const EMAIL_RE=/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+          const list=[];
+          for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,["club","name","club name"]); if(!name||/disband/i.test(name)) continue;
+            const emailsRaw=col(r,["email list: student advisor emails","email list","emails","email"]);
+            list.push({
+              name:name,
+              purpose:col(r,["club purpose","purpose","description","desc"]),
+              teacherAdvisor:col(r,["teacher advisor","advisor"]),
+              studentAdvisors:col(r,["student advisors","student advisor"]),
+              meetingInfo:col(r,["meeting location & times","meeting location and times","meeting"]),
+              emails:(emailsRaw.match(EMAIL_RE)||[])
+            });
+          }
+          if(list.length){ CLUBS=list; }
+        }
+      }
+    }catch(e){ /* offline or blocked: keep the seed list */ }
+  }
+  clubsReady=true; renderClubs(); // replace the skeleton with whatever we have (gviz or seed)
 }
 
 // Morning announcements, pulled from the website's parsed + Gemini-cleaned feed.
