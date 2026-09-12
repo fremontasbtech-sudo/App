@@ -1103,33 +1103,32 @@ var CLUB_ICON = {
 };
 var CLUB_CLAMP = 150; // purpose length above which we clamp + offer "Read more"
 function clubLetter(name){ var ch=String(name||"").trim().charAt(0).toUpperCase(); return /[A-Z]/.test(ch)?ch:"#"; }
-function clubCardHtml(c){
+function clubRowHtml(c){
   var meet = c.meetingInfo ? clubEsc(c.meetingInfo) : clubMeetingLine(c);
   var advisor = c.teacherAdvisor || c.advisor || "";
   var leaders = c.studentAdvisors || "";
   var emails = Array.isArray(c.emails) ? c.emails.slice() : [];
   if(!emails.length){ var ct=String(c.contact||"").trim(); if(/@/.test(ct)&&ct[0]!=="@") emails=[ct]; }
   var desc = String(c.purpose||c.desc||"").trim();
-  var isLong = desc.length > CLUB_CLAMP;
+  var cat = c._cat || clubCatOf(c);
+  var sub = [clubCatLabel(cat), meet].filter(Boolean).join(" &middot; ");
   var meta = "";
-  meta += meet
-    ? '<p class="cmeta">'+CLUB_ICON.meet+'<span>'+meet+'</span></p>'
-    : '<p class="cmeta soon">'+CLUB_ICON.meet+'<span>'+clubT("Meeting info coming soon","Horario proximamente")+'</span></p>';
   if(advisor) meta += '<p class="cmeta">'+CLUB_ICON.adv+'<span><b>'+clubT("Advisor:","Asesor:")+'</b> '+clubEsc(advisor)+'</span></p>';
   if(leaders) meta += '<p class="cmeta">'+CLUB_ICON.led+'<span><b>'+clubT("Led by:","Liderado por:")+'</b> '+clubEsc(leaders)+'</span></p>';
-  var body = desc
-    ? ('<p class="cdesc'+(isLong?' clamp':'')+'">'+clubEsc(desc)+'</p>' +
-       (isLong?'<button type="button" class="cmore" aria-expanded="false">'+clubT("Read more","Leer mas")+'</button>':""))
-    : "";
-  var mailBtn = emails.length
-    ? '<a class="cbtn gold" href="mailto:'+clubEsc(emails.join(","))+'">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a>'
-    : "";
-  return '<article class="card club">'+
-    '<h3>'+clubEsc(c.name)+'</h3>'+
-    '<div class="cmetas">'+meta+'</div>'+
-    body+
-    '<div class="cactions">'+mailBtn+'</div>'+
-  '</article>';
+  if(!meet) meta += '<p class="cmeta soon">'+CLUB_ICON.meet+'<span>'+clubT("Meeting info coming soon","Horario proximamente")+'</span></p>';
+  var body = "";
+  if(desc) body += '<p class="cdesc">'+clubEsc(desc)+'</p>';
+  if(meta) body += '<div class="cmetas">'+meta+'</div>';
+  if(emails.length) body += '<div class="cactions"><a class="cbtn gold" href="mailto:'+clubEsc(emails.join(","))+'">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a></div>';
+  if(!body) body = '<p class="cdesc">'+clubT("More info coming soon.","Mas informacion proximamente.")+'</p>';
+  return '<div class="clubrow">'+
+    '<button type="button" class="clubrow-head" aria-expanded="false">'+
+      '<span class="clubrow-title"><span class="clubrow-name">'+clubEsc(c.name)+'</span>'+
+      (sub?'<span class="clubrow-sub">'+sub+'</span>':'')+'</span>'+
+      '<svg class="clubrow-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'+
+    '</button>'+
+    '<div class="clubrow-body" hidden>'+body+'</div>'+
+  '</div>';
 }
 function renderClubs(){
   var grid = document.getElementById("clubGrid");
@@ -1148,10 +1147,10 @@ function renderClubs(){
   // Dropdown reflects the categories actually present, in the fixed order.
   var present = CLUB_CATS.filter(function(cat){ return all.some(function(c){ return c._cat===cat; }); });
   if(clubCat!=="all" && present.indexOf(clubCat)<0) clubCat="all";
-  if(catSel){
-    catSel.innerHTML = '<option value="all">'+clubEsc(clubT("All categories","Todas las categorias"))+'</option>' +
-      present.map(function(cat){ return '<option value="'+clubEsc(cat)+'"'+(clubCat===cat?" selected":"")+'>'+clubEsc(clubCatLabel(cat))+'</option>'; }).join("");
-    catSel.value = clubCat;
+  var chipsEl = document.getElementById("clubChips");
+  if(chipsEl){
+    chipsEl.innerHTML = '<button type="button" data-cat="all" aria-pressed="'+(clubCat==="all")+'">'+clubEsc(clubT("All","Todos"))+'</button>' +
+      present.map(function(cat){ return '<button type="button" data-cat="'+clubEsc(cat)+'" aria-pressed="'+(clubCat===cat)+'">'+clubEsc(clubCatLabel(cat))+'</button>'; }).join("");
   }
   var searchEl = document.getElementById("clubSearch");
   var q = (searchEl ? searchEl.value : "").trim().toLowerCase();
@@ -1169,14 +1168,7 @@ function renderClubs(){
       : (total+" "+clubT("clubs","clubes"));
   }
 
-  // Group by category; sections follow the fixed order. When one category is selected there
-  // is a single group and the divider labels it.
-  var groups = {};
-  list.forEach(function(c){ (groups[c._cat] = groups[c._cat] || []).push(c); });
-  var order = CLUB_CATS.filter(function(cat){ return groups[cat]; });
-  grid.innerHTML = order.map(function(cat){
-    return '<h2 class="azdiv">'+clubEsc(clubCatLabel(cat))+'</h2>' + groups[cat].map(clubCardHtml).join("");
-  }).join("");
+  grid.innerHTML = list.map(clubRowHtml).join("");
   grid.classList.remove("ready"); // fresh cards render static; first-open stagger is handled by show()
 
   var empty = document.getElementById("clubEmpty");
@@ -1253,11 +1245,11 @@ document.getElementById("clubSearch").addEventListener("input", renderClubs);
 (function(){
   var grid = document.getElementById("clubGrid");
   if(grid) grid.addEventListener("click", function(e){
-    var b = e.target.closest ? e.target.closest(".cmore") : null; if(!b) return;
-    var card = b.closest(".club"); var d = card && card.querySelector(".cdesc"); if(!d) return;
-    var clamped = d.classList.toggle("clamp");
-    b.setAttribute("aria-expanded", String(!clamped));
-    b.textContent = clamped ? clubT("Read more","Leer mas") : clubT("Show less","Leer menos");
+    var h = e.target.closest ? e.target.closest(".clubrow-head") : null; if(!h) return;
+    var row = h.closest(".clubrow"); var body = row && row.querySelector(".clubrow-body"); if(!body) return;
+    var open = body.hidden; body.hidden = !open;
+    h.setAttribute("aria-expanded", String(open));
+    row.classList.toggle("open", open);
   });
   var az = document.getElementById("azbar");
   if(az) az.addEventListener("click", function(e){
@@ -1265,8 +1257,11 @@ document.getElementById("clubSearch").addEventListener("input", renderClubs);
     var t = document.getElementById("az-"+b.getAttribute("data-az"));
     if(t) t.scrollIntoView({behavior:"smooth", block:"start"});
   });
-  var catSel = document.getElementById("clubCat");
-  if(catSel) catSel.addEventListener("change", function(){ clubCat = catSel.value; renderClubs(); });
+  var chipsEl = document.getElementById("clubChips");
+  if(chipsEl) chipsEl.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest("[data-cat]") : null; if(!b) return;
+    clubCat = b.getAttribute("data-cat"); renderClubs();
+  });
   var clr = document.getElementById("clubClear"), s = document.getElementById("clubSearch");
   if(clr && s){
     s.addEventListener("input", function(){ clr.hidden = !s.value; });

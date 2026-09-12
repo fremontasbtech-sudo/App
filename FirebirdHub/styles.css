@@ -705,3 +705,22 @@ button.azb:active{background:var(--gold)}
 .clubcat:focus{outline:none; box-shadow:3px 3px 0 var(--gold)}
 @media (max-width:520px){ .clubcat{flex:1 1 100%} }
 
+
+
+/* Compact clubs directory (accordion rows) */
+.clubchips{margin-bottom:10px}
+.clubsheet{margin:0 0 var(--space-3); font-size:13px}
+.clubsheet a{color:var(--cardinal-dark); font-weight:800; text-decoration:none; border-bottom:2px solid var(--gold)}
+.clubsheet a:hover{background:var(--gold)}
+.clublist{display:flex; flex-direction:column; gap:8px}
+.clubrow{border:2px solid var(--ink); border-radius:12px; background:#fff; box-shadow:3px 3px 0 rgba(39,21,16,.12); overflow:hidden}
+.clubrow.open{box-shadow:4px 4px 0 var(--gold)}
+.clubrow-head{width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; background:none; border:0; cursor:pointer; text-align:left; min-height:52px; font:inherit; color:var(--ink)}
+.clubrow-title{flex:1; display:flex; flex-direction:column; gap:2px; min-width:0}
+.clubrow-name{font-family:var(--font-display); font-weight:700; font-size:17px; line-height:1.15}
+.clubrow-sub{font-size:12.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.clubrow-chev{width:20px; height:20px; flex:none; stroke:var(--cardinal); fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; transition:transform .18s ease}
+.clubrow.open .clubrow-chev{transform:rotate(180deg)}
+.clubrow-body{padding:0 14px 14px; display:flex; flex-direction:column; gap:9px; border-top:2px dashed rgba(39,21,16,.12)}
+.clubrow-body .cdesc{font-size:14px; line-height:1.5; color:var(--ink); margin:12px 0 0}
+@media (prefers-reduced-motion: reduce){ .clubrow-chev{transition:none} }
