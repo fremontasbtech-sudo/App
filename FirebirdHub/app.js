@@ -116,7 +116,11 @@ let EVENTS = [
 ];
 
 /* SAMPLE club list — replace with the real Club Database export. */
-const CLUB_SHEET = ""; // paste the club Google Sheet as CSV (.../gviz/tq?tqx=out:csv&gid=0); empty = use the seed below. See the club schema doc.
+// Clubs + morning announcements come from the ASB website's Gemini-cleaned API
+// (fremontasb.org). Raw gviz is the fallback if the API is unreachable.
+const CLUBS_API = "https://www.fremontasb.org/api/clubs";
+const ANN_API = "https://www.fremontasb.org/api/announcements";
+const CLUB_SHEET = "https://docs.google.com/spreadsheets/d/1IQo9QG0ubONWAeaZfwPQ2GJH7zpBr_QexsH9o0XTOLg/gviz/tq?tqx=out:csv&gid=0";
 let CLUBS = [
   { name:"Robotics", cat:"STEM", day:"Wednesday", time:"Lunch", room:"210", advisor:"", desc:"Design, build, and code competition robots. Beginners welcome, no experience needed.", interestUrl:"https://www.fremontasb.org/clubs", contactType:"instagram", contact:"@fremontclubs", recruiting:true, commitment:"high", tags:"coding,build,competition,stem,hands-on" },
   { name:"Key Club", cat:"Service", day:"Thursday", time:"Lunch", room:"118", advisor:"", desc:"The biggest service club on campus. Volunteer around Sunnyvale and log community hours.", interestUrl:"https://www.fremontasb.org/clubs", contactType:"instagram", contact:"@fremontclubs", recruiting:true, commitment:"medium", tags:"service,volunteer,community,social,leadership" },
@@ -1040,65 +1044,89 @@ function clubMeetingLine(c){
 function renderClubs(){
   const q = document.getElementById("clubSearch").value.trim().toLowerCase();
   const grid = document.getElementById("clubGrid");
-  const fDay=(document.getElementById("fDay")||{}).value||"";
-  const fCommit=(document.getElementById("fCommit")||{}).value||"";
-  const fRec=document.getElementById("fRecruit")&&document.getElementById("fRecruit").getAttribute("aria-pressed")==="true";
   const list = CLUBS.filter(function(c){
-    const catOk = clubCat==="all" || (clubCat==="recruiting" ? c.recruiting : (c.cat===clubCat));
-    const dayOk = !fDay || String(c.day||"").toLowerCase().indexOf(fDay.slice(0,3).toLowerCase())>=0;
-    const comOk = !fCommit || String(c.commitment||"").toLowerCase()===fCommit;
-    const recOk = !fRec || !!c.recruiting;
-    return catOk && dayOk && comOk && recOk && String(c.name||"").toLowerCase().includes(q);
-  });
+    if(c.disbanded) return false;
+    const hay = [c.name, c.purpose||c.desc, c.studentAdvisors, c.teacherAdvisor||c.advisor].join(" ").toLowerCase();
+    return hay.indexOf(q)>=0;
+  }).sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
   grid.innerHTML = list.map(function(c){
-    const meet = clubMeetingLine(c);
-    const acts=[];
-    if(/^https?:\/\//i.test(c.interestUrl||"")) acts.push('<a class="cbtn gold" href="'+clubEsc(c.interestUrl)+'" target="_blank" rel="noopener">Interest form</a>');
-    const contact=String(c.contact||"").trim();
-    if(contact){
-      const isEmail=(String(c.contactType||"").toLowerCase()==="email")||(/@/.test(contact)&&/\./.test(contact)&&contact[0]!=="@");
-      if(isEmail) acts.push('<a class="cbtn ghost" href="mailto:'+clubEsc(contact)+'">Email</a>');
-      else{ const h=contact.replace(/^@/,""); acts.push('<a class="cbtn ghost" href="https://instagram.com/'+clubEsc(h)+'" target="_blank" rel="noopener">@'+clubEsc(h)+'</a>'); }
-    }
+    const meet = c.meetingInfo ? clubEsc(c.meetingInfo) : clubMeetingLine(c);
+    const advisor = c.teacherAdvisor || c.advisor || "";
+    const leaders = c.studentAdvisors || "";
+    let emails = Array.isArray(c.emails) ? c.emails : [];
+    if(!emails.length){ const ct=String(c.contact||"").trim(); if(/@/.test(ct)&&ct[0]!=="@") emails=[ct]; }
+    const acts = emails.map(function(e){ return '<a class="cbtn ghost" href="mailto:'+clubEsc(e)+'">'+clubEsc(e)+'</a>'; });
+    const desc = c.purpose||c.desc;
     return '<div class="card club">'+
-      '<div class="row1"><h3>'+clubEsc(c.name)+'</h3>'+(c.recruiting?'<span class="recruit">Recruiting</span>':"")+'</div>'+
-      '<div class="cmeta"><span class="cat">'+clubEsc(c.cat)+'</span>'+(c.commitment?'<span class="ctag">'+clubEsc(clubCap(c.commitment))+' commitment</span>':"")+'</div>'+
+      '<div class="row1"><h3>'+clubEsc(c.name)+'</h3></div>'+
+      (desc?'<p class="cdesc">'+clubEsc(desc)+'</p>':"")+
       (meet?'<p class="meets">'+meet+'</p>':'<p class="meets soon">Meeting info coming soon</p>')+
-      (c.advisor?'<p class="cadv">Advisor: '+clubEsc(c.advisor)+'</p>':"")+
-      (c.desc?'<p class="cdesc">'+clubEsc(c.desc)+'</p>':"")+
+      (advisor?'<p class="cadv"><b>Advisor:</b> '+clubEsc(advisor)+'</p>':"")+
+      (leaders?'<p class="cadv"><b>Led by:</b> '+clubEsc(leaders)+'</p>':"")+
       (acts.length?'<div class="cactions">'+acts.join("")+'</div>':"")+
     '</div>';
   }).join("");
   document.getElementById("clubEmpty").hidden = list.length>0;
 }
 async function syncClubs(){
+  // Primary: the website API (Gemini-cleaned names/meeting/purpose). Fallback: raw gviz. Else: seed.
+  try{
+    const res=await fetch(CLUBS_API+"?_cb="+Date.now());
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const data=await res.json();
+    const list=(data.clubs||[]).filter(function(c){ return c && c.name && !c.disbanded; });
+    if(list.length){ CLUBS=list; renderClubs(); return; }
+  }catch(e){ /* fall through to gviz */ }
   if(!CLUB_SHEET) return;
   try{
-    const res=await fetch(CLUB_SHEET);
+    const res=await fetch(CLUB_SHEET+"&_cb="+Date.now());
     if(!res.ok) throw new Error("HTTP "+res.status);
     const rows=parseSheetRows(await res.text());
     if(rows.length<2) return;
     const head=rows[0].map(function(h){return String(h).trim().toLowerCase();});
     const gi=function(n){return head.indexOf(n);};
     const col=function(r,names){ for(var k=0;k<names.length;k++){ var i=gi(names[k]); if(i>=0) return String(r[i]||"").trim(); } return ""; };
-    const byName=new Map();
-    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,["name","club","club name"]); if(!name) continue;
-      byName.set(name.toLowerCase(), {
-        name:name, cat:col(r,["category","cat"])||"Club",
-        day:col(r,["meetingday","day"]), time:col(r,["meetingtime","time"]),
-        room:col(r,["room"]), advisor:col(r,["advisor"]),
-        desc:col(r,["description","desc"]),
-        interestUrl:col(r,["interestformurl","interestform","interesturl","interest form"]),
-        contactType:col(r,["contacttype"]),
-        contact:col(r,["contact","contactvalue","email","instagram"]),
-        recruiting:/^(y|t|1)/i.test(col(r,["recruiting"])),
-        commitment:col(r,["commitment"]).toLowerCase(),
-        tags:col(r,["tags"])
+    const EMAIL_RE=/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+    const list=[];
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,["club","name","club name"]); if(!name||/disband/i.test(name)) continue;
+      const emailsRaw=col(r,["email list: student advisor emails","email list","emails","email"]);
+      list.push({
+        name:name,
+        purpose:col(r,["club purpose","purpose","description","desc"]),
+        teacherAdvisor:col(r,["teacher advisor","advisor"]),
+        studentAdvisors:col(r,["student advisors","student advisor"]),
+        meetingInfo:col(r,["meeting location & times","meeting location and times","meeting"]),
+        emails:(emailsRaw.match(EMAIL_RE)||[])
       });
     }
-    const list=[...byName.values()];
     if(list.length){ CLUBS=list; renderClubs(); }
   }catch(e){ /* offline or blocked: keep the seed list */ }
+}
+
+// Morning announcements, pulled from the website's parsed + Gemini-cleaned feed.
+// The feed returns every parsed item; we reveal each only after its 8:30 AM Wed/Fri
+// morning (same rule as the website), group by day, and show newest first.
+async function syncAnnouncements(){
+  try{
+    const res=await fetch(ANN_API+"?_cb="+Date.now());
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const data=await res.json();
+    const all=Array.isArray(data.announcements)?data.announcements:[];
+    const now=new Date();
+    const shown=all.filter(function(a){
+      const m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(a.date||"").trim()); if(!m) return false;
+      return new Date(+m[1],+m[2]-1,+m[3],8,30,0,0) <= now;
+    });
+    const byDate=new Map();
+    shown.forEach(function(a){ if(!byDate.has(a.date)) byDate.set(a.date,[]); byDate.get(a.date).push(a); });
+    const days=[...byDate.keys()].sort().reverse().map(function(date){
+      const items=byDate.get(date);
+      return { date:date,
+        bullets:items.map(function(a){ return a.title||a.text||""; }).filter(Boolean),
+        full:items.map(function(a){ return a.text||""; }).filter(Boolean).join("\n\n") };
+    });
+    if(days.length){ FTV_FEED.length=0; days.forEach(function(d){ FTV_FEED.push(d); }); renderFTV(); }
+  }catch(e){ /* offline or blocked: keep the placeholder */ }
 }
 document.getElementById("clubSearch").addEventListener("input", renderClubs);
 document.querySelectorAll("[data-cat]").forEach(b=>
@@ -1470,6 +1498,7 @@ if(boot.view==="give") fillGive(boot.params);
 show(boot.view || "home", false);
 renderAnnounce();
 renderFTV();
+syncAnnouncements();
 initMotion();
 loadSports(); /* preload sports */
 
@@ -1483,6 +1512,8 @@ if(!FEATURES.fireBucks){
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
 var I18N_EN_ES = {
+  "Advisor:":"Asesor:",
+  "Led by:":"Liderado por:",
   "Home":"Inicio","Schedule":"Horario","Spirit":"Espíritu","Clubs":"Clubes","Sports":"Deportes","More":"Más",
   "Sign in":"Iniciar sesión","Skip to main content":"Saltar al contenido principal",
   "The One Nest for":"El nido central para","Everything FHS":"Todo lo de FHS",
