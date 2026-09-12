@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=34">
+<link rel="stylesheet" href="styles.css?v=35">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -252,7 +252,8 @@
   </div>
   <div class="chips clubchips" id="clubChips" role="group" aria-label="Filter clubs by category"></div>
   <p class="clubsheet"><a id="clubSheetLink" href="https://docs.google.com/spreadsheets/d/1IQo9QG0ubONWAeaZfwPQ2GJH7zpBr_QexsH9o0XTOLg/edit?usp=sharing" target="_blank" rel="noopener">View the full official clubs list &#8599;</a></p>
-  <div class="clublist" id="clubGrid" aria-live="polite"></div>
+  <div class="grid cols2 stagger" id="clubGrid" aria-live="polite"></div>
+  <div class="clubmore" id="clubMoreWrap" hidden><button type="button" class="btn ghost" id="clubShowAll" aria-expanded="false"></button></div>
   <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the search.</p>
 
   <section style="margin-top:var(--space-5)" aria-labelledby="h-cevents">
@@ -676,6 +677,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=28"></script>
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>

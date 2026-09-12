@@ -1065,6 +1065,8 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
    Clubs — search + filter
 ===================================================== */
 let clubCat = "all";
+var CLUB_PREVIEW = 6;      // clubs shown before "Show all"
+var clubsExpanded = false; // toggled by the Show all button
 function clubEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m];});}
 function clubCap(s){s=String(s||"");return s?s[0].toUpperCase()+s.slice(1):"";}
 function clubMeetingLine(c){
@@ -1103,7 +1105,7 @@ var CLUB_ICON = {
 };
 var CLUB_CLAMP = 150; // purpose length above which we clamp + offer "Read more"
 function clubLetter(name){ var ch=String(name||"").trim().charAt(0).toUpperCase(); return /[A-Z]/.test(ch)?ch:"#"; }
-function clubRowHtml(c){
+function clubCardHtml(c){
   var meet = c.meetingInfo ? clubEsc(c.meetingInfo) : clubMeetingLine(c);
   var advisor = c.teacherAdvisor || c.advisor || "";
   var leaders = c.studentAdvisors || "";
@@ -1111,24 +1113,22 @@ function clubRowHtml(c){
   if(!emails.length){ var ct=String(c.contact||"").trim(); if(/@/.test(ct)&&ct[0]!=="@") emails=[ct]; }
   var desc = String(c.purpose||c.desc||"").trim();
   var cat = c._cat || clubCatOf(c);
-  var sub = [clubCatLabel(cat), meet].filter(Boolean).join(" &middot; ");
-  var meta = "";
+  var meta = '<p class="cmeta cpill"><span>'+clubEsc(clubCatLabel(cat))+'</span></p>';
+  meta += meet
+    ? '<p class="cmeta">'+CLUB_ICON.meet+'<span>'+meet+'</span></p>'
+    : '<p class="cmeta soon">'+CLUB_ICON.meet+'<span>'+clubT("Meeting info coming soon","Horario proximamente")+'</span></p>';
   if(advisor) meta += '<p class="cmeta">'+CLUB_ICON.adv+'<span><b>'+clubT("Advisor:","Asesor:")+'</b> '+clubEsc(advisor)+'</span></p>';
   if(leaders) meta += '<p class="cmeta">'+CLUB_ICON.led+'<span><b>'+clubT("Led by:","Liderado por:")+'</b> '+clubEsc(leaders)+'</span></p>';
-  if(!meet) meta += '<p class="cmeta soon">'+CLUB_ICON.meet+'<span>'+clubT("Meeting info coming soon","Horario proximamente")+'</span></p>';
-  var body = "";
-  if(desc) body += '<p class="cdesc">'+clubEsc(desc)+'</p>';
-  if(meta) body += '<div class="cmetas">'+meta+'</div>';
-  if(emails.length) body += '<div class="cactions"><a class="cbtn gold" href="mailto:'+clubEsc(emails.join(","))+'">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a></div>';
-  if(!body) body = '<p class="cdesc">'+clubT("More info coming soon.","Mas informacion proximamente.")+'</p>';
-  return '<div class="clubrow">'+
-    '<button type="button" class="clubrow-head" aria-expanded="false">'+
-      '<span class="clubrow-title"><span class="clubrow-name">'+clubEsc(c.name)+'</span>'+
-      (sub?'<span class="clubrow-sub">'+sub+'</span>':'')+'</span>'+
-      '<svg class="clubrow-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'+
-    '</button>'+
-    '<div class="clubrow-body" hidden>'+body+'</div>'+
-  '</div>';
+  var body = desc ? '<p class="cdesc clamp">'+clubEsc(desc)+'</p>' : "";
+  var mailBtn = emails.length
+    ? '<a class="cbtn gold" href="mailto:'+clubEsc(emails.join(","))+'">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a>'
+    : "";
+  return '<article class="card club">'+
+    '<h3>'+clubEsc(c.name)+'</h3>'+
+    '<div class="cmetas">'+meta+'</div>'+
+    body+
+    '<div class="cactions">'+mailBtn+'</div>'+
+  '</article>';
 }
 function renderClubs(){
   var grid = document.getElementById("clubGrid");
@@ -1161,6 +1161,10 @@ function renderClubs(){
     return hay.indexOf(q) >= 0;
   }).sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
 
+  var browsing = !q && clubCat==="all";        // default landing view (no search, no category)
+  var previewing = browsing && !clubsExpanded;
+  var shown = previewing ? list.slice(0, CLUB_PREVIEW) : list;
+
   if(countEl){
     var filtered = q || clubCat!=="all";
     countEl.textContent = filtered
@@ -1168,8 +1172,20 @@ function renderClubs(){
       : (total+" "+clubT("clubs","clubes"));
   }
 
-  grid.innerHTML = list.map(clubRowHtml).join("");
-  grid.classList.remove("ready"); // fresh cards render static; first-open stagger is handled by show()
+  grid.innerHTML = shown.map(clubCardHtml).join("");
+  grid.classList.remove("ready");
+
+  var moreWrap = document.getElementById("clubMoreWrap");
+  var moreBtn = document.getElementById("clubShowAll");
+  if(moreWrap && moreBtn){
+    if(browsing && list.length > CLUB_PREVIEW){
+      moreWrap.hidden = false;
+      moreBtn.textContent = clubsExpanded
+        ? clubT("Show fewer","Ver menos")
+        : (clubT("Show all","Ver los")+" "+list.length+" "+clubT("clubs","clubes"));
+      moreBtn.setAttribute("aria-expanded", String(clubsExpanded));
+    } else { moreWrap.hidden = true; }
+  }
 
   var empty = document.getElementById("clubEmpty");
   if(empty) empty.hidden = list.length > 0;
@@ -1244,13 +1260,8 @@ async function syncAnnouncements(){
 document.getElementById("clubSearch").addEventListener("input", renderClubs);
 (function(){
   var grid = document.getElementById("clubGrid");
-  if(grid) grid.addEventListener("click", function(e){
-    var h = e.target.closest ? e.target.closest(".clubrow-head") : null; if(!h) return;
-    var row = h.closest(".clubrow"); var body = row && row.querySelector(".clubrow-body"); if(!body) return;
-    var open = body.hidden; body.hidden = !open;
-    h.setAttribute("aria-expanded", String(open));
-    row.classList.toggle("open", open);
-  });
+  var moreBtn0 = document.getElementById("clubShowAll");
+  if(moreBtn0) moreBtn0.addEventListener("click", function(){ clubsExpanded = !clubsExpanded; renderClubs(); });
   var az = document.getElementById("azbar");
   if(az) az.addEventListener("click", function(e){
     var b = e.target.closest ? e.target.closest("[data-az]") : null; if(!b) return;
@@ -1260,7 +1271,7 @@ document.getElementById("clubSearch").addEventListener("input", renderClubs);
   var chipsEl = document.getElementById("clubChips");
   if(chipsEl) chipsEl.addEventListener("click", function(e){
     var b = e.target.closest ? e.target.closest("[data-cat]") : null; if(!b) return;
-    clubCat = b.getAttribute("data-cat"); renderClubs();
+    clubCat = b.getAttribute("data-cat"); clubsExpanded = false; renderClubs();
   });
   var clr = document.getElementById("clubClear"), s = document.getElementById("clubSearch");
   if(clr && s){
