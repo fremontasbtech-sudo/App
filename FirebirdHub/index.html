@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=28">
+<link rel="stylesheet" href="styles.css?v=30">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -242,11 +242,17 @@
   </div>
 
   <div class="clubtools">
-    <label class="sr" for="clubSearch">Search clubs</label>
-    <input type="text" id="clubSearch" placeholder="Search clubs by name…" autocomplete="off">
+    <div class="clubsearch">
+      <svg class="si" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
+      <label class="sr" for="clubSearch">Search clubs</label>
+      <input type="text" id="clubSearch" placeholder="Search clubs by name…" autocomplete="off">
+      <button type="button" class="clubclear" id="clubClear" aria-label="Clear search" hidden>&times;</button>
+    </div>
+    <p class="clubcount" id="clubCount" aria-live="polite"></p>
   </div>
+  <nav class="azbar" id="azbar" aria-label="Jump to club letter" hidden></nav>
   <div class="grid cols3 stagger" id="clubGrid" aria-live="polite"></div>
-  <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the filters.</p>
+  <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the search.</p>
 
   <section style="margin-top:var(--space-5)" aria-labelledby="h-cevents">
     <div class="sechead">
@@ -669,6 +675,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=28"></script>
-<script src="app.js?v=29"></script>
+<script src="app.js?v=30"></script>
 </body>
 </html>

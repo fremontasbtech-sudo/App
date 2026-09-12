@@ -650,3 +650,49 @@ html.bigtext{zoom:1.12}
 /* chatbot backdrop + bigger close target */
 .askback{position:fixed; inset:0; z-index:59; background:transparent}
 .askx{padding:6px 12px; font-size:26px; min-width:40px; min-height:40px; line-height:1; display:inline-flex; align-items:center; justify-content:center}
+
+/* ===== Clubs directory (v30 redesign) ===== */
+.clubtools{display:flex; gap:12px 16px; flex-wrap:wrap; align-items:center; margin-bottom:var(--space-3)}
+.clubsearch{position:relative; flex:1 1 240px; min-width:220px; display:flex; align-items:center}
+.clubsearch .si{position:absolute; left:13px; width:18px; height:18px; stroke:var(--ink-soft); fill:none; stroke-width:2; stroke-linecap:round; pointer-events:none}
+.clubsearch input[type=text]{width:100%; padding:12px 40px 12px 40px; border:2px solid var(--ink); border-radius:12px; font:inherit; background:#fff; color:var(--ink); box-shadow:3px 3px 0 rgba(39,21,16,.12)}
+.clubsearch input[type=text]:focus{outline:none; box-shadow:3px 3px 0 var(--gold)}
+.clubclear{position:absolute; right:8px; width:28px; height:28px; border:0; background:rgba(39,21,16,.08); color:var(--ink); border-radius:50%; font-size:18px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center}
+.clubclear:hover{background:rgba(39,21,16,.16)}
+.clubcount{font-size:13px; font-weight:800; letter-spacing:.01em; color:var(--ink-soft); white-space:nowrap; margin:0}
+
+.azbar{display:flex; flex-wrap:wrap; gap:3px; margin-bottom:var(--space-4); padding:7px 9px; border:2px solid var(--ink); border-radius:12px; background:var(--card); box-shadow:3px 3px 0 rgba(39,21,16,.12); position:sticky; top:8px; z-index:6}
+.azb{min-width:29px; height:29px; padding:0 4px; border:0; background:transparent; font:inherit; font-weight:800; font-size:13px; color:var(--cardinal-dark); border-radius:8px; display:inline-flex; align-items:center; justify-content:center}
+button.azb{cursor:pointer}
+button.azb:hover{background:var(--gold-soft)}
+button.azb:active{background:var(--gold)}
+.azb.off{color:rgba(39,21,16,.20)}
+
+.azdiv{grid-column:1 / -1; font-family:var(--font-display); font-weight:700; font-size:22px; color:var(--cardinal-dark); margin:var(--space-2) 0 0; padding-bottom:5px; border-bottom:3px solid var(--gold); scroll-margin-top:58px}
+#clubGrid > .azdiv:first-child{margin-top:0}
+.js .stagger.ready > .azdiv{opacity:1; transform:none; animation:none}
+
+.card.club{display:flex; flex-direction:column; gap:9px; height:100%}
+.club h3{font-size:18px; line-height:1.22; color:var(--cardinal-dark); margin:0}
+.club .cmetas{display:flex; flex-direction:column; gap:5px}
+.club .cmeta{display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--ink-soft); margin:0; line-height:1.4}
+.club .cmeta b{color:var(--ink); font-weight:700}
+.club .cmeta.soon{font-style:italic; opacity:.85}
+.club .cmeta .ci{width:16px; height:16px; flex:none; margin-top:1px; stroke:var(--cardinal); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.club .cdesc{font-size:14px; line-height:1.5; color:var(--ink); margin:1px 0 0}
+.club .cdesc.clamp{display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.cmore{align-self:flex-start; background:none; border:0; padding:2px 0; margin:0; font:inherit; font-size:13px; font-weight:800; color:var(--cardinal); cursor:pointer; text-decoration:underline; text-underline-offset:2px}
+.cmore:hover{color:var(--cardinal-dark)}
+.club .cactions{display:flex; gap:8px; flex-wrap:wrap; margin-top:auto; padding-top:4px}
+.cbtn{min-height:44px}
+.cbtn .ci{width:15px; height:15px; margin-right:7px; flex:none; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+
+/* shimmer skeletons (sports + clubs loading) */
+.skel .stub{background:rgba(39,21,16,.10)}
+.skel .body{display:flex; flex-direction:column; gap:8px; justify-content:center; padding:14px}
+.skl{display:block; height:12px; border-radius:6px; background:linear-gradient(90deg, rgba(39,21,16,.08) 25%, rgba(39,21,16,.16) 37%, rgba(39,21,16,.08) 63%); background-size:400% 100%; animation:shimmer 1.3s ease infinite}
+.skl.w40{width:40%} .skl.w60{width:60%} .skl.w80{width:80%}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}
+@media (prefers-reduced-motion: reduce){ .skl{animation:none} }
+@media (max-width:520px){ .azbar{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch} .azb{min-width:26px} }
+

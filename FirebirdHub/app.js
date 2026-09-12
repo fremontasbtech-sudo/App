@@ -360,15 +360,47 @@ function loadSportsScores(){
   s.onerror=function(){};
   document.head.appendChild(s);
 }
+const EVENTS_API = "https://www.fremontasb.org/api/events";
+var SPORTS_SKELETON = '<div class="grid cols2">' +
+  '<div class="ticket skel"><div class="stub"></div><div class="body"><span class="skl w60"></span><span class="skl w40"></span><span class="skl w80"></span></div></div>'.repeat(4) +
+  '</div>';
+// Fast recent scores: the website already merges the athletics feed server-side and CDN-caches
+// it, so pull those before the slow direct feed. Recent/featured games get a final score in ~1s.
+async function loadSportsScoresFast(){
+  try{
+    const res = await fetch(EVENTS_API + "?_cb=" + Date.now()); if(!res.ok) return;
+    const data = await res.json();
+    const games = Array.isArray(data.games) ? data.games : [];
+    if(!games.length || !sportsGames) return;
+    const map = {};
+    games.forEach(function(x){ if(!x.score) return; var sp=x.sport||"";
+      map[(sp+"|"+(x.date||"")+"|"+(x.level||"")).toLowerCase()] = x.score;
+      map[(sp+"|"+(x.date||"")).toLowerCase()] = x.score;
+    });
+    var hit=false;
+    sportsGames.forEach(function(g){
+      if(g.score) return;
+      var r = map[(g.sport+"|"+g.date+"|"+g.level).toLowerCase()] || map[(g.sport+"|"+g.date).toLowerCase()];
+      if(r){ g.score=r; g.section="result"; hit=true; }
+    });
+    if(hit){ renderSports(); if(typeof renderEvents==="function") renderEvents(); }
+  }catch(e){}
+}
 async function loadSports(){
-  if(sportsLoaded) return; sportsLoaded = true;
+  if(sportsLoaded){
+    if(!sportsGames){ var bb=document.getElementById("sportsBody"); if(bb && !/ticket/.test(bb.innerHTML)) bb.innerHTML = SPORTS_SKELETON; }
+    return;
+  }
+  sportsLoaded = true;
+  var b0=document.getElementById("sportsBody"); if(b0) b0.innerHTML = SPORTS_SKELETON;
   try{
     const res = await fetch(SPORTS_SHEET + "&_cb=" + Date.now()); if(!res.ok) throw new Error("HTTP "+res.status);
     const rows = parseSheetRows(await res.text());
     sportsGames = rowsToGames(rows);
     renderSports();
     if(typeof renderEvents==="function") renderEvents();
-    loadSportsScores();
+    loadSportsScoresFast(); // fast, CDN-cached recent scores
+    loadSportsScores();     // background top-up from the athletics feed (slower, may add more)
   }catch(e){
     sportsLoaded = false;
     const g=document.getElementById("sportsBody");
@@ -1041,32 +1073,88 @@ function clubMeetingLine(c){
   if(c.room){ const r=String(c.room).trim(); where = /^\d+$/.test(r) ? "Rm "+clubEsc(r) : clubEsc(r); }
   return dt.concat(where?[where]:[]).join(" &middot; ");
 }
+/* ---- Clubs directory: search + A-Z sections + jump bar + expandable cards ---- */
+function clubT(en, es){ return (typeof fhLang!=="undefined" && fhLang==="es") ? es : en; }
+var CLUB_ICON = {
+  meet:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 8.5h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z"/></svg>',
+  adv:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
+  led:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8.5" r="2.7"/><circle cx="16" cy="8.5" r="2.7"/><path d="M2.8 19.5a5.2 5.2 0 0 1 10.4 0M13.2 19.5a5.2 5.2 0 0 1 8-2.6"/></svg>',
+  mail:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.6"/><path d="m3.6 6.6 8.4 6 8.4-6"/></svg>'
+};
+var CLUB_CLAMP = 150; // purpose length above which we clamp + offer "Read more"
+function clubLetter(name){ var ch=String(name||"").trim().charAt(0).toUpperCase(); return /[A-Z]/.test(ch)?ch:"#"; }
+function clubCardHtml(c){
+  var meet = c.meetingInfo ? clubEsc(c.meetingInfo) : clubMeetingLine(c);
+  var advisor = c.teacherAdvisor || c.advisor || "";
+  var leaders = c.studentAdvisors || "";
+  var emails = Array.isArray(c.emails) ? c.emails.slice() : [];
+  if(!emails.length){ var ct=String(c.contact||"").trim(); if(/@/.test(ct)&&ct[0]!=="@") emails=[ct]; }
+  var desc = String(c.purpose||c.desc||"").trim();
+  var isLong = desc.length > CLUB_CLAMP;
+  var meta = "";
+  meta += meet
+    ? '<p class="cmeta">'+CLUB_ICON.meet+'<span>'+meet+'</span></p>'
+    : '<p class="cmeta soon">'+CLUB_ICON.meet+'<span>'+clubT("Meeting info coming soon","Horario proximamente")+'</span></p>';
+  if(advisor) meta += '<p class="cmeta">'+CLUB_ICON.adv+'<span><b>'+clubT("Advisor:","Asesor:")+'</b> '+clubEsc(advisor)+'</span></p>';
+  if(leaders) meta += '<p class="cmeta">'+CLUB_ICON.led+'<span><b>'+clubT("Led by:","Liderado por:")+'</b> '+clubEsc(leaders)+'</span></p>';
+  var body = desc
+    ? ('<p class="cdesc'+(isLong?' clamp':'')+'">'+clubEsc(desc)+'</p>' +
+       (isLong?'<button type="button" class="cmore" aria-expanded="false">'+clubT("Read more","Leer mas")+'</button>':""))
+    : "";
+  var mailBtn = emails.length
+    ? '<a class="cbtn gold" href="mailto:'+clubEsc(emails.join(","))+'">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a>'
+    : "";
+  return '<article class="card club">'+
+    '<h3>'+clubEsc(c.name)+'</h3>'+
+    '<div class="cmetas">'+meta+'</div>'+
+    body+
+    '<div class="cactions">'+mailBtn+'</div>'+
+  '</article>';
+}
 function renderClubs(){
-  const q = document.getElementById("clubSearch").value.trim().toLowerCase();
-  const grid = document.getElementById("clubGrid");
-  const list = CLUBS.filter(function(c){
-    if(c.disbanded) return false;
-    const hay = [c.name, c.purpose||c.desc, c.studentAdvisors, c.teacherAdvisor||c.advisor].join(" ").toLowerCase();
-    return hay.indexOf(q)>=0;
+  var grid = document.getElementById("clubGrid");
+  if(!grid) return;
+  var az = document.getElementById("azbar");
+  var countEl = document.getElementById("clubCount");
+  var all = CLUBS.filter(function(c){ return c && c.name && !c.disbanded; });
+  var total = all.length;
+  var searchEl = document.getElementById("clubSearch");
+  var q = (searchEl ? searchEl.value : "").trim().toLowerCase();
+  var list = all.filter(function(c){
+    if(!q) return true;
+    var hay = [c.name, c.purpose||c.desc, c.studentAdvisors, c.teacherAdvisor||c.advisor, c.meetingInfo].join(" ").toLowerCase();
+    return hay.indexOf(q) >= 0;
   }).sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
-  grid.innerHTML = list.map(function(c){
-    const meet = c.meetingInfo ? clubEsc(c.meetingInfo) : clubMeetingLine(c);
-    const advisor = c.teacherAdvisor || c.advisor || "";
-    const leaders = c.studentAdvisors || "";
-    let emails = Array.isArray(c.emails) ? c.emails : [];
-    if(!emails.length){ const ct=String(c.contact||"").trim(); if(/@/.test(ct)&&ct[0]!=="@") emails=[ct]; }
-    const acts = emails.map(function(e){ return '<a class="cbtn ghost" href="mailto:'+clubEsc(e)+'">'+clubEsc(e)+'</a>'; });
-    const desc = c.purpose||c.desc;
-    return '<div class="card club">'+
-      '<div class="row1"><h3>'+clubEsc(c.name)+'</h3></div>'+
-      (desc?'<p class="cdesc">'+clubEsc(desc)+'</p>':"")+
-      (meet?'<p class="meets">'+meet+'</p>':'<p class="meets soon">Meeting info coming soon</p>')+
-      (advisor?'<p class="cadv"><b>Advisor:</b> '+clubEsc(advisor)+'</p>':"")+
-      (leaders?'<p class="cadv"><b>Led by:</b> '+clubEsc(leaders)+'</p>':"")+
-      (acts.length?'<div class="cactions">'+acts.join("")+'</div>':"")+
-    '</div>';
+
+  if(countEl){
+    countEl.textContent = q
+      ? (clubT("Showing","Mostrando")+" "+list.length+" "+clubT("of","de")+" "+total+" "+clubT("clubs","clubes"))
+      : (total+" "+clubT("clubs","clubes"));
+  }
+
+  var groups = {}, order = [];
+  list.forEach(function(c){ var L=clubLetter(c.name); if(!groups[L]){ groups[L]=[]; order.push(L); } groups[L].push(c); });
+  order.sort(function(a,b){ if(a==="#") return 1; if(b==="#") return -1; return a<b?-1:a>b?1:0; });
+
+  grid.innerHTML = order.map(function(L){
+    return '<h2 class="azdiv" id="az-'+L+'">'+L+'</h2>' + groups[L].map(clubCardHtml).join("");
   }).join("");
-  document.getElementById("clubEmpty").hidden = list.length>0;
+  grid.classList.remove("ready"); // fresh cards render static; first-open stagger is handled by show()
+
+  if(az){
+    var have = {}; order.forEach(function(L){ have[L]=1; });
+    var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    if(have["#"]) letters.push("#");
+    az.innerHTML = letters.map(function(L){
+      return have[L]
+        ? '<button type="button" class="azb" data-az="'+L+'">'+L+'</button>'
+        : '<span class="azb off" aria-hidden="true">'+L+'</span>';
+    }).join("");
+    az.hidden = list.length < 8;
+  }
+
+  var empty = document.getElementById("clubEmpty");
+  if(empty) empty.hidden = list.length > 0;
 }
 async function syncClubs(){
   // Primary: the website API (Gemini-cleaned names/meeting/purpose). Fallback: raw gviz. Else: seed.
@@ -1129,6 +1217,27 @@ async function syncAnnouncements(){
   }catch(e){ /* offline or blocked: keep the placeholder */ }
 }
 document.getElementById("clubSearch").addEventListener("input", renderClubs);
+(function(){
+  var grid = document.getElementById("clubGrid");
+  if(grid) grid.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest(".cmore") : null; if(!b) return;
+    var card = b.closest(".club"); var d = card && card.querySelector(".cdesc"); if(!d) return;
+    var clamped = d.classList.toggle("clamp");
+    b.setAttribute("aria-expanded", String(!clamped));
+    b.textContent = clamped ? clubT("Read more","Leer mas") : clubT("Show less","Leer menos");
+  });
+  var az = document.getElementById("azbar");
+  if(az) az.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest("[data-az]") : null; if(!b) return;
+    var t = document.getElementById("az-"+b.getAttribute("data-az"));
+    if(t) t.scrollIntoView({behavior:"smooth", block:"start"});
+  });
+  var clr = document.getElementById("clubClear"), s = document.getElementById("clubSearch");
+  if(clr && s){
+    s.addEventListener("input", function(){ clr.hidden = !s.value; });
+    clr.addEventListener("click", function(){ s.value=""; clr.hidden=true; s.focus(); renderClubs(); });
+  }
+})();
 document.querySelectorAll("[data-cat]").forEach(b=>
   b.addEventListener("click", ()=>{
     clubCat = b.dataset.cat;
@@ -1649,6 +1758,7 @@ function applyLang(){
   document.querySelectorAll("[data-lang]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-lang")===fhLang)); });
   startI18nObserver();
   if(typeof renderSports==="function" && document.getElementById("sportsBody")) { try{ renderSports(); }catch(e){} }
+  if(typeof renderClubs==="function" && document.getElementById("clubGrid")) { try{ renderClubs(); }catch(e){} }
 }
 function setLang(l){ fhLang = (l==="es"?"es":"en"); try{ localStorage.setItem("fhLang", fhLang); }catch(e){} applyLang(); }
 function applyTextSize(){
