@@ -699,3 +699,9 @@ button.azb:active{background:var(--gold)}
 
 /* keep meta icon inline with its (wrapping) text */
 .club .cmeta{flex-wrap:nowrap}
+
+/* category filter dropdown */
+.clubcat{padding:11px 38px 11px 14px; border:2px solid var(--ink); border-radius:12px; background:var(--card); font:inherit; font-weight:700; color:var(--ink); min-height:44px; box-shadow:3px 3px 0 rgba(39,21,16,.12); cursor:pointer; -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23271510' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 13px center; background-size:16px}
+.clubcat:focus{outline:none; box-shadow:3px 3px 0 var(--gold)}
+@media (max-width:520px){ .clubcat{flex:1 1 100%} }
+

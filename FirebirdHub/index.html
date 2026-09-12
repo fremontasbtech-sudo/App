@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=31">
+<link rel="stylesheet" href="styles.css?v=32">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -248,9 +248,10 @@
       <input type="text" id="clubSearch" placeholder="Search clubs by name…" autocomplete="off">
       <button type="button" class="clubclear" id="clubClear" aria-label="Clear search" hidden>&times;</button>
     </div>
+    <label class="sr" for="clubCat">Filter by category</label>
+    <select class="clubcat" id="clubCat" aria-label="Filter clubs by category"><option value="all">All categories</option></select>
     <p class="clubcount" id="clubCount" aria-live="polite"></p>
   </div>
-  <nav class="azbar" id="azbar" aria-label="Jump to club letter" hidden></nav>
   <div class="grid cols3 stagger" id="clubGrid" aria-live="polite"></div>
   <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the search.</p>
 
@@ -675,6 +676,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=28"></script>
-<script src="app.js?v=30"></script>
+<script src="app.js?v=32"></script>
 </body>
 </html>

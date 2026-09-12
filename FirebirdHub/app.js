@@ -1075,6 +1075,24 @@ function clubMeetingLine(c){
 }
 /* ---- Clubs directory: search + A-Z sections + jump bar + expandable cards ---- */
 function clubT(en, es){ return (typeof fhLang!=="undefined" && fhLang==="es") ? es : en; }
+var CLUB_CATS = ['STEM','Arts & Media','Culture & Language','Service & Advocacy','Academics & Business','Sports & Games','Special Interest'];
+var CLUB_CAT_SET = {}; CLUB_CATS.forEach(function(c){ CLUB_CAT_SET[c]=1; });
+var CLUB_CAT_ES = {'STEM':'STEM','Arts & Media':'Arte y medios','Culture & Language':'Cultura e idiomas','Service & Advocacy':'Servicio y causas','Academics & Business':'Academico y negocios','Sports & Games':'Deportes y juegos','Special Interest':'Interes especial'};
+function clubCatLabel(cat){ return clubT(cat, CLUB_CAT_ES[cat]||cat); }
+var CLUB_CAT_RULES = [
+  ['STEM', /\b(stem|science|scientific|physics|astro|astronom|robot|engineer|coding|code|computer|cs|technolog|tech|math|biolog|chem|medic|aerospace|aviation|uav|rocket|data|ai|neuro|research|cyber|hack)\b/i],
+  ['Arts & Media', /\b(art|paint|draw|anim|music|band|orchestra|choir|sing|dance|film|movie|photo|media|design|creativ|drama|theat|writ|poetry|journal|craft|fashion|sculpt)\b/i],
+  ['Culture & Language', /\b(cultur|language|chinese|mandarin|spanish|french|korean|japanese|hindi|indian|desi|asian|latin|hispanic|black|african|muslim|islam|jewish|christ|hindu|faith|religio|heritage|bsu|international|diversity)\b/i],
+  ['Service & Advocacy', /\b(service|volunteer|communit|charit|advoca|awareness|mental health|environment|green|sustain|equit|justice|change|outreach|red cross|key club|interact|unicef|kindness|donat|fundrais|nonprofit|activis)\b/i],
+  ['Academics & Business', /\b(business|entrepreneur|fbla|deca|debate|speech|model un|mun|scholar|academ|finance|econ|invest|law|mock trial|honor societ|csf|nhs|quiz|decathlon|olympiad|competition|spelling)\b/i],
+  ['Sports & Games', /\b(sport|basketball|soccer|tennis|volleyball|badminton|cricket|chess|game|gaming|esport|ping pong|table tennis|fitness|yoga|climb|martial|karate|spikeball|frisbee|dodgeball|pickleball|weightlift)\b/i]
+];
+function guessClubCategory(name, purpose){
+  var t = String(name||"")+" "+String(purpose||"");
+  for(var i=0;i<CLUB_CAT_RULES.length;i++){ if(CLUB_CAT_RULES[i][1].test(t)) return CLUB_CAT_RULES[i][0]; }
+  return 'Special Interest';
+}
+function clubCatOf(c){ return (c.category && CLUB_CAT_SET[c.category]) ? c.category : guessClubCategory(c.name, c.purpose||c.other||c.desc); }
 var CLUB_ICON = {
   meet:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 8.5h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z"/></svg>',
   adv:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
@@ -1114,44 +1132,44 @@ function clubCardHtml(c){
 function renderClubs(){
   var grid = document.getElementById("clubGrid");
   if(!grid) return;
-  var az = document.getElementById("azbar");
+  var catSel = document.getElementById("clubCat");
   var countEl = document.getElementById("clubCount");
   var all = CLUBS.filter(function(c){ return c && c.name && !c.disbanded; });
+  all.forEach(function(c){ c._cat = clubCatOf(c); });
   var total = all.length;
+  // Dropdown reflects the categories actually present, in the fixed order.
+  var present = CLUB_CATS.filter(function(cat){ return all.some(function(c){ return c._cat===cat; }); });
+  if(clubCat!=="all" && present.indexOf(clubCat)<0) clubCat="all";
+  if(catSel){
+    catSel.innerHTML = '<option value="all">'+clubEsc(clubT("All categories","Todas las categorias"))+'</option>' +
+      present.map(function(cat){ return '<option value="'+clubEsc(cat)+'"'+(clubCat===cat?" selected":"")+'>'+clubEsc(clubCatLabel(cat))+'</option>'; }).join("");
+    catSel.value = clubCat;
+  }
   var searchEl = document.getElementById("clubSearch");
   var q = (searchEl ? searchEl.value : "").trim().toLowerCase();
   var list = all.filter(function(c){
+    if(clubCat!=="all" && c._cat!==clubCat) return false;
     if(!q) return true;
     var hay = [c.name, c.purpose||c.desc, c.studentAdvisors, c.teacherAdvisor||c.advisor, c.meetingInfo].join(" ").toLowerCase();
     return hay.indexOf(q) >= 0;
   }).sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
 
   if(countEl){
-    countEl.textContent = q
+    var filtered = q || clubCat!=="all";
+    countEl.textContent = filtered
       ? (clubT("Showing","Mostrando")+" "+list.length+" "+clubT("of","de")+" "+total+" "+clubT("clubs","clubes"))
       : (total+" "+clubT("clubs","clubes"));
   }
 
-  var groups = {}, order = [];
-  list.forEach(function(c){ var L=clubLetter(c.name); if(!groups[L]){ groups[L]=[]; order.push(L); } groups[L].push(c); });
-  order.sort(function(a,b){ if(a==="#") return 1; if(b==="#") return -1; return a<b?-1:a>b?1:0; });
-
-  grid.innerHTML = order.map(function(L){
-    return '<h2 class="azdiv" id="az-'+L+'">'+L+'</h2>' + groups[L].map(clubCardHtml).join("");
+  // Group by category; sections follow the fixed order. When one category is selected there
+  // is a single group and the divider labels it.
+  var groups = {};
+  list.forEach(function(c){ (groups[c._cat] = groups[c._cat] || []).push(c); });
+  var order = CLUB_CATS.filter(function(cat){ return groups[cat]; });
+  grid.innerHTML = order.map(function(cat){
+    return '<h2 class="azdiv">'+clubEsc(clubCatLabel(cat))+'</h2>' + groups[cat].map(clubCardHtml).join("");
   }).join("");
   grid.classList.remove("ready"); // fresh cards render static; first-open stagger is handled by show()
-
-  if(az){
-    var have = {}; order.forEach(function(L){ have[L]=1; });
-    var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-    if(have["#"]) letters.push("#");
-    az.innerHTML = letters.map(function(L){
-      return have[L]
-        ? '<button type="button" class="azb" data-az="'+L+'">'+L+'</button>'
-        : '<span class="azb off" aria-hidden="true">'+L+'</span>';
-    }).join("");
-    az.hidden = list.length < 8;
-  }
 
   var empty = document.getElementById("clubEmpty");
   if(empty) empty.hidden = list.length > 0;
@@ -1232,6 +1250,8 @@ document.getElementById("clubSearch").addEventListener("input", renderClubs);
     var t = document.getElementById("az-"+b.getAttribute("data-az"));
     if(t) t.scrollIntoView({behavior:"smooth", block:"start"});
   });
+  var catSel = document.getElementById("clubCat");
+  if(catSel) catSel.addEventListener("change", function(){ clubCat = catSel.value; renderClubs(); });
   var clr = document.getElementById("clubClear"), s = document.getElementById("clubSearch");
   if(clr && s){
     s.addEventListener("input", function(){ clr.hidden = !s.value; });
