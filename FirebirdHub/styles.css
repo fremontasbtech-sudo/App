@@ -696,3 +696,6 @@ button.azb:active{background:var(--gold)}
 @media (prefers-reduced-motion: reduce){ .skl{animation:none} }
 @media (max-width:520px){ .azbar{flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch} .azb{min-width:26px} }
 
+
+/* keep meta icon inline with its (wrapping) text */
+.club .cmeta{flex-wrap:nowrap}
