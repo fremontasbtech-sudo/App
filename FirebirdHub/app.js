@@ -1121,7 +1121,7 @@ function clubCardHtml(c){
   if(leaders) meta += '<p class="cmeta">'+CLUB_ICON.led+'<span><b>'+clubT("Led by:","Liderado por:")+'</b> '+clubEsc(leaders)+'</span></p>';
   var body = desc ? '<p class="cdesc clamp">'+clubEsc(desc)+'</p>' : "";
   var mailBtn = emails.length
-    ? '<a class="cbtn gold" href="mailto:'+clubEsc(emails.join(","))+'">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a>'
+    ? '<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a>'
     : "";
   return '<article class="card club">'+
     '<h3>'+clubEsc(c.name)+'</h3>'+
