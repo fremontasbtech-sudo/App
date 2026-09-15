@@ -258,10 +258,10 @@ function renderEvents(){
 }
 /* Live events feed — a live read straight from the events spreadsheet (not a static
    file), so any edit shows up on the app. Ava highlights an event RED in the sheet;
-   a bound Apps Script trigger (App/backend/FeaturedEvents.gs) writes a "featured"
-   column from the red cells, and the app shows ONLY featured events. The sheet must
-   be shared "Anyone with the link: Viewer" for this public read. */
-const EVENTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&gid=0";
+   EVERY dated row in the "Events" tab shows (read BY NAME, not gid=0 which falls back
+   to Config). Opt-out: put no/hide in an optional "hide" column to skip a row. Red/
+   featured is emphasis only. Sheet must be "Anyone with the link: Viewer". */
+const EVENTS_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&sheet=Events";
 function parseEvDate(s,isEnd){
   const m = String(s||"").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   if(!m) return null;
@@ -276,9 +276,9 @@ async function syncEventsSheet(){
     const gi = function(n){ return head.indexOf(n); };
   for(let c=0;c<rows[0].length;c++){ const m0=String(rows[0][c]||"").match(/Auto-updated\s+(.*)/); if(m0){ sportsUpdatedLabel = m0[1].replace(/\s+—.*/,"").trim(); } }
     const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
-    const hasFeat = gi("featured")>=0;
     const list = [];
     for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,"name"); const when=parseEvDate(col(r,"date"),false); if(!name||!when) continue;
+      if(/^(no|n|false|0|hide|hidden|off|skip)$/i.test(col(r,"hide"))) continue; // opt-out
       const end = parseEvDate(col(r,"enddate"),true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
       const tags = col(r,"tags").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
       const feat = /^(yes|true|1|x|red|y)$/i.test(col(r,"featured"));
@@ -286,7 +286,7 @@ async function syncEventsSheet(){
     }
     if(!list.length) return;
     eventsCurated = true;
-    EVENTS = (hasFeat ? list.filter(function(e){ return e.featured; }) : list).sort(function(a,b){ return a.when-b.when; });
+    EVENTS = list.sort(function(a,b){ return a.when-b.when; }); // opt-out: show every event, hidden ones already skipped
     renderEvents(); tickCountdown();
   }catch(e){ /* sheet not public yet or offline: keep the seed events */ }
 }
