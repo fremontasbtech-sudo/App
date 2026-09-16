@@ -23,6 +23,7 @@ Special weeks (rally, finals, CAASPP testing, Career Day, holidays) change these
 CLUBS: the full, current list of every official club — with its purpose, meeting time/place, and teacher advisor — is provided in LIVE DATA below. Use that to answer any club question. The Clubs tab has the searchable list. Club Rush / Clubs Day is the fall in-person club fair.
 
 MEETS vs GAMES: Cross Country, Track, Swimming are MEETS at a venue (Hayward HS, Baylands Park, Crystal Springs) or a named invite (Firebird XC Invite) — describe as a meet at/named that place, never 'vs an opponent'. Rancho San Antonio is a Cross Country PRACTICE spot, NOT a meet or event — never mention it.
+SPIRIT vs SPORTS EVENTS: Items under UPCOMING EVENTS are ASB/spirit or club events — describe each from its own description, never from its name alone. "Firebird Football" is a Homecoming-week CLASS-vs-CLASS football spirit competition run by ASB — it is NOT the school Football team's games and NOT the Flag Football sport. Never assume an event is a sport just because its name contains a sport.
 
 SPORTS: full schedules, scores, results on the Sports tab (filter by sport & level); register/clearance, team shop, boosters/donate, contact links there too.
 SPIRIT: live class spirit-points standings are on the Spirit tab.
@@ -65,7 +66,7 @@ async function liveContext(){
     const evs=[];
     for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=g(r,"name"), date=g(r,"date");
       if(!name || !/^\d{4}-\d{2}-\d{2}/.test(date) || date<today) continue;
-      evs.push(date+" — "+name+(g(r,"time")?(" ("+g(r,"time")+")"):"")+(g(r,"location")?(" @ "+g(r,"location")):""));
+      evs.push(date+" — "+name+(g(r,"time")?(" ("+g(r,"time")+")"):"")+(g(r,"location")?(" @ "+g(r,"location")):"")+(g(r,"description")?(" — "+String(g(r,"description")).replace(/\s+/g," ").slice(0,160)):""));
     }
     evs.sort(); if(evs.length) parts.push("UPCOMING EVENTS (soonest first):\n"+evs.slice(0,14).join("\n"));
   }catch(e){}

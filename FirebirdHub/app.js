@@ -20,7 +20,7 @@ const FEATURES = { fireBucks: false };
 /* Spirit-points scoreboard auto-syncs from this Google Sheet (view-shared).
    Sheet is a matrix: col A = class, each next column = an event; a class's
    total is the sum of its row. Add an event = add a column, nothing else. */
-const SPIRIT_SHEET = "https://docs.google.com/spreadsheets/d/1gS0bbOGgpjMpCfeYOUBI4B39oPEtNU-1Y2n1nEWkZ7o/gviz/tq?tqx=out:csv&gid=0";
+const SPIRIT_SHEET = "https://docs.google.com/spreadsheets/d/11Pm2zUc_O40E0oTZekYvsD_D8FenH9s7PiJ43m7JCH0/gviz/tq?tqx=out:csv&sheet=Spirit%20Points"; // Spirit Points now a tab in the shared Events sheet (old standalone sheet dormant)
 
 /* ---- backend calls (Apps Script). Both return null in demo mode. ---- */
 async function apiPost(body){
@@ -1039,6 +1039,7 @@ document.getElementById("giveForm").addEventListener("submit", async e=>{
    Google Form in a new tab with those fields pre-filled. */
 const FEEDBACK_FORM = "https://docs.google.com/forms/d/e/1FAIpQLScNFE8IoooVpQER65d2GIse6ru1nLIp03EHcBjeGBVpsOJMZQ/viewform?usp=pp_url";
 const FEEDBACK_ENTRY = { name:"entry.1253423822", email:"entry.2023794996", message:"entry.548009737" };
+const FEEDBACK_ACTION = FEEDBACK_FORM.replace("/viewform?usp=pp_url","/formResponse");
 document.getElementById("fbForm").addEventListener("submit", function(e){
   e.preventDefault();
   const nameEl=document.getElementById("fbName"), emailEl=document.getElementById("fbEmail"), msgEl=document.getElementById("fbMsg");
@@ -1049,15 +1050,21 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
   if(!emailOk){ setBad("fbEmail",true); bad=true; } else setBad("fbEmail",false);
   if(!msg){ setBad("fbMsg",true); bad=true; } else setBad("fbMsg",false);
   if(bad){ (!name?nameEl:(!emailOk?emailEl:msgEl)).focus(); return; }
-  const url = FEEDBACK_FORM
-    + "&"+FEEDBACK_ENTRY.name+"="+encodeURIComponent(name)
-    + "&"+FEEDBACK_ENTRY.email+"="+encodeURIComponent(email)
-    + "&"+FEEDBACK_ENTRY.message+"="+encodeURIComponent(msg);
-  const w = window.open(url, "_blank", "noopener");
+  const btn=e.target.querySelector('button[type="submit"]');
   const ok=document.getElementById("fbOk");
-  if(w){ ok.textContent="Opening the contact form in a new tab with your info filled in — hit Submit there to send it to ASB."; }
-  else{ ok.innerHTML='Your info is ready. <a href="'+url+'" target="_blank" rel="noopener"><b>Tap here to open the contact form</b></a>, then hit Submit.'; }
-  ok.classList.add("show"); ok.focus();
+  const body=new URLSearchParams();
+  body.append(FEEDBACK_ENTRY.name, name);
+  body.append(FEEDBACK_ENTRY.email, email);
+  body.append(FEEDBACK_ENTRY.message, msg);
+  if(btn){ btn.disabled=true; btn.dataset.label=btn.dataset.label||btn.textContent; btn.textContent="Sending…"; }
+  function done(){
+    if(btn){ btn.disabled=false; btn.textContent=btn.dataset.label||"Send to ASB"; }
+    e.target.reset();
+    ok.textContent="Thanks! Your message was sent to ASB — they'll follow up at your email.";
+    ok.classList.add("show"); ok.focus();
+  }
+  fetch(FEEDBACK_ACTION, { method:"POST", mode:"no-cors", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body: body.toString() })
+    .then(done).catch(done);
 });
 ["fbName","fbEmail","fbMsg"].forEach(function(id){ document.getElementById(id).addEventListener("input", function(e){ if(e.target.value.trim()) setBad(id,false); }); });
 
@@ -1287,45 +1294,35 @@ document.querySelectorAll("[data-cat]").forEach(b=>
   }));
 
 /* Club filter controls + "Find your club" matcher quiz (#4) */
-["fDay","fCommit"].forEach(function(id){ const el=document.getElementById(id); if(el) el.addEventListener("change", renderClubs); });
-(function(){ const r=document.getElementById("fRecruit"); if(r) r.addEventListener("click", function(){ r.setAttribute("aria-pressed", r.getAttribute("aria-pressed")==="true"?"false":"true"); renderClubs(); }); })();
 
 const MATCH_QS = [
   {q:"What are you most into?", multi:true, opts:[
-    {t:"Making things & tech", tags:["stem","coding","build","hands-on"]},
-    {t:"Art & performance", tags:["art","creative","arts","dance","performance"]},
-    {t:"Helping the community", tags:["service","volunteer","community"]},
-    {t:"Sports & staying active", tags:["sports","active","team","outdoor"]},
-    {t:"Culture & identity", tags:["culture","community"]},
-    {t:"Games & strategy", tags:["games","strategy","competition"]}
+    {t:"Science, tech & building", cats:["STEM"]},
+    {t:"Art, music & performing", cats:["Arts & Media"]},
+    {t:"Culture, identity & language", cats:["Culture & Language"]},
+    {t:"Service & giving back", cats:["Service & Advocacy"]},
+    {t:"Business, debate & academics", cats:["Academics & Business"]},
+    {t:"Sports & games", cats:["Sports & Games"]}
   ]},
-  {q:"How much time can you give?", opts:[
-    {t:"A little", tags:["chill"], commit:"low"},
-    {t:"A solid amount", tags:[], commit:"medium"},
-    {t:"I'm all in", tags:["competition"], commit:"high"}
+  {q:"How do you like to get involved?", opts:[
+    {t:"Hands-on projects", cats:["STEM","Arts & Media"]},
+    {t:"With a team or community", cats:["Service & Advocacy","Culture & Language","Sports & Games"]},
+    {t:"Competing & achieving", cats:["Academics & Business","Sports & Games","STEM"]}
   ]},
   {q:"Pick your energy", opts:[
-    {t:"Social & group", tags:["social","team","community"]},
-    {t:"Focused & solo", tags:["solo","strategy","academic"]}
-  ]},
-  {q:"Competitive or chill?", opts:[
-    {t:"Competitive", tags:["competition","team"]},
-    {t:"Keep it chill", tags:["chill"]}
-  ]},
-  {q:"How do you like to spend time?", opts:[
-    {t:"Hands-on making", tags:["hands-on","build","creative","paint"]},
-    {t:"Talking & ideas", tags:["academic","strategy","community"]}
+    {t:"Social & group", cats:["Culture & Language","Service & Advocacy","Sports & Games"]},
+    {t:"Focused & solo", cats:["STEM","Academics & Business"]}
   ]},
   {q:"Your main goal?", opts:[
-    {t:"Meet new people", tags:["social","community"]},
-    {t:"Build a skill", tags:["stem","build","academic","skill"]},
-    {t:"Give back", tags:["service","volunteer"]},
-    {t:"Just have fun", tags:["chill","games","fun"]}
+    {t:"Meet new people", cats:["Culture & Language","Special Interest"]},
+    {t:"Build a skill", cats:["STEM","Arts & Media","Academics & Business"]},
+    {t:"Give back", cats:["Service & Advocacy"]},
+    {t:"Just have fun", cats:["Sports & Games","Special Interest"]}
   ]}
 ];
-let quizStep=0, quizPrefs={}, quizCommit="", quizSel=[];
-function openMatch(){ quizStep=0; quizPrefs={}; quizCommit=""; renderQuizStep(); const d=document.getElementById("matchDialog"); if(d && !d.open) d.showModal(); }
-function addTags(tags,commit){ (tags||[]).forEach(function(t){ quizPrefs[t]=(quizPrefs[t]||0)+1; }); if(commit) quizCommit=commit; }
+let quizStep=0, quizPrefs={}, quizSel=[];
+function openMatch(){ quizStep=0; quizPrefs={}; renderQuizStep(); const d=document.getElementById("matchDialog"); if(d && !d.open) d.showModal(); }
+function addCats(cats){ (cats||[]).forEach(function(c){ quizPrefs[c]=(quizPrefs[c]||0)+1; }); }
 function advance(){ quizStep++; if(quizStep>=MATCH_QS.length) renderQuizResults(); else renderQuizStep(); }
 function renderQuizStep(){
   const body=document.getElementById("quizBody"); if(!body) return;
@@ -1342,33 +1339,33 @@ function renderQuizStep(){
     btn.onclick=function(){
       const o=Q.opts[+btn.dataset.i];
       if(Q.multi){ btn.classList.toggle("on"); const idx=quizSel.indexOf(o); if(idx>=0) quizSel.splice(idx,1); else quizSel.push(o); }
-      else { addTags(o.tags,o.commit); advance(); }
+      else { addCats(o.cats); advance(); }
     };
   });
-  const nx=body.querySelector("#quizNext"); if(nx) nx.onclick=function(){ quizSel.forEach(function(o){ addTags(o.tags,o.commit); }); advance(); };
+  const nx=body.querySelector("#quizNext"); if(nx) nx.onclick=function(){ quizSel.forEach(function(o){ addCats(o.cats); }); advance(); };
 }
 function scoreClubs(){
-  const total=Object.keys(quizPrefs).reduce(function(a,k){return a+quizPrefs[k];},0)||1;
-  return CLUBS.map(function(c){
-    const tags=String(c.tags||"").split(/[;,]/).map(function(t){return t.trim().toLowerCase();}).filter(Boolean);
-    let sc=0, hits=[];
-    tags.forEach(function(t){ if(quizPrefs[t]){ sc+=quizPrefs[t]; hits.push(t); } });
-    if(quizCommit && String(c.commitment||"").toLowerCase()===quizCommit) sc+=1.5;
-    return {club:c, score:sc, pct:Math.max(10,Math.min(99,Math.round(sc/total*100))), hits:hits};
-  }).sort(function(a,b){ return b.score-a.score; });
+  var total=Object.keys(quizPrefs).reduce(function(a,k){return a+quizPrefs[k];},0)||1;
+  return CLUBS.filter(function(c){ return c && c.name && !c.disbanded; }).map(function(c){
+    var cat=clubCatOf(c);
+    var sc=quizPrefs[cat]||0;
+    return {club:c, cat:cat, score:sc, pct:Math.max(10,Math.min(99,Math.round(sc/total*100)))};
+  }).sort(function(a,b){ return (b.score-a.score) || String(a.club.name||"").localeCompare(String(b.club.name||"")); });
 }
 function renderQuizResults(){
   const ranked=scoreClubs().filter(function(r){return r.score>0;}).slice(0,3);
   const body=document.getElementById("quizBody"); if(!body) return;
   let html='<div class="quizhead"><span class="quizprog"><span style="width:100%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div><h2 class="quizq">Your top matches</h2>';
-  if(!ranked.length){ html+='<p class="note">No strong match yet — browse all clubs, more are being added.</p>'; }
+  if(!ranked.length){ html+='<p class="note">No strong match yet — try browsing all clubs.</p>'; }
   else html+=ranked.map(function(r){
     const c=r.club;
-    const reason=r.hits.length?("Matches your interest in "+r.hits.slice(0,3).map(clubCap).join(", ")+"."):"A solid all-round pick.";
+    var emails=Array.isArray(c.emails)?c.emails.filter(Boolean):[];
+    var meet=c.meetingInfo?('<p class="matchcat">'+clubEsc(c.meetingInfo)+'</p>'):"";
+    var desc=String(c.purpose||c.desc||"").trim();
     return '<div class="matchcard"><div class="matchtop"><h3>'+clubEsc(c.name)+'</h3><span class="matchpct">'+r.pct+'% match</span></div>'+
-      '<p class="matchcat">'+clubEsc(c.cat)+(c.commitment?" &middot; "+clubEsc(clubCap(c.commitment))+" commitment":"")+'</p>'+
-      '<p class="matchwhy">'+clubEsc(reason)+'</p>'+
-      (/^https?:\/\//i.test(c.interestUrl||"")?'<a class="cbtn gold" href="'+clubEsc(c.interestUrl)+'" target="_blank" rel="noopener">Interest form</a>':"")+'</div>';
+      '<p class="matchcat"><b>'+clubEsc(clubCatLabel(r.cat))+'</b></p>'+ meet +
+      (desc?'<p class="matchwhy">'+clubEsc(desc.slice(0,140))+(desc.length>140?"…":"")+'</p>':"")+
+      (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">Email</a>':"")+'</div>';
   }).join("");
   html+='<div class="quizactions"><button type="button" class="btn ghost" id="quizRetake">Retake</button><button type="button" class="btn primary" id="quizDone">Browse all clubs</button></div>';
   body.innerHTML=html;
@@ -1607,12 +1604,11 @@ function renderFTV(){
   const bullets = (t.bullets||[]).map(function(x){ return '<li>'+clubEsc(x)+'</li>'; }).join("");
   const rest = FTV_FEED.slice(1,15).map(function(d){
     const bl = (d.bullets||[]).map(function(x){ return '<li>'+clubEsc(x)+'</li>'; }).join("");
-    return '<details class="ftv-day"><summary>'+ftvDateLabel(d.date)+'</summary><ul>'+bl+'</ul>'+(d.full?'<p>'+clubEsc(d.full)+'</p>':"")+'</details>';
+    return '<details class="ftv-day"><summary>'+ftvDateLabel(d.date)+'</summary><ul>'+bl+'</ul></details>';
   }).join("");
   card.hidden = false;
   card.innerHTML = '<div class="sechead"><h2 id="h-ftv">FTV morning announcements</h2><span class="rule" aria-hidden="true"></span></div>'+
     '<div class="card ftv-today"><p class="ftv-date">'+ftvDateLabel(t.date)+'</p><ul class="ftv-bullets">'+bullets+'</ul>'+
-    (t.full?'<details class="ftv-full"><summary>Full announcements</summary><p>'+clubEsc(t.full)+'</p></details>':"")+
     (rest?'<details class="ftv-archive"><summary>Past days</summary>'+rest+'</details>':"")+'</div>';
 }
 
