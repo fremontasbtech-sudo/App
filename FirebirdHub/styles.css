@@ -559,8 +559,11 @@ dialog[open]{animation:viewin .2s ease-out}
 .evphotos-soon{ margin:10px 0 0; font-style:italic; }
 
 /* ---------- #3 Motion mode ---------- */
-body.motion .ticket{ opacity:0; transform:translateY(24px); transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1); }
-body.motion .ticket.in{ opacity:1; transform:none; }
+/* Motion reveal applies ONLY to the home events row (it auto-completes via .stagger there).
+   Elsewhere (Sports, etc.) tickets are always visible — a dynamically-rendered card must never
+   be left stuck at opacity:0 waiting for a .in class the observer didn't add. */
+body.motion #eventList .ticket{ opacity:0; transform:translateY(24px); transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.2,1); }
+body.motion #eventList .ticket.in{ opacity:1; transform:none; }
 body.motion .ticket:hover{ transform:translateY(-5px); }
 @media(min-width:800px){
   body.motion #eventList.stagger{ display:flex; overflow-x:auto; gap:16px; scroll-snap-type:x mandatory; padding-bottom:10px; grid-template-columns:none; }

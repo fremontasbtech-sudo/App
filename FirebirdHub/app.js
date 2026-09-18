@@ -417,8 +417,7 @@ async function loadSports(){
     writeSportsCache();
     renderSports();
     if(typeof renderEvents==="function") renderEvents();
-    loadSportsScoresFast(); // fast, CDN-cached recent scores
-    loadSportsScores();     // background top-up from the athletics feed (slower, may add more)
+    loadSportsScoresFast(); // fast, CDN-cached recent scores (the slow ~8s Apps Script JSONP top-up was removed — it caused a late re-render and network drag)
   }catch(e){
     sportsLoaded = false;
     if(!sportsGames){
