@@ -368,7 +368,7 @@ var SPORTS_SKELETON = '<div class="grid cols2">' +
 // it, so pull those before the slow direct feed. Recent/featured games get a final score in ~1s.
 async function loadSportsScoresFast(){
   try{
-    const res = await fetch(EVENTS_API + "?_cb=" + Date.now()); if(!res.ok) return;
+    const res = await fetch(EVENTS_API); if(!res.ok) return;
     const data = await res.json();
     const games = Array.isArray(data.games) ? data.games : [];
     if(!games.length || !sportsGames) return;
@@ -383,28 +383,48 @@ async function loadSportsScoresFast(){
       var r = map[(g.sport+"|"+g.date+"|"+g.level).toLowerCase()] || map[(g.sport+"|"+g.date).toLowerCase()];
       if(r){ g.score=r; g.section="result"; hit=true; }
     });
-    if(hit){ renderSports(); if(typeof renderEvents==="function") renderEvents(); }
+    if(hit){ writeSportsCache(); renderSports(); if(typeof renderEvents==="function") renderEvents(); }
   }catch(e){}
 }
+// Cache the parsed schedule so Sports paints INSTANTLY on open (and across sessions),
+// then refreshes in the background. No per-request cache-buster on the gviz fetch — that
+// forced a slow cache MISS every time, which is why sports used to crawl.
+const SPORTS_CACHE_KEY = "fh_sports_v2";
+function readSportsCache(){
+  try{ var c=JSON.parse(localStorage.getItem(SPORTS_CACHE_KEY)||"null");
+    if(c && Array.isArray(c.games) && c.games.length && (Date.now()-(c.t||0) < 12*3600*1000)) return c; }catch(e){}
+  return null;
+}
+function writeSportsCache(){
+  try{ if(sportsGames && sportsGames.length) localStorage.setItem(SPORTS_CACHE_KEY, JSON.stringify({t:Date.now(), games:sportsGames, label:sportsUpdatedLabel})); }catch(e){}
+}
 async function loadSports(){
+  // 1) Instant paint from cache so the tab is never blank while the network runs.
+  if(!sportsGames){
+    var c=readSportsCache();
+    if(c){ sportsGames=c.games; sportsUpdatedLabel=c.label||""; renderSports(); if(typeof renderEvents==="function") renderEvents(); }
+  }
   if(sportsLoaded){
     if(!sportsGames){ var bb=document.getElementById("sportsBody"); if(bb && !/ticket/.test(bb.innerHTML)) bb.innerHTML = SPORTS_SKELETON; }
     return;
   }
   sportsLoaded = true;
-  var b0=document.getElementById("sportsBody"); if(b0) b0.innerHTML = SPORTS_SKELETON;
+  var b0=document.getElementById("sportsBody"); if(b0 && !sportsGames) b0.innerHTML = SPORTS_SKELETON;
   try{
-    const res = await fetch(SPORTS_SHEET + "&_cb=" + Date.now()); if(!res.ok) throw new Error("HTTP "+res.status);
+    const res = await fetch(SPORTS_SHEET); if(!res.ok) throw new Error("HTTP "+res.status);
     const rows = parseSheetRows(await res.text());
     sportsGames = rowsToGames(rows);
+    writeSportsCache();
     renderSports();
     if(typeof renderEvents==="function") renderEvents();
     loadSportsScoresFast(); // fast, CDN-cached recent scores
     loadSportsScores();     // background top-up from the athletics feed (slower, may add more)
   }catch(e){
     sportsLoaded = false;
-    const g=document.getElementById("sportsBody");
-    if(g) g.innerHTML = '<p class="note">Could not load the sports schedule right now. Try again later.</p>';
+    if(!sportsGames){
+      const g=document.getElementById("sportsBody");
+      if(g) g.innerHTML = '<p class="note">Could not load the sports schedule right now. Try again later.</p>';
+    }
   }
 }
 function rowsToGames(rows){
