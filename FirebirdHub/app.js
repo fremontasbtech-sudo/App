@@ -238,11 +238,13 @@ function renderEvents(){
         const m=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(!m) return;
         const when=new Date(+m[1],+m[2]-1,+m[3],8,0); if(when>horizon) return;
         list.push({ name:(g.sport+(g.level?(" "+g.level):"")+(g.opponent?((/away/i.test(g.homeAway)?" at ":" vs ")+g.opponent):"")),
-          when:when, end:new Date(+m[1],+m[2]-1,+m[3],23,59), time:g.time, loc:g.location, desc:"", tags:["Sports","Featured"], photos:"" });
+          when:when, end:new Date(+m[1],+m[2]-1,+m[3],23,59), time:g.time, loc:g.location, desc:"", tags:["Sports","Featured"], photos:"", senior:!!g.senior });
       });
     }
   }catch(e){}
-  list = list.sort(function(a,b){ return a.when-b.when; });
+  // At most 5 upcoming at a time, soonest first. Senior nights don't count toward the 5.
+  let nonSenior = 0;
+  list = list.sort(function(a,b){ return a.when-b.when; }).filter(function(e){ return e.senior || ++nonSenior <= 5; });
   if(!list.length){ grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
   grid.innerHTML = list.map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
