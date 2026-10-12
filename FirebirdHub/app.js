@@ -108,10 +108,14 @@ const NO_CLASSES = [
   ["2027-04-12","2027-04-16","Spring Break","Vacaciones de primavera"],
   ["2027-05-31","2027-05-31","Memorial Day","D\u00eda de los Ca\u00eddos"]
 ];
-/* Days a mid-week day off shifts the A/B pattern. Bell-schedule export, pattern rule: the
-   days that remain alternate A, B starting Monday (Thanksgiving week runs Mon A, Tue B).
-   Monday-off weeks need nothing here: Tue A, Wed B, Thu A, Fri B is already the default. */
-const SPECIAL_DAYS = { "2026-11-09":"a", "2026-11-10":"b", "2026-11-23":"a", "2026-11-24":"b" };
+/* Dated A/B swaps for weeks where a mid-week day off shifts the pattern ("YYYY-MM-DD":"a"|"b").
+   Monday-off weeks need nothing here: Tue A, Wed B, Thu A, Fri B is already the default.
+   Empty until Abir confirms the 2026-27 weeks. The school's special-schedule sheet only has
+   2025-26 tabs; its pattern rule (the remaining days alternate A, B starting Monday) gives:
+     "2026-11-09":"a", "2026-11-10":"b"   (Veterans Day week, Wed 11-11 off)
+     "2026-11-23":"a", "2026-11-24":"b"   (Thanksgiving week, Wed-Fri off)
+   Until then those days show the regular weekday schedule. */
+const SPECIAL_DAYS = {};
 function noClassReason(iso){
   // Summer is June 1 to the first day, and the last day to Aug 10. Past that, the table is
   // out of date (a new school year), so the app falls back to the regular week instead of
@@ -170,9 +174,10 @@ const SPECIAL_WEEKS = [
   { id:"nonduty", name:"Non-Duty Day Week", dates:"Oct 12–16, 2026",
     days:[ OFF("Mon","Teacher Non-Duty Day"), D("Tue","A day",A), D("Wed","B day",B), D("Thu","A day",A), D("Fri","B day",B) ] },
   { id:"veterans", name:"Veterans Day Week", dates:"Nov 9–13, 2026",
-    note:"Veterans Day is a Wednesday this year. The other days alternate A and B, starting Monday.",
+    note:"Veterans Day is a Wednesday this year. The other days follow last year's pattern, so check the morning announcements for the final A and B days.",
     days:[ D("Mon","A day",A), D("Tue","B day",B), OFF("Wed","Veterans Day"), D("Thu","A day",A), D("Fri","B day",B) ] },
-  { id:"thanksgiving", name:"Thanksgiving Week", dates:"late November",
+  { id:"thanksgiving", name:"Thanksgiving Week", dates:"Nov 23–27, 2026",
+    note:"This follows last year's pattern, so check the morning announcements for the final A and B days.",
     days:[ D("Mon","A day",A), D("Tue","B day",B), OFF("Wed","Thanksgiving Break"), OFF("Thu","Thanksgiving"), OFF("Fri","Thanksgiving Break") ] },
   { id:"finals1", name:"1st Semester Finals", dates:"mid-December",
     days:[ D("Mon","Blocks 1\u20137",MON), D("Tue","Finals: 4th & 7th",finalsFull("4th","7th")), D("Wed","Finals: 5th & 6th",finalsFull("5th","6th")), D("Thu","Finals: 1st & 3rd",finalsFull("1st","3rd")), D("Fri","Finals: 2nd (min day)",finalsMin("2nd")) ] },
@@ -261,6 +266,7 @@ document.addEventListener("click", e=>{
 });
 window.addEventListener("hashchange", ()=>{
   const ph = parseHash();
+  Object.keys(DROPDOWNS).forEach(id=>ddClose(DROPDOWNS[id], false)); // e.g. Back while a list is open
   if(ph.view==="give") fillGive(ph.params);
   show(ph.view, true);
 });
@@ -642,6 +648,9 @@ function ddInit(id, onPick){
   if(!btn || !list) return;
   const dd = DROPDOWNS[id] = { id:id, btn:btn, list:list, wrap:btn.parentNode, items:[], value:"all", key:"", open:false, pending:null, active:0, onPick:onPick };
   btn.addEventListener("click", function(){ if(dd.open) ddClose(dd, true); else ddOpen(dd); });
+  // Safari and iOS don't focus a pressed button, they just blur the open list, which would
+  // close it before the click reopens it. Keeping focus in the list lets the click close it.
+  btn.addEventListener("mousedown", function(e){ if(dd.open) e.preventDefault(); });
   btn.addEventListener("keydown", function(e){
     if(e.key==="ArrowDown" || e.key==="ArrowUp"){ e.preventDefault(); ddOpen(dd); }
   });
@@ -718,6 +727,7 @@ function ddOpen(dd){
   dd.open = true;
   dd.btn.setAttribute("aria-expanded", "true");
   dd.list.hidden = false;
+  document.body.classList.add("dd-open"); // hides the Ask Felipe button over the list
   let i = 0; dd.items.forEach(function(x, j){ if(x.v===dd.value) i = j; });
   dd.list.scrollTop = 0;
   ddActive(dd, i, true);
@@ -734,6 +744,7 @@ function ddClose(dd, refocus){
   dd.open = false;
   dd.btn.setAttribute("aria-expanded", "false");
   dd.list.hidden = true;
+  document.body.classList.remove("dd-open");
   dd.list.removeAttribute("aria-activedescendant");
   if(refocus) dd.btn.focus();
   if(dd.pending){ const p = dd.pending; dd.pending = null; ddSet(dd.id, p.items, p.value); }
@@ -1683,6 +1694,7 @@ function renderQuizResults(){
 ===================================================== */
 const SIGNIN_KEY = "fh_signin_v1";
 const signedIn = { name:"", email:"", picture:"" };
+let gsiFailed = false; // set when Google's sign-in script is blocked or broken
 const _signinBtn = document.getElementById("signinBtn");
 const _signinDefaultHTML = _signinBtn ? _signinBtn.innerHTML : "Sign in";
 function decodeJwt(tok){
@@ -1717,8 +1729,17 @@ function refreshSigninDialog(){
     if(gsi) gsi.hidden = true; if(note) note.hidden = true; if(out) out.hidden = false;
   } else {
     if(blurb) blurb.textContent = tr("Sign in with your school Google account to see your name on the app. Photos and points still only go where you send them.","Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app. Las fotos y los puntos solo van a donde tú los envías.");
-    if(gsi) gsi.hidden = false; if(out) out.hidden = true;
-    if(note) note.hidden = !!CONFIG.googleClientId;
+    if(out) out.hidden = true;
+    // No Google button when the client ID is missing or Google's script didn't load
+    // (Securly on school Wi-Fi): the note says why instead of an empty dialog.
+    const unavailable = !CONFIG.googleClientId || gsiFailed;
+    if(gsi) gsi.hidden = unavailable;
+    if(note){
+      note.hidden = !unavailable;
+      if(unavailable) note.textContent = !CONFIG.googleClientId
+        ? tr("Google sign-in isn't set up yet. Everything else in the app still works.","El inicio de sesión con Google todavía no está listo. Todo lo demás en la app sigue funcionando.")
+        : tr("Google sign-in isn't reachable on this network right now. Everything else in the app still works.","El inicio de sesión con Google no está disponible en esta red por ahora. Todo lo demás en la app sigue funcionando.");
+    }
   }
 }
 function onGoogleCred(resp){
@@ -1740,17 +1761,19 @@ function signOut(){
   const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
 }
 function initGoogleSignin(){
-  const note = document.getElementById("signinNote");
-  if(!CONFIG.googleClientId){ if(note) note.hidden = false; return; }
-  if(note) note.hidden = true;
+  if(!CONFIG.googleClientId){ refreshSigninDialog(); return; }
   const s = document.createElement("script");
   s.src = "https://accounts.google.com/gsi/client"; s.async = true; s.defer = true;
+  const failed = ()=>{ gsiFailed = true; refreshSigninDialog(); };
   s.onload = ()=>{
-    google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: onGoogleCred, auto_select: false });
-    google.accounts.id.renderButton(document.getElementById("gsiBtn"),
-      { theme:"filled_black", size:"large", shape:"pill", text:"signin_with" });
+    // A filter can answer with its own block page, which "loads" but defines nothing.
+    try{
+      google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: onGoogleCred, auto_select: false });
+      google.accounts.id.renderButton(document.getElementById("gsiBtn"),
+        { theme:"filled_black", size:"large", shape:"pill", text:"signin_with" });
+    }catch(e){ failed(); }
   };
-  s.onerror = ()=>{ if(note) note.hidden = false; };
+  s.onerror = failed;
   document.head.appendChild(s);
 }
 if(_signinBtn) _signinBtn.addEventListener("click", ()=>{ refreshSigninDialog(); document.getElementById("signinDialog").showModal(); });
@@ -2033,13 +2056,14 @@ var I18N_EN_ES = {
   "Thanksgiving Break":"Vacaciones de Acción de Gracias","Thanksgiving":"Acción de Gracias","MLK Jr. Day":"Día de MLK Jr.",
   "Non-Duty Day":"Día sin clases","Memorial Day":"Día de los Caídos","Teacher Work Day":"Día de trabajo para maestros",
   "Rally week template":"Plantilla de semana de rally","early September":"principios de septiembre","Oct 5–9, 2026":"5–9 de oct. de 2026",
-  "Oct 12–16, 2026":"12–16 de oct. de 2026","Nov 9–13, 2026":"9–13 de nov. de 2026","late November":"finales de noviembre",
+  "Oct 12–16, 2026":"12–16 de oct. de 2026","Nov 9–13, 2026":"9–13 de nov. de 2026","Nov 23–27, 2026":"23–27 de nov. de 2026",
   "mid-December":"mediados de diciembre","mid-January":"mediados de enero","early February":"principios de febrero",
   "early March · 11th graders test":"principios de marzo · examen de 11.º grado","Mar 15–19, 2027":"15–19 de mar. de 2027",
   "late May":"finales de mayo","early June · 9th–11th":"principios de junio · 9.º a 11.º",
   "A regular week, but Friday's Tutorial becomes the Rally (10:10–10:50).":"Una semana normal, pero la Tutoría del viernes se convierte en el Rally (10:10–10:50).",
   "Friday runs a B day with the Homecoming Rally replacing Tutorial.":"El viernes es Día B y el Rally de Homecoming reemplaza la Tutoría.",
-  "Veterans Day is a Wednesday this year. The other days alternate A and B, starting Monday.":"Este año el Día de los Veteranos cae en miércoles. Los demás días alternan A y B, empezando el lunes.",
+  "Veterans Day is a Wednesday this year. The other days follow last year's pattern, so check the morning announcements for the final A and B days.":"Este año el Día de los Veteranos cae en miércoles. Los demás días siguen el patrón del año pasado, así que revisa los anuncios de la mañana para confirmar los días A y B.",
+  "This follows last year's pattern, so check the morning announcements for the final A and B days.":"Esto sigue el patrón del año pasado, así que revisa los anuncios de la mañana para confirmar los días A y B.",
   "Monday is a custom all-blocks Career Day; Tue–Fri are normal A/B.":"El lunes es el Día de Carreras con todos los bloques; de martes a viernes son días A y B normales.",
   "11th graders test Tue–Thu; other grades have a delayed start, so check announcements.":"Los de 11.º grado tienen examen de martes a jueves; los demás grados empiezan más tarde, así que revisa los anuncios.",
   "Senior finals happen in class. Friday closes with the Senior Goodbye Rally.":"Los finales de seniors son en clase. El viernes cierra con el Rally de despedida de seniors.",

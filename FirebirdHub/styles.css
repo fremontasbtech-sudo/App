@@ -407,6 +407,7 @@ dialog.quiz::backdrop{background:rgba(39,21,16,.45)}
   position:fixed; left:0; right:0; bottom:0; z-index:60;
   background:var(--cardinal); border-top:3px solid var(--gold);
   display:flex; padding-bottom:env(safe-area-inset-bottom);
+  padding-left:env(safe-area-inset-left, 0px); padding-right:env(safe-area-inset-right, 0px); /* landscape notch */
   box-shadow:0 -4px 16px rgba(0,0,0,.18);
 }
 .bottomnav a{
@@ -423,7 +424,8 @@ dialog.quiz::backdrop{background:rgba(39,21,16,.45)}
 /* ---------- Footer / misc ---------- */
 footer{
   border-top:3px solid var(--cardinal); background:var(--ink); color:#D8C9B8;
-  padding:var(--space-5) 16px calc(var(--space-5) + 130px + env(safe-area-inset-bottom, 0px)); text-align:center; font-size:14px;
+  padding:var(--space-5) max(16px, env(safe-area-inset-right, 0px)) calc(var(--space-5) + 130px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  text-align:center; font-size:14px;
 }
 @media (min-width:880px){ footer{padding-bottom:var(--space-5)} }
 footer b{color:var(--gold); font-family:var(--font-display); text-transform:uppercase; letter-spacing:.08em; font-size:16px}
@@ -433,10 +435,14 @@ dialog{
 }
 dialog::backdrop{background:rgba(39,21,16,.55)}
 .sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
-.iconline{display:flex; align-items:center; gap:10px}
+.iconline{display:flex; align-items:center; gap:10px; margin:0; padding:10px 0; line-height:24px}
 .iconline svg{flex:none; color:var(--cardinal)}
 .iconline > span{flex:1; min-width:0}
-.iconline a{padding:12px 0} /* inline padding: a 44 px tap area without changing the line height */
+/* Each row is its own 44 px box (24 px line + 10 px padding). The link's box is the same
+   44 px (the negative margin keeps the line at 24 px), so stacked links never share a tap
+   zone, and position:relative keeps a wrapped second line from covering its lower edge. */
+.iconline a{display:inline-block; padding:10px 0; margin:-10px 0; position:relative}
+h3 + .iconline{padding-top:2px} .iconline:last-child{padding-bottom:0} /* card edges keep their old rhythm */
 
 /* ---------- Header sign-in state ---------- */
 .signin img{width:20px; height:20px; border-radius:50%; border:1.5px solid #3E2A00}
@@ -534,7 +540,7 @@ dialog[open]{animation:viewin .2s ease-out}
 
 /* ---------- #9 Announcements: banner + modal ---------- */
 .announce-banner{ background:var(--cardinal); color:#fff; border-bottom:3px solid var(--gold); }
-.announce-in{ max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:10px 16px; }
+.announce-in{ max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
 .announce-dot{ width:10px; height:10px; border-radius:50%; background:var(--gold); flex:0 0 auto; box-shadow:0 0 0 4px rgba(255,201,31,.25); }
 .announce-copy{ flex:1 1 auto; font-size:14.5px; line-height:1.35; }
 .announce-copy b{ font-weight:700; }
@@ -630,11 +636,13 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
 html.bigtext{zoom:1.12}
 
 /* Ask Firebird chatbot */
-.askfab{position:fixed; right:16px; bottom:calc(84px + env(safe-area-inset-bottom, 0px)); z-index:60; display:inline-flex; align-items:center; gap:6px;
+.askfab{position:fixed; right:max(16px, env(safe-area-inset-right, 0px)); bottom:calc(84px + env(safe-area-inset-bottom, 0px)); z-index:60; display:inline-flex; align-items:center; gap:6px;
   font:inherit; font-weight:800; font-size:14px; color:#fff; background:var(--cardinal,#8F1106);
   border:2px solid var(--gold,#FFC91F); border-radius:999px; padding:11px 16px; cursor:pointer; box-shadow:4px 6px 0 rgba(39,21,16,.25)}
 .askfab:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
-.askpanel{position:fixed; right:16px; bottom:calc(146px + env(safe-area-inset-bottom, 0px)); z-index:61; width:min(370px,calc(100vw - 32px)); max-height:min(70vh,560px);
+body.dd-open .askfab{visibility:hidden} /* a Sport or Level list is open: don't cover its rows */
+.askpanel{position:fixed; right:max(16px, env(safe-area-inset-right, 0px)); bottom:calc(146px + env(safe-area-inset-bottom, 0px)); z-index:61;
+  width:min(370px, calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - max(16px, env(safe-area-inset-right, 0px)))); max-height:min(70vh,560px);
   display:flex; flex-direction:column; background:var(--paper,#FBF6EC); border:2px solid var(--cardinal,#8F1106); border-radius:16px; overflow:hidden; box-shadow:6px 10px 0 rgba(39,21,16,.25)}
 .askpanel[hidden]{display:none !important}
 .askback[hidden]{display:none !important}
@@ -760,7 +768,7 @@ button.azb:active{background:var(--gold)}
 .clubig{display:flex; align-items:center; gap:8px; font-size:14px; margin:0 0 var(--space-3); color:var(--ink)}
 .clubig svg{flex:none; color:var(--cardinal)}
 .clubig > span{flex:1; min-width:0}
-.clubig a{font-weight:800; color:var(--cardinal-dark); padding:13px 0}
+.clubig a{font-weight:800; color:var(--cardinal-dark); padding:14px 0; position:relative} /* stays on top when the line wraps */
 .sportlink{display:inline-flex; align-items:center; min-height:44px; font-weight:700}
 .sporthero-next a, .ticket .body p a{font-weight:700}
 
