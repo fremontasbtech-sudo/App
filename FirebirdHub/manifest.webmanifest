@@ -1,7 +1,7 @@
 {
-  "name": "Firebird Hub — Fremont ASB",
+  "name": "Firebird Hub · Fremont ASB",
   "short_name": "Firebird Hub",
-  "description": "Fremont High School ASB — events, bell schedule, spirit points, clubs.",
+  "description": "Fremont High School ASB events, bell schedule, spirit points and clubs.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
