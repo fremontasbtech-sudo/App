@@ -202,9 +202,10 @@ button.btn{background-clip:padding-box}
   border-radius:999px; padding:2px 10px; margin:6px 6px 0 0;
 }
 .tag.free{background:#DCEFE1; }
-.tag.sr{ background:var(--cardinal); color:#fff; border-color:var(--cardinal-dark); }
-.ticket.sr{ border-color:var(--cardinal); box-shadow:4px 4px 0 var(--gold); }
-.ticket.sr .stub{ background:var(--cardinal); color:#fff; }
+/* Featured and Senior Night badges. Not ".sr": that is the screen-reader-only utility below. */
+.tag.star{ background:var(--cardinal); color:#fff; border-color:var(--cardinal-dark); }
+.ticket.senior{ border-color:var(--cardinal); box-shadow:4px 4px 0 var(--gold); }
+.ticket.senior .stub{ background:var(--cardinal); color:#fff; }
 
 /* ---------- Schedule ---------- */
 .clockcard{
@@ -579,6 +580,7 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
 
 /* Sports filter dropdowns (sport + level) */
 .sportfilters{display:flex; gap:12px; flex-wrap:wrap; margin-bottom:var(--space-3)}
+.sportfilters[hidden]{display:none}
 .sportfilters .selwrap{display:flex; flex-direction:column; gap:4px; flex:1 1 160px; min-width:150px}
 .sportfilters .selwrap>span{font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-soft)}
 .sportfilters select{
@@ -590,15 +592,13 @@ body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238F1106' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
   background-repeat:no-repeat; background-position:right 14px center;
 }
-.sportfilters select:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
 @media(max-width:520px){ .sportfilters .selwrap{flex:1 1 100%} }
 
 /* Sports team-resources bar (compact, does not replace the athletics site) */
 .sportres{display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px}
-.sportres a{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; text-decoration:none;
-  color:var(--ink); background:var(--card,#fff); border:1.5px solid var(--line,#e4d9c4); border-radius:999px; padding:7px 13px}
+.sportres a{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700; text-decoration:none; min-height:44px; box-sizing:border-box;
+  color:var(--ink); background:var(--card,#fff); border:1.5px solid var(--line,#e4d9c4); border-radius:999px; padding:7px 14px}
 .sportres a:hover{border-color:var(--cardinal); color:var(--cardinal)}
-.sportres a:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
 
 /* Settings panel + segmented controls + large text */
 .settingscard .setrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--line,#eee)}
@@ -635,7 +635,6 @@ html.bigtext{zoom:1.12}
 .sportgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:12px}
 .sportcard{text-align:left; font:inherit; cursor:pointer; background:var(--card,#fff); border:2px solid var(--line,#e4d9c4); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:8px; min-height:110px; transition:transform .1s ease, border-color .1s ease}
 .sportcard:hover{border-color:var(--cardinal); transform:translateY(-2px)}
-.sportcard:focus-visible{outline:3px solid var(--gold); outline-offset:2px}
 .sportcard-top{display:flex; align-items:center; justify-content:space-between; gap:8px}
 .sportcard-name{font-weight:800; font-size:16px; color:var(--cardinal)}
 .sportcard-rec{font-weight:800; font-size:13px; background:var(--gold-soft,#FFE9A8); color:var(--ink); border-radius:999px; padding:2px 9px; white-space:nowrap}
@@ -643,7 +642,7 @@ html.bigtext{zoom:1.12}
 .sportcard-next{font-size:13px; color:var(--ink-soft)}
 .sportcard-lbl{font-size:10px; font-weight:800; letter-spacing:.05em; color:var(--cardinal); background:var(--gold-soft,#FFE9A8); border-radius:4px; padding:1px 5px; margin-right:4px}
 .sportcard-cta{font-size:12px; font-weight:800; color:var(--cardinal); margin-top:auto}
-.sporthero{background:linear-gradient(135deg,var(--cardinal,#8F1106),var(--cardinal-dark,#5F0C03)); color:#fff; border-radius:18px; padding:18px; margin-bottom:var(--space-3)}
+.sporthero{background:var(--cardinal,#8F1106); color:#fff; border-radius:18px; padding:18px; margin-bottom:var(--space-3)}
 .sporthero-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap}
 .sporthero h2{margin:0; color:#fff; font-size:22px}
 .sporthero-meta{margin:4px 0 0; color:var(--gold-soft,#FFE9A8); font-size:13px; font-weight:700}
@@ -740,3 +739,5 @@ button.azb:active{background:var(--gold)}
 .clubig{display:flex; align-items:center; gap:8px; font-size:14px; margin:0 0 var(--space-3); color:var(--ink)}
 .clubig svg{flex:none; color:var(--cardinal)}
 .clubig a{font-weight:800; color:var(--cardinal-dark)}
+.sportlink{display:inline-flex; align-items:center; min-height:44px; font-weight:700}
+.sporthero-next a, .ticket .body p a{font-weight:700}

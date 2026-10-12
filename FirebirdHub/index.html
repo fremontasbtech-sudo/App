@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=39">
+<link rel="stylesheet" href="styles.css?v=40">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -407,7 +407,7 @@
     <span class="rule" aria-hidden="true"></span>
   </div>
   <p class="note" id="sportsUpdated" aria-live="polite"></p>
-  <p class="note" style="margin:0 0 14px; font-size:14px"><a href="https://www.fremonthsathletics.org" target="_blank" rel="noopener" style="font-weight:700">Full schedules, rosters &amp; live updates at fremonthsathletics.org &rarr;</a></p>
+  <p class="note" style="margin:0 0 10px; font-size:14px"><a class="sportlink" href="https://www.fremonthsathletics.org" target="_blank" rel="noopener">Full schedules, rosters &amp; live updates at fremonthsathletics.org &rarr;</a></p>
   <div class="sportres" id="sportRes" aria-label="Team resources">
     <a href="https://www.fremonthsathletics.org/register-clearance" target="_blank" rel="noopener"><span data-i18n="res.register">Register</span></a>
     <a href="https://www.fremonthsathletics.org/shop" target="_blank" rel="noopener"><span data-i18n="res.shop">Team shop</span></a>
@@ -416,7 +416,7 @@
     <a href="https://www.fremonthsathletics.org/calendar" target="_blank" rel="noopener"><span data-i18n="res.calendar">Calendar</span></a>
     <a href="https://www.fremonthsathletics.org/contact" target="_blank" rel="noopener"><span data-i18n="res.contact">Contact</span></a>
   </div>
-  <div class="sportfilters" id="sportFilters">
+  <div class="sportfilters" id="sportFilters" hidden>
     <label class="selwrap"><span data-i18n="sports.sport">Sport</span>
       <select id="sportSelect" aria-label="Filter by sport"><option value="all">All sports</option></select>
     </label>
@@ -424,7 +424,7 @@
       <select id="levelSelect" aria-label="Filter by level"><option value="all">All levels</option></select>
     </label>
   </div>
-  <div id="sportsBody" aria-live="polite">
+  <div id="sportsBody">
     <p class="note">Loading Fremont Athletics…</p>
   </div>
 </div>
@@ -678,6 +678,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=28"></script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 </body>
 </html>
