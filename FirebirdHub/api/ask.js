@@ -25,11 +25,16 @@ const TZ = "America/Los_Angeles";
 // below still applies to them, since an Origin check alone can't stop a script.
 const ALLOWED_ORIGINS = ["https://firebirdhub.vercel.app", "https://app-sigma-woad-53.vercel.app"];
 // Per warm instance: 8 questions a minute and 60 an hour per IP, 40 a minute in total.
+// This is only a speed bump (each instance counts on its own). The real caps live in the
+// dashboards: a Vercel Firewall rate-limit rule on /api/ask and a quota cap on the Gemini key.
 const LIMIT = { perMin: 8, perHour: 60, globalPerMin: 40 };
 
 /* FUHSD 2026-27 calendar (fuhsd.org/about-us/general-information/calendar, checked 2026-10-12).
-   [first day, last day, reason]. Update every August with the new year's dates. */
+   [first day, last day, reason]. Update every August with the new year's dates (and the same
+   tables in app.js). From NEXT_FIRST_DAY on, Felipe says the new calendar isn't loaded yet
+   instead of calling it summer. */
 const FIRST_DAY = "2026-08-17", LAST_DAY = "2027-06-03";
+const NEXT_YEAR = "2027-28", NEXT_FIRST_DAY = "2027-08-16";   // already on fuhsd.org
 const NO_CLASSES = [
   ["2026-09-07", "2026-09-07", "Labor Day"],
   ["2026-10-12", "2026-10-12", "Teacher Non-Duty Day"],
@@ -42,6 +47,16 @@ const NO_CLASSES = [
   ["2027-04-12", "2027-04-16", "Spring Break"],
   ["2027-05-31", "2027-05-31", "Memorial Day"]
 ];
+/* Days a mid-week day off shifts the A/B pattern (FHS bell-schedule pattern rule: the days
+   left alternate A, B from Monday). Same dates as SPECIAL_DAYS in app.js. Finals week and
+   rally Fridays go here once FHS posts the 2026-27 dates. */
+const VETS_WEEK = "Veterans Day week: with Wednesday off, Monday runs A and Tuesday runs B";
+const THANKS_WEEK = "Thanksgiving week: Monday runs A and Tuesday runs B before the break";
+const SPECIAL_DAYS = {
+  "2026-11-09": ["A day", VETS_WEEK], "2026-11-10": ["B day", VETS_WEEK],
+  "2026-11-23": ["A day", THANKS_WEEK], "2026-11-24": ["B day", THANKS_WEEK]
+};
+const CAVEAT = "Special weeks (rallies, finals, testing) can change this; the Schedule tab shows the exact day.";
 
 const STATIC_FACTS = `
 Firebird Hub is the student app for Fremont High School (FHS), Sunnyvale, CA (FUHSD). Mascot: the Firebird, named Felipe. Colors: cardinal red and gold. Tabs: Home, Schedule, Spirit, Clubs, Sports, More.
@@ -110,33 +125,43 @@ function nowPT(){
 }
 
 /* ---------- today, from the FUHSD calendar ---------- */
-// { off:"reason" } on a day with no classes, else { sched:"Monday" | "A day" | "B day" }.
+// { off:"reason" } on a day with no classes, else { sched:"Monday" | "A day" | "B day" },
+// plus why:"..." on a SPECIAL_DAYS swap, or unknown:true once the calendar runs out.
+const dayName = iso=> WD_LONG[weekday(iso)]+", "+iso;
 function dayInfo(iso){
-  if(iso < FIRST_DAY) return { off:"summer break; the first day of school is Monday, "+FIRST_DAY };
-  if(iso > LAST_DAY) return { off:"summer break; the last day of school was Thursday, "+LAST_DAY };
+  if(iso < FIRST_DAY) return { off:"summer break; the first day of school is "+dayName(FIRST_DAY) };
+  if(iso > LAST_DAY && iso < NEXT_FIRST_DAY) return { off:"summer break; the last day of school was "+dayName(LAST_DAY)+", and the "+NEXT_YEAR+" school year starts "+dayName(NEXT_FIRST_DAY) };
   const wd = weekday(iso);
   if(wd===0 || wd===6) return { off:"weekend" };
+  const sched = {1:"Monday",2:"A day",3:"B day",4:"A day",5:"B day"}[wd];
+  if(iso >= NEXT_FIRST_DAY) return { sched, unknown:true };
   const hit = NO_CLASSES.find(n=> iso>=n[0] && iso<=n[1]);
   if(hit) return { off:hit[2]+" (FUHSD calendar)" };
-  return { sched:{1:"Monday",2:"A day",3:"B day",4:"A day",5:"B day"}[wd] };
+  const sp = SPECIAL_DAYS[iso];
+  return sp ? { sched:sp[0], why:sp[1] } : { sched };
+}
+// The bell schedule for a class day, with the same caveat on TODAY, TOMORROW and NEXT SCHOOL DAY.
+function schedText(d){
+  if(d.unknown) return "probably the "+d.sched+" bell schedule, but the "+NEXT_YEAR+" FUHSD calendar isn't loaded here yet, so days off and special schedules are unknown. Say so and point to the Schedule tab and fuhsd.org.";
+  return (d.why ? "the "+d.sched+" bell schedule ("+d.why+")" : "the regular "+d.sched+" bell schedule")+". "+CAVEAT;
 }
 function dayText(iso){
   const d = dayInfo(iso);
-  return d.off ? ("no classes, "+d.off+".") : (d.sched+" bell schedule.");
+  return d.off ? ("no classes, "+d.off+".") : ("classes, "+schedText(d));
 }
 function todayLines(now){
   const today = now.iso, d = dayInfo(today), tomorrow = addDays(today,1);
   const lines = [];
   lines.push("TODAY: "+WD_LONG[now.wd]+", "+today+", "+now.time+" Pacific time. " + (d.off
     ? "There are NO classes today: "+d.off+"."
-    : "Classes are on with the regular "+d.sched+" bell schedule (see BELL SCHEDULE). Special weeks can change this; the Schedule tab shows the exact day."));
-  lines.push("TOMORROW: "+WD_LONG[weekday(tomorrow)]+", "+tomorrow+": "+dayText(tomorrow));
+    : "Classes today: "+schedText(d)+(d.unknown?"":" Times are in BELL SCHEDULE.")));
+  lines.push("TOMORROW: "+dayName(tomorrow)+": "+dayText(tomorrow));
   if(d.off || dayInfo(tomorrow).off){
     let n = tomorrow; for(let i=0;i<120 && dayInfo(n).off;i++) n = addDays(n,1);
-    if(n!==tomorrow && !dayInfo(n).off) lines.push("NEXT SCHOOL DAY: "+WD_LONG[weekday(n)]+", "+n+", "+dayInfo(n).sched+" bell schedule.");
+    if(n!==tomorrow && !dayInfo(n).off) lines.push("NEXT SCHOOL DAY: "+dayName(n)+": "+dayText(n));
   }
   const left = NO_CLASSES.filter(n=> n[1]>=today).map(n=> (n[0]===n[1] ? (WD_SHORT[weekday(n[0])]+" "+n[0]) : (n[0]+" to "+n[1]))+" "+n[2]);
-  if(left.length) lines.push("NO-CLASS DAYS LEFT IN 2026-27 (FUHSD calendar): "+left.join("; ")+". The last day of school is Thursday, "+LAST_DAY+".");
+  if(left.length) lines.push("NO-CLASS DAYS LEFT IN 2026-27 (FUHSD calendar): "+left.join("; ")+". The last day of school is "+dayName(LAST_DAY)+".");
   return lines.join("\n");
 }
 
@@ -372,12 +397,15 @@ export default async function handler(req, res){
         const r = await fetch(GEMINI_URL, { method:"POST", headers:{ "Content-Type":"application/json", "x-goog-api-key":key }, body: JSON.stringify(payload), signal: ctrl.signal });
         const data = await r.json().catch(()=> ({}));
         let a=""; try{ a=(data.candidates[0].content.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join(" ").trim(); }catch(e){}
-        return { text:a, retry: r.ok || r.status===400 };
+        return { text:a, ok:r.ok, status:r.status, retry: r.ok || r.status===400 };
       } finally { clearTimeout(timer); }
     }
     let out = await callGemini(true);
     if(!out.text && out.retry) out = await callGemini(false);
-    res.status(200).json({ answer: out.text ? noEmDash(out.text) : MSG.empty });
+    // An empty 200 (e.g. a safety block) is "ask something else"; a Gemini error (429 quota
+    // used up, 5xx, a rejected key) is "try again later", since a new question hits the same wall.
+    if(!out.text && !out.ok) console.warn("ask: Gemini HTTP "+out.status);
+    res.status(200).json({ answer: out.text ? noEmDash(out.text) : (out.ok ? MSG.empty : MSG.error) });
   }catch(e){
     res.status(200).json({ answer:MSG.error });
   }
