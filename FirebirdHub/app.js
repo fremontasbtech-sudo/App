@@ -288,6 +288,16 @@ function nowPST(){ return new Date(new Date().toLocaleString("en-US",{timeZone:"
 function tickCountdown(){
   const now = nowPST();
   const future = EVENTS.filter(function(e){ return e.when > now; });
+  // Senior nights count too, so "Next up" matches the first card on Home.
+  try{
+    if(typeof sportsGames!=="undefined" && sportsGames) sportsGames.forEach(function(g){
+      if(!isSeniorNight(g)) return;
+      const m = String(g.date||"").match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return;
+      const t = sportTimeMin(g.time);
+      const when = new Date(+m[1],+m[2]-1,+m[3], t<9999?Math.floor(t/60):8, t<9999?t%60:0);
+      if(when > now) future.push({ name:g.sport+" Senior Night", when:when });
+    });
+  }catch(e){}
   const next = future.length ? future.reduce(function(a,b){ return a.when<b.when?a:b; }) : null;
   const nameEl = document.getElementById("nextupName");
   const timeEl = document.getElementById("nextupTime");
@@ -374,6 +384,22 @@ function parseEvDate(s,isEnd){
   if(!m) return null;
   return isEnd ? new Date(+m[1],+m[2]-1,+m[3],23,59) : new Date(+m[1],+m[2]-1,+m[3],8,0);
 }
+// Start time from the Events tab's time column, so "Next up" counts down to the event
+// itself: "6:15-8:15 PM" -> 6:15 PM, "Evening" -> 6 PM, "Lunch" -> 12:45 PM; else 8 AM.
+function withStartTime(d, time){
+  if(!d) return d;
+  const s = String(time||"");
+  let h = null, mi = 0;
+  const range = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*[-\u2013]\s*\d{1,2}(?::\d{2})?\s*(am|pm)/i);
+  const one = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+  if(range){ h = +range[1]%12 + (/pm/i.test(range[3]||range[4]) ? 12 : 0); mi = +(range[2]||0); }
+  else if(one){ h = +one[1]%12 + (/pm/i.test(one[3]) ? 12 : 0); mi = +(one[2]||0); }
+  else if(/evening|night/i.test(s)) h = 18;
+  else if(/lunch/i.test(s)){ h = 12; mi = 45; }
+  else if(/after school/i.test(s)){ h = 15; mi = 50; }
+  if(h===null) return d;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, mi);
+}
 async function syncEventsSheet(){
   if(!EVENTS_SHEET) return;
   try{
@@ -382,7 +408,7 @@ async function syncEventsSheet(){
     const gi = function(n){ return head.indexOf(n); };
     const col = function(r,n){ const i=gi(n); return i>=0?String(r[i]||"").trim():""; };
     const list = [];
-    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,"name"); const when=parseEvDate(col(r,"date"),false); if(!name||!when) continue;
+    for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,"name"); const when=withStartTime(parseEvDate(col(r,"date"),false), col(r,"time")); if(!name||!when) continue;
       if(/^(no|n|false|0|hide|hidden|off|skip)$/i.test(col(r,"hide"))) continue; // opt-out
       const end = parseEvDate(col(r,"enddate"),true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
       const tags = col(r,"tags").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
@@ -1014,8 +1040,10 @@ function tickClock(){
   }
   const now = nowPST();
   const nowMin = now.getHours()*60 + now.getMinutes() + now.getSeconds()/60;
+  // Staff-only blocks (B-day Collaboration) stay in the table but aren't a student's period.
+  const rows = sched.rows.filter(function(r){ return !/staff only/i.test(r[0]); });
   let cur=null, next=null;
-  for(const r of sched.rows){
+  for(const r of rows){
     const s=toMin(r[1]), e=toMin(r[2]);
     if(nowMin>=s && nowMin<e){ cur={r,s,e}; break; }
     if(nowMin<s && !next){ next={r,s}; }
@@ -1028,10 +1056,15 @@ function tickClock(){
     ringT.textContent = mins+":"+String(secs).padStart(2,"0");
     setText(ringL, tr("left","restante"));
     prog.style.strokeDashoffset = RING * (1 - left/(cur.e-cur.s));
-  } else if(next && next.s - nowMin > 90 && next.s === toMin(sched.rows[0][1])){
+  } else if(next && next.s === toMin(rows[0][1])){
+    // Before the first class: a countdown in the last 90 minutes, never "Passing".
+    const until = next.s - nowMin;
     setText(nowP, tr("School hasn't started","Las clases no han empezado"));
-    setText(sub, tr(periodName(sched.rows[0][0])+" starts at "+sched.rows[0][1], periodName(sched.rows[0][0])+" empieza a las "+sched.rows[0][1])+" · "+sched.label);
-    setText(ringT, "--"); setText(ringL, tr("soon","pronto"));
+    setText(sub, tr(periodName(rows[0][0])+" starts at "+rows[0][1], periodName(rows[0][0])+" empieza a las "+rows[0][1])+" · "+sched.label);
+    if(until <= 90){
+      ringT.textContent = Math.floor(until)+":"+String(Math.min(59,Math.round((until-Math.floor(until))*60))).padStart(2,"0");
+      setText(ringL, tr("until class","para la clase"));
+    } else { setText(ringT, "--"); setText(ringL, tr("soon","pronto")); }
     prog.style.strokeDashoffset = RING; prog.style.opacity = "0";
   } else if(next){
     const until = next.s - nowMin;
@@ -1041,7 +1074,7 @@ function tickClock(){
     setText(ringL, tr("until next","para el siguiente"));
     prog.style.strokeDashoffset = RING*0.02;
   } else {
-    const first=toMin(sched.rows[0][1]);
+    const first=toMin(rows[0][1]);
     setText(nowP, nowMin < first ? tr("School hasn't started","Las clases no han empezado") : tr("School's out","Terminaron las clases"));
     setText(sub, sched.label);
     setText(ringT, "--"); setText(ringL, nowMin < first ? tr("soon","pronto") : tr("see you","hasta pronto"));
@@ -1554,27 +1587,37 @@ async function syncClubs(){
 // Morning announcements, pulled from the website's parsed + Gemini-cleaned feed.
 // The feed returns every parsed item; we reveal each only after its 8:30 AM Wed/Fri
 // morning (same rule as the website), group by day, and show newest first.
+// The raw feed is kept so the 8:30 filter can re-run every minute: an app left open (the
+// normal case for an installed app) reveals Wednesday's and Friday's items on time.
+let annAll = null, annShownKey = "";
 async function syncAnnouncements(){
   try{
     const res=await fetch(ANN_API); // CDN-cached by the site (s-maxage=300); never add a cache-buster
     if(!res.ok) throw new Error("HTTP "+res.status);
     const data=await res.json();
     const all=Array.isArray(data.announcements)?data.announcements:[];
-    const now=nowPST();
-    const shown=all.filter(function(a){
-      const m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(a.date||"").trim()); if(!m) return false;
-      return new Date(+m[1],+m[2]-1,+m[3],8,30,0,0) <= now;
-    });
-    const byDate=new Map();
-    shown.forEach(function(a){ if(!byDate.has(a.date)) byDate.set(a.date,[]); byDate.get(a.date).push(a); });
-    const days=[...byDate.keys()].sort().reverse().map(function(date){
-      const items=byDate.get(date);
-      return { date:date,
-        bullets:items.map(function(a){ return a.title||a.text||""; }).filter(Boolean),
-        full:items.map(function(a){ return a.text||""; }).filter(Boolean).join("\n\n") };
-    });
-    if(days.length){ FTV_FEED.length=0; days.forEach(function(d){ FTV_FEED.push(d); }); renderFTV(); }
-  }catch(e){ /* offline or blocked: keep the placeholder */ }
+    if(all.length){ annAll = all; applyAnnouncements(); }
+  }catch(e){ /* offline or blocked: keep what's on screen */ }
+}
+function applyAnnouncements(){
+  if(!annAll) return;
+  const now=nowPST();
+  const shown=annAll.filter(function(a){
+    const m=/^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(a.date||"").trim()); if(!m) return false;
+    return new Date(+m[1],+m[2]-1,+m[3],8,30,0,0) <= now;
+  });
+  const key = JSON.stringify(shown);
+  if(key === annShownKey) return; // nothing new to reveal: leave the card alone
+  annShownKey = key;
+  const byDate=new Map();
+  shown.forEach(function(a){ if(!byDate.has(a.date)) byDate.set(a.date,[]); byDate.get(a.date).push(a); });
+  const days=[...byDate.keys()].sort().reverse().map(function(date){
+    const items=byDate.get(date);
+    return { date:date,
+      bullets:items.map(function(a){ return a.title||a.text||""; }).filter(Boolean),
+      full:items.map(function(a){ return a.text||""; }).filter(Boolean).join("\n\n") };
+  });
+  if(days.length){ FTV_FEED.length=0; days.forEach(function(d){ FTV_FEED.push(d); }); renderFTV(); }
 }
 document.getElementById("clubSearch").addEventListener("input", renderClubs);
 (function(){
@@ -1879,7 +1922,7 @@ function tickNowChip(){
   const sched = todaySchedule();
   if(!sched || !sched.rows.length){ chip.hidden = true; return; }
   const nowMin = nowMinPST();
-  const cur = sched.rows.find(r=> nowMin>=toMin(r[1]) && nowMin<toMin(r[2]));
+  const cur = sched.rows.find(r=> !/staff only/i.test(r[0]) && nowMin>=toMin(r[1]) && nowMin<toMin(r[2]));
   if(cur){ setText(chip, tr("Now: ","Ahora: ")+periodName(cur[0])+tr(" · ends "," · termina a las ")+cur[2]); chip.hidden = false; }
   else chip.hidden = true;
 }
@@ -1896,13 +1939,13 @@ let lastMin = nowPST().getMinutes();
 setInterval(()=>{
   tickClock(); tickCountdown();
   const m = nowPST().getMinutes();
-  if(m!==lastMin){ lastMin=m; tickNowChip(); if(pickedDay==="auto") renderToday(); }
+  if(m!==lastMin){ lastMin=m; tickNowChip(); if(pickedDay==="auto") renderToday(); applyAnnouncements(); }
 }, 1000);
 // Keep live data current while the app is open: refetch when it comes back to the
 // screen (if the last refresh is over a minute old) and every 2 minutes while visible.
 // These all hit the website's CDN, not Apps Script directly.
 let lastLiveRefresh = Date.now();
-function refreshLive(){ lastLiveRefresh = Date.now(); syncEventsSheet(); syncScoreboard(); loadSports(true); }
+function refreshLive(){ lastLiveRefresh = Date.now(); syncEventsSheet(); syncScoreboard(); loadSports(true); syncAnnouncements(); }
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="visible" && Date.now()-lastLiveRefresh > 60000) refreshLive();
 });
@@ -2025,6 +2068,7 @@ if(!FEATURES.fireBucks){
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
 var I18N_EN_ES = {
+  "until class":"para la clase",
   // Sports view
   "★ Featured":"★ Destacados","★ Senior Night":"★ Noche de los seniors","Senior Night":"Noche de los seniors",
   "Teams in season":"Equipos en temporada","This week":"Esta semana","Coming up":"Próximamente","All upcoming":"Todos los próximos",

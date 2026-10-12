@@ -218,7 +218,9 @@
     if (dayId && dayId !== "colors" && THEMES[dayId]) {
       try {
         stage("Warming up the vision model…");
-        const clf = await getClip();
+        // A blocked or stalled CDN (school filter) must not leave the check hanging: after
+        // 12 s use the color check. The model keeps loading in the background for next time.
+        const clf = await Promise.race([getClip(), new Promise((_, rej) => setTimeout(() => rej(new Error("vision model timeout")), 12000))]);
         stage("Looking at the outfit…");
         // Build label set: every CLIP theme's prompt + distractors.
         const promptToTheme = {};

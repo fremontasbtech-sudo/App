@@ -21,7 +21,7 @@
   --shadow:0 1px 0 rgba(39,21,16,.06), 0 6px 18px -8px rgba(95,12,3,.18);
   --space-1:4px; --space-2:8px; --space-3:16px; --space-4:24px; --space-5:32px; --space-6:48px;
   --font-display:"Barlow Condensed", "Arial Narrow", sans-serif;
-  --font-body:"Atkinson Hyperlegible", Georgia, "Segoe UI", sans-serif;
+  --font-body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
