@@ -1829,6 +1829,11 @@ var I18N_EN_ES = {
   "Motion mode: Off":"Modo movimiento: Apagado","Motion mode: On":"Modo movimiento: Encendido",
   "Motion mode swaps the card layout for scroll animations and a swipeable events row. Off keeps the classic look.":"El modo movimiento cambia el diseño de tarjetas por animaciones de desplazamiento y una fila de eventos deslizable. Apagado mantiene el estilo clásico.",
   "Ask Felipe":"Pregúntale a Felipe","Hi! Ask me about the bell schedule, clubs, events, or sports.":"¡Hola! Pregúntame sobre el horario de campanas, clubes, eventos o deportes.",
+  // Fixed replies from /api/ask (api/ask.js MSG)
+  "Ask Felipe isn't set up yet. For now, please check the Schedule, Clubs, Sports and More tabs.":"Pregúntale a Felipe todavía no está listo. Por ahora, revisa las pestañas Horario, Clubes, Deportes y Más.",
+  "Felipe needs a short break. Please wait a minute and ask again, or check the Schedule, Clubs and Sports tabs in the meantime.":"Felipe necesita un breve descanso. Espera un minuto y vuelve a preguntar, o mientras tanto revisa las pestañas Horario, Clubes y Deportes.",
+  "I couldn't answer that one. Try asking about the bell schedule, clubs, events or sports.":"No pude responder esa pregunta. Intenta preguntar sobre el horario de campanas, los clubes, los eventos o los deportes.",
+  "Felipe is having a moment. Please try again in a bit, or check the Schedule, Clubs and Sports tabs.":"Felipe tiene un pequeño problema en este momento. Inténtalo de nuevo en un rato, o revisa las pestañas Horario, Clubes y Deportes.",
   "Send":"Enviar","School questions only · answers aren't monitored live":"Solo preguntas escolares · las respuestas no se supervisan en vivo","Close":"Cerrar",
   "Google sign-in":"Iniciar sesión con Google",
   "Sign in with Google to put your name on the app and prefill your Firebird Card. Photos and points still only go where you send them.":"Inicia sesión con Google para poner tu nombre en la app y precargar tu Firebird Card. Las fotos y los puntos solo van a donde tú los envías.",
