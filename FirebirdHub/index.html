@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Firebird Hub · Fremont ASB</title>
 <meta name="theme-color" content="#8F1106">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -14,8 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=40">
-<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css?v=42">
+<link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
 </head>
@@ -66,9 +66,9 @@
     </div>
   </div>
 
-  <div class="nextup" role="status">
+  <div class="nextup">
     <span class="dot" aria-hidden="true"></span>
-    <b id="nextupName">Next up</b>
+    <b id="nextupName" aria-live="polite">Next up</b>
     <span class="nowchip" id="nowChip" hidden></span>
     <time id="nextupTime" datetime=""></time>
   </div>
@@ -240,7 +240,7 @@
     <h2>Clubs</h2>
     <span class="rule" aria-hidden="true"></span>
   </div>
-  <p class="clubig"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg> Follow <a href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener">@fremontclubs</a> on Instagram for the latest club info.</p>
+  <p class="clubig"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span>Follow <a href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener">@fremontclubs</a> on Instagram for the latest club info.</span></p>
   <section style="margin-top:var(--space-5)" aria-labelledby="h-cdates">
     <div class="sechead">
       <h2 id="h-cdates">Key dates &amp; deadlines</h2>
@@ -250,21 +250,21 @@
       <div class="card">
         <h3 style="margin-bottom:8px">Fall semester</h3>
         <ul style="margin:0; padding-left:18px; line-height:1.8">
-          <li><b>Sep 2&ndash;9</b> &middot; New club interviews</li>
-          <li><b>Sep 9&ndash;10</b> &middot; Clubs list finalized</li>
-          <li><b>Sep 9&ndash;13</b> &middot; Clubs Day sign-ups (for clubs)</li>
-          <li><b>Sep 16</b> &middot; Clubs Day</li>
-          <li><b>Sep 30</b> &middot; First monthly check-in due, 11:59 PM</li>
-          <li><b>Oct 28</b> &middot; Multicultural Night</li>
+          <li><b>Sep 2&ndash;9</b> &middot; <span>New club interviews</span></li>
+          <li><b>Sep 9&ndash;10</b> &middot; <span>Clubs list finalized</span></li>
+          <li><b>Sep 9&ndash;13</b> &middot; <span>Clubs Day sign-ups (for clubs)</span></li>
+          <li><b>Sep 16</b> &middot; <span>Clubs Day</span></li>
+          <li><b>Sep 30</b> &middot; <span>First monthly check-in due, 11:59 PM</span></li>
+          <li><b>Oct 28</b> &middot; <span>Multicultural Night</span></li>
         </ul>
       </div>
       <div class="card">
         <h3 style="margin-bottom:8px">Spring semester</h3>
         <ul style="margin:0; padding-left:18px; line-height:1.8">
-          <li><b>January</b> &middot; Second-round new club applications open</li>
-          <li><b>Jan 27</b> &middot; Club Trivia Night</li>
-          <li><b>Apr 21</b> &middot; Club Grub Day</li>
-          <li><b>May</b> &middot; Club renewals</li>
+          <li><b>January</b> &middot; <span>Second-round new club applications open</span></li>
+          <li><b>Jan 27</b> &middot; <span>Club Trivia Night</span></li>
+          <li><b>Apr 21</b> &middot; <span>Club Grub Day</span></li>
+          <li><b>May</b> &middot; <span>Club renewals</span></li>
         </ul>
         <p class="hint" style="margin-top:10px">A monthly check-in form goes out on the 1st of every month and is due at the end of that month.</p>
       </div>
@@ -297,8 +297,8 @@
         <div class="stub" aria-hidden="true"><span class="mo">Sep</span><span class="day">16</span></div>
         <div class="body">
           <h3>Clubs Day</h3>
-          <p class="meta">Tue Sep 16 &middot; the quad &middot; lunch</p>
-          <p>The fall club fair. Walk the quad, meet all 80+ clubs, and sign up in person.</p>
+          <p class="meta">Wed Sep 16 &middot; the quad &middot; lunch</p>
+          <p>The fall club fair. Walk the quad, meet the clubs, and sign up in person.</p>
           <span class="tag">Clubs</span>
         </div>
       </article>
@@ -387,8 +387,8 @@
     <div class="grid cols2">
       <div class="card">
         <h3 style="margin-bottom:10px">Get in touch</h3>
-        <p class="iconline" style="margin:6px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><a href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener">@fremontclubs</a>&nbsp;on Instagram</p>
-        <p class="iconline" style="margin:6px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="2" fill="none"/></svg><a href="mailto:fremontclubs@gmail.com">fremontclubs@gmail.com</a></p>
+        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span><a href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener">@fremontclubs</a> on Instagram</span></p>
+        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="2" fill="none"/></svg><span><a href="mailto:fremontclubs@gmail.com">fremontclubs@gmail.com</a></span></p>
       </div>
       <div class="card">
         <h3 style="margin-bottom:10px">Handbook, tracker &amp; clubs list</h3>
@@ -417,12 +417,18 @@
     <a href="https://www.fremonthsathletics.org/contact" target="_blank" rel="noopener"><span data-i18n="res.contact">Contact</span></a>
   </div>
   <div class="sportfilters" id="sportFilters" hidden>
-    <label class="selwrap"><span data-i18n="sports.sport">Sport</span>
-      <select id="sportSelect" aria-label="Filter by sport"><option value="all">All sports</option></select>
-    </label>
-    <label class="selwrap"><span data-i18n="sports.level">Level</span>
-      <select id="levelSelect" aria-label="Filter by level"><option value="all">All levels</option></select>
-    </label>
+    <div class="selwrap"><span id="sportSelectLbl" data-i18n="sports.sport">Sport</span>
+      <div class="dd">
+        <button type="button" class="dd-btn" id="sportSelect" aria-haspopup="listbox" aria-expanded="false" aria-controls="sportSelectList" aria-labelledby="sportSelectLbl sportSelect"><span class="dd-val">All sports</span><svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <ul class="dd-list" id="sportSelectList" role="listbox" aria-labelledby="sportSelectLbl" tabindex="-1" hidden></ul>
+      </div>
+    </div>
+    <div class="selwrap"><span id="levelSelectLbl" data-i18n="sports.level">Level</span>
+      <div class="dd">
+        <button type="button" class="dd-btn" id="levelSelect" aria-haspopup="listbox" aria-expanded="false" aria-controls="levelSelectList" aria-labelledby="levelSelectLbl levelSelect"><span class="dd-val">All levels</span><svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <ul class="dd-list" id="levelSelectList" role="listbox" aria-labelledby="levelSelectLbl" tabindex="-1" hidden></ul>
+      </div>
+    </div>
   </div>
   <div id="sportsBody">
     <p class="note">Loading Fremont Athletics…</p>
@@ -518,7 +524,7 @@
   <div class="grid cols2">
     <div class="card">
       <h3 style="margin-bottom:12px">Tell ASB anything</h3>
-      <p style="margin-top:0; color:var(--ink-soft)">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up — it sends straight to us, no extra steps.</p>
+      <p style="margin-top:0; color:var(--ink-soft)">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. It comes straight to us, with no extra steps.</p>
       <form id="fbForm" novalidate>
         <div class="field">
           <label for="fbName">Your name <span class="req" aria-hidden="true">*</span></label>
@@ -543,9 +549,9 @@
     <div>
       <div class="card" style="margin-bottom:var(--space-3)">
         <h3 style="margin-bottom:10px">Find ASB</h3>
-        <p class="iconline" style="margin:6px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><a href="https://www.instagram.com/firebirdfelipe" target="_blank" rel="noopener">@firebirdfelipe</a>&nbsp;on Instagram</p>
-        <p class="iconline" style="margin:6px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="2"/></svg><a href="https://www.fremontasb.org" target="_blank" rel="noopener">fremontasb.org</a> for photos, FTV, resources, and store links</p>
-        <p class="iconline" style="margin:6px 0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/></svg>ASB Leadership · Fremont High School, Sunnyvale (FUHSD)</p>
+        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span><a href="https://www.instagram.com/firebirdfelipe" target="_blank" rel="noopener">@firebirdfelipe</a> on Instagram</span></p>
+        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="2"/></svg><span><a href="https://www.fremontasb.org" target="_blank" rel="noopener">fremontasb.org</a> for photos, FTV, resources, and store links</span></p>
+        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/></svg><span>ASB Leadership · Fremont High School, Sunnyvale (FUHSD)</span></p>
       </div>
       <div class="card">
         <h3 style="margin-bottom:10px">About this app</h3>
@@ -662,9 +668,9 @@
 
 <dialog id="signinDialog" aria-labelledby="signinTitle">
   <h3 id="signinTitle" style="margin-bottom:10px">Google sign-in</h3>
-  <p style="margin-top:0; color:var(--ink-soft)" id="signinBlurb">Sign in with Google to put your name on the app and prefill your Firebird Card. Photos and points still only go where you send them.</p>
+  <p style="margin-top:0; color:var(--ink-soft)" id="signinBlurb">Sign in with your school Google account to see your name on the app. Photos and points still only go where you send them.</p>
   <div class="gsiwrap" id="gsiBtn"></div>
-  <p class="note" id="signinNote" hidden>Google sign-in is being finished setting up — it will be live shortly.</p>
+  <p class="note" id="signinNote" hidden>Google sign-in isn't reachable on this network right now. Everything else in the app still works.</p>
   <div class="signin-actions">
     <button class="btn ghost" id="signoutBtn" type="button" hidden style="font-size:14px">Sign out</button>
     <form method="dialog"><button class="btn gold" style="font-size:15px">Close</button></form>
@@ -678,6 +684,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=28"></script>
-<script src="app.js?v=42"></script>
+<script src="app.js?v=44"></script>
 </body>
 </html>
