@@ -1377,12 +1377,12 @@ document.getElementById("giveForm").addEventListener("submit", async e=>{
   }
 });
 
-/* Feedback form — posts name/email/message in the background to the ASB contact
-   Google Form. Google's reply can't be read (no-cors), so success means the request went
-   out; a network failure or block keeps the typed message and asks to try again. */
-const FEEDBACK_FORM = "https://docs.google.com/forms/d/e/1FAIpQLScNFE8IoooVpQER65d2GIse6ru1nLIp03EHcBjeGBVpsOJMZQ/viewform?usp=pp_url";
-const FEEDBACK_ENTRY = { name:"entry.1253423822", email:"entry.2023794996", message:"entry.548009737" };
-const FEEDBACK_ACTION = FEEDBACK_FORM.replace("/viewform?usp=pp_url","/formResponse");
+/* Feedback form — posts name/email/message to the website's /api/contact, the same
+   endpoint as fremontasb.org/contact, so every message lands in the private Contact tab
+   of the Events sheet. A failure keeps the typed message and asks to try again. */
+const CONTACT_API = "https://www.fremontasb.org/api/contact";
+var fbOpenedAt = Date.now(); // the API drops forms sent within 2 s of opening (bots)
+document.getElementById("fbForm").addEventListener("focusin", function(){ if(!fbOpenedAt) fbOpenedAt=Date.now(); });
 document.getElementById("fbForm").addEventListener("submit", function(e){
   e.preventDefault();
   const nameEl=document.getElementById("fbName"), emailEl=document.getElementById("fbEmail"), msgEl=document.getElementById("fbMsg");
@@ -1395,28 +1395,32 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
   if(bad){ (!name?nameEl:(!emailOk?emailEl:msgEl)).focus(); return; }
   const btn=e.target.querySelector('button[type="submit"]');
   const ok=document.getElementById("fbOk");
-  const body=new URLSearchParams();
-  body.append(FEEDBACK_ENTRY.name, name);
-  body.append(FEEDBACK_ENTRY.email, email);
-  body.append(FEEDBACK_ENTRY.message, msg);
   if(btn){ btn.disabled=true; btn.dataset.label=btn.dataset.label||btn.textContent; btn.textContent=tr("Sending…","Enviando…"); }
   ok.classList.remove("show","retry");
   const ctrl = typeof AbortController!=="undefined" ? new AbortController() : null;
-  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 15000) : null;
-  function done(sent){
+  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 50000) : null;
+  function done(sent, why){
     if(timer) clearTimeout(timer);
     if(btn){ btn.disabled=false; btn.textContent=btn.dataset.label||"Send to ASB"; }
     if(sent){
-      e.target.reset();
+      e.target.reset(); fbOpenedAt=0;
       ok.textContent=tr("Thanks! Your message is on its way to ASB, and they'll reply to your school email.","¡Gracias! Tu mensaje va en camino a ASB y te responderán a tu correo escolar.");
     } else {
       ok.classList.add("retry");
-      ok.textContent=tr("That didn't send. Your message is still here, so check your connection and try again.","No se pudo enviar. Tu mensaje sigue aquí, así que revisa tu conexión e inténtalo de nuevo.");
+      ok.textContent = why==="rate"
+        ? tr("You've sent a few messages already. Please wait a little while before sending another.","Ya enviaste varios mensajes. Espera un rato antes de enviar otro.")
+        : why==="invalid"
+        ? tr("Please check your name, email and message, then try again.","Revisa tu nombre, correo y mensaje, y vuelve a intentarlo.")
+        : tr("That didn't send. Your message is still here, so check your connection and try again.","No se pudo enviar. Tu mensaje sigue aquí, así que revisa tu conexión e inténtalo de nuevo.");
     }
     ok.classList.add("show"); ok.focus();
   }
-  fetch(FEEDBACK_ACTION, { method:"POST", mode:"no-cors", headers:{"Content-Type":"application/x-www-form-urlencoded"}, body: body.toString(), signal: ctrl ? ctrl.signal : undefined })
-    .then(function(){ done(true); }, function(){ done(false); });
+  // text/plain keeps this a simple request (no CORS preflight); the API parses the JSON body.
+  fetch(CONTACT_API, { method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify({ name:name, email:email, message:msg, website:"", elapsed: Date.now()-(fbOpenedAt||Date.now()) }),
+      signal: ctrl ? ctrl.signal : undefined })
+    .then(function(r){ return r.json().catch(function(){ return {}; }); })
+    .then(function(d){ done(d && d.ok===true, d && d.error); }, function(){ done(false); });
 });
 ["fbName","fbEmail","fbMsg"].forEach(function(id){ document.getElementById(id).addEventListener("input", function(e){ if(e.target.value.trim()) setBad(id,false); }); });
 
