@@ -327,7 +327,7 @@ function renderEvents(){
   if(!grid) return;
   const now = nowPST();
   const MO = tr(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], MO_ES);
-  const horizon = new Date(now.getTime()+21*86400000); // only the next 3 weeks
+  const horizon = new Date(now.getTime()+30*86400000); // the next 30 days (5 show, the rest behind "Show more")
   let list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; });
   // Merge sports games, same rule as the website's Upcoming Events (src/data/useEvents.js):
   // every senior night in the window, plus the soonest pinned (push=y) game per sport,
@@ -354,11 +354,13 @@ function renderEvents(){
       Object.keys(nextBySport).forEach(function(k){ const v=nextBySport[k]; list.push(toItem(v.g, v.when, v.m)); });
     }
   }catch(e){}
-  // At most 5 upcoming at a time, soonest first. Senior nights don't count toward the 5.
-  let nonSenior = 0;
-  list = list.sort(function(a,b){ return a.when-b.when; }).filter(function(e){ return e.senior || ++nonSenior <= 5; });
+  // At most 5 upcoming, soonest first (same as the website); the rest of the next 30 days
+  // sit behind "Show more events".
+  list = list.sort(function(a,b){ return a.when-b.when; });
+  const more = Math.max(0, list.length - EVENTS_MAX);
+  renderEventsMore(more);
   if(!list.length){ lastEventsHtml = ""; grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
-  const html = list.map(function(e){
+  const html = (eventsShowAll ? list : list.slice(0, EVENTS_MAX)).map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
     const tags = (e.tags||[]).map(function(t){ return '<span class="tag'+(t==="Senior Night"?' star':'')+'">'+(t==="Senior Night"?'&#9733; ':'')+clubEsc(t)+'</span>'; }).join("");
     return '<article class="ticket'+(e.senior?' senior':'')+'">'+
@@ -374,6 +376,26 @@ function renderEvents(){
   staggered.delete("eventList"); staggerOnce("eventList");
 }
 let lastEventsHtml = "";
+const EVENTS_MAX = 5;
+let eventsShowAll = false;
+// The "Show more events" toggle under the Home list (created here, so index.html stays as is).
+function renderEventsMore(more){
+  const grid = document.getElementById("eventList"); if(!grid) return;
+  let box = document.getElementById("eventMore");
+  if(!box){
+    box = document.createElement("div"); box.id = "eventMore"; box.className = "evmore"; box.style.cssText = "margin-top:var(--space-3); text-align:center";
+    grid.parentNode.insertBefore(box, grid.nextSibling);
+    box.addEventListener("click", function(e){
+      if(!e.target.closest("button")) return;
+      eventsShowAll = !eventsShowAll; lastEventsHtml = ""; renderEvents();
+    });
+  }
+  box.hidden = !more;
+  if(!more) return;
+  box.innerHTML = '<button type="button" class="btn ghost" aria-controls="eventList" aria-expanded="'+eventsShowAll+'">'+
+    '<span>'+(eventsShowAll ? "Show fewer events" : "Show more events")+'</span>'+
+    (eventsShowAll ? '' : ' <span class="tag" style="margin:0 0 0 6px">+'+more+'</span>')+'</button>';
+}
 /* Live events feed — the "Events" tab through the website proxy (see SHEET_PROXY), so
    any edit shows up on the app. EVERY dated row shows (read BY NAME, never gid=0, which
    falls back to Config). Opt-out: put no/hide in an optional "hide" column to skip a
@@ -2362,6 +2384,7 @@ if(!FEATURES.fireBucks){
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
 var I18N_EN_ES = {
+  "Show more events":"Ver más eventos","Show fewer events":"Ver menos eventos",
   "until class":"para la clase",
   // Sports view
   "★ Featured":"★ Destacados","★ Senior Night":"★ Noche de los seniors","Senior Night":"Noche de los seniors",
