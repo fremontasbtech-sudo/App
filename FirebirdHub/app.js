@@ -1766,12 +1766,13 @@ function applySignedInUI(){
   }
 }
 function refreshSigninDialog(){
+  renderSgyStep();
   const blurb=document.getElementById("signinBlurb"), gsi=document.getElementById("gsiBtn"), note=document.getElementById("signinNote"), out=document.getElementById("signoutBtn");
   if(signedIn.email){
-    if(blurb) blurb.textContent = tr("Signed in as "+signedIn.email+". Your name now shows on the app.","Sesión iniciada como "+signedIn.email+". Tu nombre ya aparece en la app.");
+    if(blurb) blurb.textContent = tr("Signed in as "+signedIn.email+".","Sesión iniciada como "+signedIn.email+".");
     if(gsi) gsi.hidden = true; if(note) note.hidden = true; if(out) out.hidden = false;
   } else {
-    if(blurb) blurb.textContent = tr("Sign in with your school Google account to see your name on the app. Photos and points still only go where you send them.","Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app. Las fotos y los puntos solo van a donde tú los envías.");
+    if(blurb) blurb.textContent = tr("Sign in with your school Google account to see your name on the app and connect your Schoology calendar. Everything else works without signing in.","Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app y conectar tu calendario de Schoology. Todo lo demás funciona sin iniciar sesión.");
     if(out) out.hidden = true;
     // No Google button when the client ID is missing or Google's script didn't load
     // (Securly on school Wi-Fi): the note says why instead of an empty dialog.
@@ -1792,15 +1793,19 @@ function onGoogleCred(resp){
     _saveSignin(); applySignedInUI();
     const csName = document.getElementById("csName");
     if(csName && !csName.value) csName.value = signedIn.name;
-    refreshSigninDialog();
-    const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
+    if(sgy && sgy.email !== signedIn.email) sgyForget();
+    refreshSigninDialog(); renderSchoology(); sgyRefresh(false);
+    // A school account that hasn't connected Schoology stays in the dialog for step 2.
+    const d=document.getElementById("signinDialog");
+    if(d && d.open && (sgyConnected() || !isSchoolEmail(signedIn.email))) d.close();
+    else if(d && d.open){ const f=document.getElementById("sgyFeed"); if(f) f.focus(); }
   }catch(e){ /* ignore a bad credential */ }
 }
 function signOut(){
   signedIn.name=""; signedIn.email=""; signedIn.picture="";
-  _clearSignin();
+  _clearSignin(); sgyForget();
   try{ if(window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(e){}
-  applySignedInUI(); refreshSigninDialog();
+  applySignedInUI(); refreshSigninDialog(); renderSchoology();
   const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
 }
 function initGoogleSignin(){
@@ -1811,7 +1816,8 @@ function initGoogleSignin(){
   s.onload = ()=>{
     // A filter can answer with its own block page, which "loads" but defines nothing.
     try{
-      google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: onGoogleCred, auto_select: false });
+      google.accounts.id.initialize({ client_id: CONFIG.googleClientId, callback: onGoogleCred, auto_select: false,
+        hd: "student.fuhsd.org" }); // pre-selects the school account in Google's chooser
       google.accounts.id.renderButton(document.getElementById("gsiBtn"),
         { theme:"filled_black", size:"large", shape:"pill", text:"signin_with" });
     }catch(e){ failed(); }
@@ -1821,7 +1827,295 @@ function initGoogleSignin(){
 }
 if(_signinBtn) _signinBtn.addEventListener("click", ()=>{ refreshSigninDialog(); document.getElementById("signinDialog").showModal(); });
 (function(){ const out=document.getElementById("signoutBtn"); if(out) out.addEventListener("click", signOut); })();
-_loadSignin(); applySignedInUI(); initGoogleSignin();
+/* =====================================================
+   Schoology calendar (step 2 of sign-in)
+   A student signs in with their school Google account, then pastes their personal
+   Schoology iCal link once (Schoology: Settings > Share your Schoology Calendar).
+   /api/schoology reads it and returns the next 60 days. The link and the last good
+   list stay only in this browser (localStorage fh_schoology_v1), tied to the signed-in
+   email, and are cleared on sign-out. A failed refresh keeps the last good list.
+===================================================== */
+const SGY_KEY = "fh_schoology_v1";
+const SGY_API = "/api/schoology";
+const SGY_SETTINGS_URL = "https://fuhsd.schoology.com/settings/account";
+const SGY_HIDE_INVITE = "fh_schoology_invite_hidden";
+const SGY_REFRESH_MS = 10*60*1000;
+const SGY_FEED_RE = /^(?:webcal|https?):\/\/[a-z0-9-]+\.schoology\.com\/calendar\/feed\/ical\/\d{4,20}\/[0-9a-f]{16,64}\/ical\.ics$/i;
+let sgy = null;            // { email, feed, items, fetchedAt, dead }
+let sgyBusy = false, sgyLastTry = 0, sgyFilter = "all", sgyQuery = "", sgyShowAll = false;
+let sgyStepMsg = { text:"", bad:false };
+
+function isSchoolEmail(e){ return /@(student\.)?fuhsd\.org$/i.test(String(e||"")); }
+function sgyConnected(){ return !!(sgy && sgy.feed && signedIn.email && sgy.email === signedIn.email); }
+function sgyLoad(){ try{ const v=JSON.parse(localStorage.getItem(SGY_KEY)||"null"); if(v && v.feed && v.email) sgy=v; }catch(e){} }
+function sgySave(){ try{ if(sgy) localStorage.setItem(SGY_KEY, JSON.stringify(sgy)); }catch(e){} }
+function sgyForget(){ sgy=null; sgyStepMsg={text:"",bad:false}; try{ localStorage.removeItem(SGY_KEY); }catch(e){} }
+function sgyClean(raw){ return String(raw||"").trim().replace(/^["'<]+|["'>]+$/g,""); }
+
+async function sgyFetch(feed){
+  const ctrl = typeof AbortController!=="undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 15000) : null;
+  try{
+    const res = await fetch(SGY_API, { method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ feed: feed }), signal: ctrl ? ctrl.signal : undefined });
+    let body = null; try{ body = await res.json(); }catch(e){}
+    if(res.ok && body && body.ok && Array.isArray(body.items)) return { items: body.items, fetchedAt: body.fetchedAt };
+    return { error: (body && body.error) || "unreachable" };
+  }catch(e){ return { error:"unreachable" }; }
+  finally{ if(timer) clearTimeout(timer); }
+}
+
+async function sgyConnect(raw){
+  const feed = sgyClean(raw);
+  if(!SGY_FEED_RE.test(feed)){
+    sgyStepMsg = { bad:true, text: tr("That doesn't look like a Schoology calendar link. It starts with webcal:// and ends with ical.ics.",
+      "Eso no parece un enlace de calendario de Schoology. Empieza con webcal:// y termina con ical.ics.") };
+    renderSgyStep(); return;
+  }
+  sgyBusy = true; sgyStepMsg = { bad:false, text: tr("Connecting to Schoology…","Conectando con Schoology…") }; renderSgyStep();
+  const r = await sgyFetch(feed);
+  sgyBusy = false;
+  if(r.items){
+    sgy = { email: signedIn.email, feed: feed, items: r.items, fetchedAt: r.fetchedAt || new Date().toISOString(), dead:false };
+    sgySave(); sgyLastTry = Date.now();
+    sgyStepMsg = { bad:false, text:"" };
+    renderSchoology(); renderSgyStep();
+    const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
+    return;
+  }
+  sgyStepMsg = { bad:true, text: r.error==="dead-link"
+    ? tr("Schoology didn't accept that link. It may have been reset. Copy the link again from Schoology and paste it here.",
+         "Schoology no aceptó ese enlace. Puede que se haya restablecido. Copia el enlace otra vez desde Schoology y pégalo aquí.")
+    : r.error==="bad-link"
+    ? tr("That doesn't look like a Schoology calendar link. It starts with webcal:// and ends with ical.ics.",
+         "Eso no parece un enlace de calendario de Schoology. Empieza con webcal:// y termina con ical.ics.")
+    : tr("We couldn't reach Schoology just now. Please try again in a minute.",
+         "No pudimos conectar con Schoology en este momento. Inténtalo de nuevo en un minuto.") };
+  renderSgyStep();
+}
+
+// Quiet background refresh: on load, on return to the app and with the live-data timer,
+// at most every 10 minutes. Failures keep the last good list; only a link Schoology no
+// longer accepts is shown (with a Reconnect button), since only the student can fix it.
+async function sgyRefresh(force){
+  if(!sgyConnected() || sgyBusy || !navigator.onLine) return;
+  const age = Date.now() - (Date.parse(sgy.fetchedAt||"")||0);
+  if(!force && (age < SGY_REFRESH_MS || Date.now()-sgyLastTry < 60000)) return;
+  sgyLastTry = Date.now(); sgyBusy = true;
+  const r = await sgyFetch(sgy.feed);
+  sgyBusy = false;
+  if(!sgyConnected()) return;
+  if(r.items){ sgy.items = r.items; sgy.fetchedAt = r.fetchedAt || new Date().toISOString(); sgy.dead = false; sgySave(); renderSchoology(); }
+  else if(r.error==="dead-link"){ sgy.dead = true; sgySave(); renderSchoology(); }
+}
+
+/* ---------- helpers for the lists ---------- */
+const SGY_ICONS = {
+  assignment:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3h7l5 5v13H7z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5M10 13h6M10 17h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  quiz:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 4h14v16H5z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 9l1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  discussion:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v10H9l-5 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  event:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" stroke="currentColor" stroke-width="2"/><path d="M4 10h16M9 3v4M15 3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+};
+const SGY_OUT = '<svg class="go" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M10 6H5v13h13v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function sgyTypeName(t, n){
+  const many = n!==1;
+  if(t==="assignment") return many ? tr("Assignments","Tareas") : tr("Assignment","Tarea");
+  if(t==="quiz") return many ? tr("Quizzes and tests","Pruebas y exámenes") : tr("Quiz or test","Prueba o examen");
+  if(t==="discussion") return many ? tr("Discussions","Debates") : tr("Discussion","Debate");
+  return many ? tr("Events","Eventos") : tr("Event","Evento");
+}
+function sgyDayLabel(key){
+  const today = todayKeyPST();
+  const t = new Date(+today.slice(0,4), +today.slice(5,7)-1, +today.slice(8,10));
+  const d = new Date(+key.slice(0,4), +key.slice(5,7)-1, +key.slice(8,10));
+  const diff = Math.round((d - t)/86400000);
+  const long = d.toLocaleDateString(tr("en-US","es-US"), { weekday:"long", month:"short", day:"numeric" });
+  if(diff===0) return { main: tr("Today","Hoy"), sub: long };
+  if(diff===1) return { main: tr("Tomorrow","Mañana"), sub: long };
+  return { main: d.toLocaleDateString(tr("en-US","es-US"), { weekday:"long" }), sub: d.toLocaleDateString(tr("en-US","es-US"), { month:"short", day:"numeric" }) };
+}
+function sgyUpcoming(){
+  if(!sgyConnected() || !Array.isArray(sgy.items)) return [];
+  const today = todayKeyPST();
+  return sgy.items.filter(function(e){ return e && e.date >= today; });
+}
+function sgyTimeText(e){
+  if(e.allDay) return tr("All day","Todo el día");
+  return (e.type==="event" ? "" : tr("Due ","Para las ")) + e.time;
+}
+function sgyRow(e, withDay){
+  const day = withDay ? sgyDayLabel(e.date).main + ", " : "";
+  let when = sgyTimeText(e);
+  if(withDay) when = when.charAt(0).toLowerCase() + when.slice(1);
+  const meta = clubEsc(day + when) + " &middot; " + clubEsc(sgyTypeName(e.type,1));
+  const inner = '<span class="ico '+clubEsc(e.type)+'">'+(SGY_ICONS[e.type]||SGY_ICONS.event)+'</span>'+
+    '<span class="txt"><b>'+clubEsc(e.title)+'</b><span class="m">'+meta+'</span>'+
+    (e.desc && !withDay ? '<span class="d">'+clubEsc(e.desc)+'</span>' : '')+'</span>';
+  if(/^https:\/\/[a-z0-9-]+\.schoology\.com\//i.test(e.url||""))
+    return '<a class="sgyrow" href="'+clubEsc(e.url)+'" target="_blank" rel="noopener" aria-label="'+clubEsc(e.title+", "+day+when+". "+tr("Opens in Schoology","Se abre en Schoology"))+'">'+inner+SGY_OUT+'</a>';
+  return '<div class="sgyrow">'+inner+'</div>';
+}
+function sgyInviteHTML(where){
+  const school = signedIn.email && !isSchoolEmail(signedIn.email);
+  return '<div class="card sgyinvite">'+
+    '<span class="ico" aria-hidden="true">'+SGY_ICONS.assignment+'</span>'+
+    '<div class="txt"><h3>'+clubEsc(tr("See your Schoology calendar here","Ve tu calendario de Schoology aquí"))+'</h3>'+
+    '<p>'+clubEsc(school
+      ? tr("To connect Schoology, sign in with your @student.fuhsd.org account.","Para conectar Schoology, inicia sesión con tu cuenta @student.fuhsd.org.")
+      : tr("Your assignments, quizzes and class events, sorted by day. Sign in with your school Google account and connect Schoology once. It takes about a minute.",
+           "Tus tareas, pruebas y eventos de clase, ordenados por día. Inicia sesión con tu cuenta escolar de Google y conecta Schoology una vez. Toma más o menos un minuto."))+'</p>'+
+    '<div class="btnrow"><button type="button" class="btn primary" data-sgy="open">'+clubEsc(tr("Connect Schoology","Conectar Schoology"))+'</button>'+
+    (where==="home" ? '<button type="button" class="btn ghost" data-sgy="hide">'+clubEsc(tr("Not now","Ahora no"))+'</button>' : '')+
+    '</div></div></div>';
+}
+function sgyDeadHTML(){
+  return '<div class="card sgynote" role="status"><p>'+clubEsc(tr("Your Schoology link stopped working, so this list may be out of date. Schoology may have reset it. Copy the link again to reconnect.",
+    "Tu enlace de Schoology dejó de funcionar, así que esta lista puede estar desactualizada. Puede que Schoology lo haya restablecido. Copia el enlace otra vez para reconectar."))+'</p>'+
+    '<button type="button" class="btn gold" data-sgy="open">'+clubEsc(tr("Reconnect","Reconectar"))+'</button></div>';
+}
+
+/* ---------- Home: the next few things due ---------- */
+function renderSgyHome(){
+  const el = document.getElementById("sgyHome"); if(!el) return;
+  let hidden = false; try{ hidden = localStorage.getItem(SGY_HIDE_INVITE)==="1"; }catch(e){}
+  if(!sgyConnected()){
+    if(hidden){ el.hidden = true; el.innerHTML = ""; return; }
+    el.hidden = false;
+    el.innerHTML = sgyInviteHTML("home");
+    return;
+  }
+  const list = sgyUpcoming(), soon = list.slice(0,4);
+  let html = '<div class="sechead"><h2 id="h-sgyhome">'+clubEsc(tr("Coming up in Schoology","Próximamente en Schoology"))+'</h2><span class="rule" aria-hidden="true"></span></div>';
+  if(sgy.dead) html += sgyDeadHTML();
+  if(!soon.length) html += '<div class="card sgyempty"><p>'+clubEsc(tr("You're all caught up. Nothing is due in Schoology in the next 2 months.","Estás al día. No tienes nada pendiente en Schoology en los próximos 2 meses."))+'</p></div>';
+  else{
+    html += '<div class="sgylist">'+soon.map(function(e){ return sgyRow(e,true); }).join("")+'</div>';
+    html += '<div class="btnrow"><a class="btn ghost" href="#schedule" data-nav="schedule">'+
+      clubEsc(list.length>soon.length ? tr("See all "+list.length+" on the Schedule tab","Ver los "+list.length+" en Horario") : tr("Open the Schedule tab","Abrir Horario"))+'</a></div>';
+  }
+  el.hidden = false;
+  if(el.innerHTML !== html) el.innerHTML = html;
+}
+
+/* ---------- Schedule tab: the full list, grouped by day ---------- */
+function renderSgySched(){
+  const el = document.getElementById("sgySched"); if(!el) return;
+  let head = '<div class="sechead"><h2 id="h-sgysched">'+clubEsc(tr("Your Schoology calendar","Tu calendario de Schoology"))+'</h2><span class="rule" aria-hidden="true"></span></div>';
+  if(!sgyConnected()){ el.innerHTML = head + sgyInviteHTML("sched"); return; }
+  const all = sgyUpcoming();
+  const counts = {}; all.forEach(function(e){ counts[e.type]=(counts[e.type]||0)+1; });
+  const types = ["assignment","quiz","discussion","event"].filter(function(t){ return counts[t]; });
+  if(sgyFilter!=="all" && !counts[sgyFilter]) sgyFilter = "all";
+  const q = sgyQuery.trim().toLowerCase();
+  const shown = all.filter(function(e){
+    return (sgyFilter==="all" || e.type===sgyFilter) && (!q || (e.title+" "+(e.desc||"")).toLowerCase().indexOf(q)>=0);
+  });
+  let html = head;
+  if(sgy.dead) html += sgyDeadHTML();
+  if(all.length){
+    html += '<div class="sgytools">';
+    if(all.length > 8) html += '<input type="text" id="sgySearch" placeholder="'+clubEsc(tr("Search your Schoology items","Busca en tu Schoology"))+'" aria-label="'+clubEsc(tr("Search your Schoology items","Busca en tu Schoology"))+'" value="'+clubEsc(sgyQuery)+'">';
+    if(types.length > 1){
+      html += '<div class="chips" role="group" aria-label="'+clubEsc(tr("Show","Mostrar"))+'">'+
+        '<button type="button" data-sgyf="all" aria-pressed="'+(sgyFilter==="all")+'">'+clubEsc(tr("All","Todo"))+' ('+all.length+')</button>'+
+        types.map(function(t){ return '<button type="button" data-sgyf="'+t+'" aria-pressed="'+(sgyFilter===t)+'">'+clubEsc(sgyTypeName(t,2))+' ('+counts[t]+')</button>'; }).join("")+'</div>';
+    }
+    html += '</div>';
+  }
+  html += '<p class="note sgycount" role="status" aria-live="polite">'+clubEsc(
+    !all.length ? tr("You're all caught up. Nothing is due in Schoology in the next 2 months.","Estás al día. No tienes nada pendiente en Schoology en los próximos 2 meses.")
+    : shown.length===all.length ? tr(all.length+(all.length===1?" item":" items")+" in the next 2 months.",all.length+(all.length===1?" elemento":" elementos")+" en los próximos 2 meses.")
+    : tr(shown.length+" of "+all.length+" items.",shown.length+" de "+all.length+" elementos."))+'</p>';
+  if(all.length && !shown.length) html += '<div class="card sgyempty"><p>'+clubEsc(tr("Nothing matches that. Try another word or show All.","No hay coincidencias. Prueba otra palabra o elige Todo."))+'</p></div>';
+  // Group by day; the first 7 days show at once, the rest behind "Show more".
+  const groups = []; let cur = null;
+  shown.forEach(function(e){ if(!cur || cur.key!==e.date){ cur={ key:e.date, items:[] }; groups.push(cur); } cur.items.push(e); });
+  const limit = sgyShowAll || q ? groups.length : 7;
+  groups.slice(0,limit).forEach(function(g){
+    const lab = sgyDayLabel(g.key);
+    html += '<div class="sgylist sgyday"><h3 class="sgydayh"><span>'+clubEsc(lab.main)+' <small>'+clubEsc(lab.sub)+'</small></span><span class="n">'+g.items.length+'</span></h3>'+
+      g.items.map(function(e){ return sgyRow(e,false); }).join("")+'</div>';
+  });
+  if(groups.length > limit) html += '<button type="button" class="btn ghost" data-sgy="more">'+clubEsc(tr("Show "+(groups.length-limit)+" more days","Mostrar "+(groups.length-limit)+" días más"))+'</button>';
+  const upd = Date.parse(sgy.fetchedAt||"");
+  if(upd) html += '<p class="note">'+clubEsc(tr("From your Schoology calendar. Updated ","De tu calendario de Schoology. Actualizado a las ")+new Date(upd).toLocaleTimeString(tr("en-US","es-US"),{hour:"numeric",minute:"2-digit",timeZone:"America/Los_Angeles"})+".")+
+    ' <button type="button" class="linkbtn" data-sgy="disconnect">'+clubEsc(tr("Disconnect Schoology","Desconectar Schoology"))+'</button></p>';
+  // Keep the search box focused (and the caret in place) while typing.
+  const active = document.activeElement && document.activeElement.id==="sgySearch";
+  const caret = active ? document.activeElement.selectionStart : 0;
+  el.innerHTML = html;
+  if(active){ const s=document.getElementById("sgySearch"); if(s){ s.focus(); try{ s.setSelectionRange(caret,caret); }catch(e){} } }
+}
+function renderSchoology(){ try{ renderSgyHome(); renderSgySched(); }catch(e){} }
+
+/* ---------- Step 2 inside the sign-in dialog ---------- */
+function renderSgyStep(){
+  const el = document.getElementById("sgyStep"); if(!el) return;
+  if(!signedIn.email){ el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  if(!isSchoolEmail(signedIn.email)){
+    el.innerHTML = '<p class="note">'+clubEsc(tr("To connect Schoology, sign out and sign in with your @student.fuhsd.org account.","Para conectar Schoology, cierra sesión e inicia sesión con tu cuenta @student.fuhsd.org."))+'</p>';
+    return;
+  }
+  if(sgyConnected() && !sgy.dead){
+    const n = sgyUpcoming().length;
+    el.innerHTML = '<div class="sgyok"><b>'+clubEsc(tr("Schoology is connected","Schoology está conectado"))+'</b>'+
+      '<span>'+clubEsc(tr(n+(n===1?" thing":" things")+" coming up in the next 2 months. They show on Home and on the Schedule tab.",
+        n+(n===1?" cosa pendiente":" cosas pendientes")+" en los próximos 2 meses. Aparecen en Inicio y en Horario."))+'</span>'+
+      '<button type="button" class="linkbtn" data-sgy="disconnect">'+clubEsc(tr("Disconnect Schoology","Desconectar Schoology"))+'</button></div>';
+    return;
+  }
+  const keep = document.getElementById("sgyFeed") ? document.getElementById("sgyFeed").value : "";
+  const canPaste = !!(navigator.clipboard && navigator.clipboard.readText);
+  el.innerHTML =
+    '<h4>'+clubEsc(tr("Connect Schoology","Conectar Schoology"))+'</h4>'+
+    '<ol class="sgysteps">'+
+      '<li>'+clubEsc(tr("Open Schoology settings. You can also click the arrow next to your name at the top right of Schoology and choose Settings.",
+        "Abre la configuración de Schoology. También puedes hacer clic en la flecha junto a tu nombre, arriba a la derecha en Schoology, y elegir Configuración."))+
+        '<br><a class="btn ghost sgyopen" href="'+SGY_SETTINGS_URL+'" target="_blank" rel="noopener">'+clubEsc(tr("Open Schoology settings","Abrir configuración de Schoology"))+'</a></li>'+
+      '<li>'+clubEsc(tr("Scroll down to Share your Schoology Calendar and click Enable. Copy the link under Use this iCal link.",
+        "Baja hasta Share your Schoology Calendar y haz clic en Enable. Copia el enlace que aparece en Use this iCal link."))+'</li>'+
+      '<li>'+clubEsc(tr("Paste it here. You only do this once on each device.","Pégalo aquí. Solo lo haces una vez en cada dispositivo."))+'</li>'+
+    '</ol>'+
+    '<div class="field'+(sgyStepMsg.bad?' bad':'')+'"><label for="sgyFeed">'+clubEsc(tr("Your Schoology calendar link","Tu enlace del calendario de Schoology"))+'</label>'+
+      '<div class="sgypaste"><input type="text" id="sgyFeed" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="webcal://fuhsd.schoology.com/calendar/feed/ical/…" value="'+clubEsc(keep)+'"'+(sgyStepMsg.bad?' aria-invalid="true" aria-describedby="sgyMsg"':' aria-describedby="sgyMsg"')+'>'+
+      (canPaste ? '<button type="button" class="btn ghost" data-sgy="paste">'+clubEsc(tr("Paste","Pegar"))+'</button>' : '')+'</div></div>'+
+    '<button type="button" class="btn primary sgygo" data-sgy="connect"'+(sgyBusy?' disabled':'')+'>'+clubEsc(sgyBusy?tr("Connecting…","Conectando…"):tr("Connect Schoology","Conectar Schoology"))+'</button>'+
+    '<p class="sgymsg'+(sgyStepMsg.bad?' bad':'')+'" id="sgyMsg" role="status" aria-live="polite">'+clubEsc(sgyStepMsg.text)+'</p>'+
+    '<p class="note">'+clubEsc(tr("Your link stays on this device. Firebird Hub only uses it to read your Schoology calendar and never stores it anywhere else.",
+      "Tu enlace se queda en este dispositivo. Firebird Hub solo lo usa para leer tu calendario de Schoology y nunca lo guarda en otro lugar."))+'</p>';
+}
+
+function sgyOpenDialog(){
+  const d = document.getElementById("signinDialog"); if(!d) return;
+  sgyStepMsg = { bad:false, text:"" };
+  refreshSigninDialog();
+  if(!d.open) d.showModal();
+  const f = document.getElementById("sgyFeed"); if(f) f.focus();
+}
+document.addEventListener("click", function(ev){
+  const b = ev.target.closest("[data-sgy],[data-sgyf]"); if(!b) return;
+  const f = b.getAttribute("data-sgyf");
+  if(f){ sgyFilter = f; renderSgySched(); return; }
+  const a = b.getAttribute("data-sgy");
+  if(a==="open") sgyOpenDialog();
+  else if(a==="hide"){ try{ localStorage.setItem(SGY_HIDE_INVITE,"1"); }catch(e){} renderSgyHome(); }
+  else if(a==="more"){ sgyShowAll = true; renderSgySched(); }
+  else if(a==="connect"){ const i=document.getElementById("sgyFeed"); sgyConnect(i ? i.value : ""); }
+  else if(a==="paste"){
+    navigator.clipboard.readText().then(function(t){ const i=document.getElementById("sgyFeed"); if(i){ i.value = sgyClean(t); i.focus(); } })
+      .catch(function(){ const i=document.getElementById("sgyFeed"); if(i) i.focus(); });
+  }
+  else if(a==="disconnect"){ sgyForget(); renderSchoology(); renderSgyStep(); }
+});
+document.addEventListener("input", function(ev){
+  if(ev.target && ev.target.id==="sgySearch"){ sgyQuery = ev.target.value; renderSgySched(); }
+});
+document.addEventListener("keydown", function(ev){
+  if(ev.key==="Enter" && ev.target && ev.target.id==="sgyFeed"){ ev.preventDefault(); sgyConnect(ev.target.value); }
+});
+
+_loadSignin(); sgyLoad(); applySignedInUI(); initGoogleSignin(); renderSchoology(); sgyRefresh(false);
 
 /* =====================================================
    Spirit scoreboard — live pull from the Google Sheet
@@ -1945,7 +2239,7 @@ setInterval(()=>{
 // screen (if the last refresh is over a minute old) and every 2 minutes while visible.
 // These all hit the website's CDN, not Apps Script directly.
 let lastLiveRefresh = Date.now();
-function refreshLive(){ lastLiveRefresh = Date.now(); syncEventsSheet(); syncScoreboard(); loadSports(true); syncAnnouncements(); }
+function refreshLive(){ lastLiveRefresh = Date.now(); syncEventsSheet(); syncScoreboard(); loadSports(true); syncAnnouncements(); sgyRefresh(false); }
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="visible" && Date.now()-lastLiveRefresh > 60000) refreshLive();
 });
@@ -2275,7 +2569,7 @@ function applyLang(){
     renderBarRace(); tickClock(); tickNowChip(); tickCountdown(); renderFTV(); updateSportsStamp();
     if(pickedDay==="auto") renderToday(); else renderDay({rows:SCHEDULES[pickedDay].rows});
     if(pickedWeek>=0) renderWeek(SPECIAL_WEEKS[pickedWeek]);
-    applySignedInUI(); refreshSigninDialog();
+    applySignedInUI(); refreshSigninDialog(); renderSchoology();
   }catch(e){}
 }
 function setLang(l){ fhLang = (l==="es"?"es":"en"); try{ localStorage.setItem("fhLang", fhLang); }catch(e){} applyLang(); }

@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=43">
+<link rel="stylesheet" href="styles.css?v=44">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -76,6 +76,8 @@
   </div>
 
   <section id="ftvCard" class="ftvcard" aria-labelledby="h-ftv" hidden></section>
+
+  <section id="sgyHome" class="sgysec" aria-labelledby="h-sgyhome" hidden></section>
 
   <section aria-labelledby="h-events">
     <div class="sechead">
@@ -141,6 +143,8 @@
   </div>
 
   <p class="note" id="schedNote">Official 2026–27 FHS bell schedule. The special weeks (rallies, finals, CAASPP, holidays) are built right in. Dates shift a little year to year, so for the exact week trust the announcements. Go Firebirds!</p>
+
+  <section id="sgySched" class="sgysec sgysched" aria-labelledby="h-sgysched"></section>
 </div>
 
 <!-- ================= SPIRIT ================= -->
@@ -668,11 +672,12 @@
   </a>
 </nav>
 
-<dialog id="signinDialog" aria-labelledby="signinTitle">
+<dialog id="signinDialog" class="signindlg" aria-labelledby="signinTitle">
   <h3 id="signinTitle" style="margin-bottom:10px">Google sign-in</h3>
-  <p style="margin-top:0; color:var(--ink-soft)" id="signinBlurb">Sign in with your school Google account to see your name on the app. Photos and points still only go where you send them.</p>
+  <p style="margin-top:0; color:var(--ink-soft)" id="signinBlurb">Sign in with your school Google account to see your name on the app and connect your Schoology calendar. Everything else works without signing in.</p>
   <div class="gsiwrap" id="gsiBtn"></div>
   <p class="note" id="signinNote" hidden>Google sign-in isn't reachable on this network right now. Everything else in the app still works.</p>
+  <div class="sgystep" id="sgyStep" hidden></div>
   <div class="signin-actions">
     <button class="btn ghost" id="signoutBtn" type="button" hidden style="font-size:14px">Sign out</button>
     <form method="dialog"><button class="btn gold" style="font-size:15px">Close</button></form>
@@ -686,6 +691,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
-<script src="app.js?v=45"></script>
+<script src="app.js?v=46"></script>
 </body>
 </html>
