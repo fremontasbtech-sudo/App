@@ -207,7 +207,7 @@ let EVENTS = [
   { name:"Clubs Day", when:new Date(2026,8,16,12,0), end:new Date(2026,8,16,23,59), time:"Lunch", loc:"The quad", desc:"Fall club fair. Meet the clubs and sign up in person.", tags:["Clubs"] },
   { name:"Homecoming Court Nominations Open", when:new Date(2026,8,25,8,0), end:new Date(2026,8,25,23,59), time:"All day", loc:"fremontasb.org/homecoming-court", desc:"Nominate up to 4 seniors for Homecoming Court on the ASB website using your school Google account.", tags:["Homecoming","Court"] },
   { name:"Homecoming Week", when:new Date(2026,9,5,8,0), end:new Date(2026,9,9,23,59), time:"All week", loc:"Campus", desc:"Hallway decorations, spirit days, the royalty vote, and the Friday rally and dance.", tags:["Homecoming","Dance","Spirit"] },
-  { name:"International Fair", when:new Date(2026,9,28,12,45), end:new Date(2026,9,28,23,59), time:"Lunch", loc:"TBA", desc:"Performances and food celebrating Fremont's cultures during lunch, hosted by our culture and identity clubs.", tags:["Clubs","Culture"] },
+  { name:"Multicultural Fair", when:new Date(2026,9,28,12,45), end:new Date(2026,9,28,23,59), time:"Lunch", loc:"Between the A and B buildings", desc:"Students share their cultures and clubs recruit new members during lunch. Any student can sign up to represent their culture, no club needed. Sign-ups close Sunday, October 25 at 11:59 PM.", tags:["Clubs","Culture"] },
   { name:"Club Trivia Night", when:new Date(2027,0,27,18,0), end:new Date(2027,0,27,23,59), time:"Evening", loc:"TBA", desc:"Team trivia hosted by the Clubs Commission.", tags:["Clubs"] },
   { name:"Club Grub Day", when:new Date(2027,3,21,12,0), end:new Date(2027,3,21,23,59), time:"Lunch", loc:"The quad", desc:"Clubs sell food on campus - come hungry and support your favorite clubs.", tags:["Clubs","Food"] }
 ];
@@ -2464,7 +2464,7 @@ var I18N_EN_ES = {
   "All":"Todos","Arts":"Artes","Service":"Servicio","Athletics":"Atletismo","Culture":"Cultura",
   "Find your club":"Encuentra tu club","Search clubs":"Buscar clubes",
   "No clubs match that search. Try a different name or clear the search.":"Ningún club coincide con esa búsqueda. Prueba otro nombre o borra la búsqueda.",
-  "Club events this year":"Eventos de clubes este año","Clubs Day":"Día de Clubes","International Fair":"Feria Internacional","Club Trivia Night":"Noche de Trivia de Clubes","Club Grub Day":"Día de Comida de Clubes","Clubs":"Clubes",
+  "Club events this year":"Eventos de clubes este año","Clubs Day":"Día de Clubes","Multicultural Fair":"Feria Multicultural","Multicultural Fair sign-ups close, 11:59 PM":"Cierran las inscripciones para la Feria Multicultural, 11:59 PM","Sign up to represent your culture":"Inscríbete para representar tu cultura","Club Trivia Night":"Noche de Trivia de Clubes","Club Grub Day":"Día de Comida de Clubes","Clubs":"Clubes",
   "The fall club fair. Walk the quad, meet the clubs, and sign up in person.":"La feria de clubes de otoño. Recorre el quad, conoce los clubes e inscríbete en persona.",
   "Wed Sep 16 · the quad · lunch":"Mié 16 de sep. · el quad · almuerzo","Wed Oct 28 · lunch":"Mié 28 de oct. · almuerzo",
   "Wed Jan 27 · evening":"Mié 27 de ene. · noche","Wed Apr 21 · the quad · lunch":"Mié 21 de abr. · el quad · almuerzo",
