@@ -330,7 +330,7 @@ function renderEvents(){
   const horizon = new Date(now.getTime()+30*86400000); // the next 30 days (5 show, the rest behind "Show more")
   let list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; });
   // Merge sports games, same rule as the website's Upcoming Events (src/data/useEvents.js):
-  // every senior night in the window, plus the soonest pinned (push=y) game per sport,
+  // every upcoming senior night (no 30-day limit), plus the soonest pinned (push=y) game per sport,
   // preferring the Varsity row on the same day.
   try{
     if(typeof sportsGames!=="undefined" && sportsGames){
@@ -346,8 +346,10 @@ function renderEvents(){
         if(!g.push && !senior) return;
         if(isResultGame(g, tks)) return;
         const m=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(!m) return;
-        const when=new Date(+m[1],+m[2]-1,+m[3],8,0); if(when>horizon) return;
+        const when=new Date(+m[1],+m[2]-1,+m[3],8,0);
+        // Senior nights always show, however far ahead; pinned games stay in the 30-day window.
         if(senior){ list.push(toItem(g, when, m)); return; }
+        if(when>horizon) return;
         const prev = nextBySport[g.sport];
         if(!prev || g.date < prev.g.date || (g.date===prev.g.date && levelRank(g.level) < levelRank(prev.g.level))) nextBySport[g.sport] = { g:g, when:when, m:m };
       });
