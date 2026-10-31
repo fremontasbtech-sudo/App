@@ -339,9 +339,11 @@ function renderEvents(){
       const tks = todayKeyPST();
       const nextBySport = {};
       const toItem = function(g, when, m){
-        return { name:(g.sport+(g.level?(" "+g.level):"")+(g.opponent?(isMeetSport(g.sport)?(": "+g.opponent):(/away/i.test(g.homeAway)?tr(" at "," en "):" vs ")+g.opponent):"")),
+        // The yearly Bell Game (the sheet's title says "Bell Game") gets its own tag and look, like the website.
+        const bell = isBellGame(g);
+        return { name:(bell?"Bell Game: ":"")+(g.sport+(g.level?(" "+g.level):"")+(g.opponent?(isMeetSport(g.sport)?(": "+g.opponent):(/away/i.test(g.homeAway)?tr(" at "," en "):" vs ")+g.opponent):"")),
           when:when, end:new Date(+m[1],+m[2]-1,+m[3],23,59), time:g.time, loc:g.location, desc:"",
-          tags:(isSeniorNight(g)?["Sports","Senior Night"]:["Sports","Featured"]), photos:"", senior:isSeniorNight(g) };
+          tags:(isSeniorNight(g)?["Sports","Senior Night"]:bell?["Sports","Bell Game"]:["Sports","Featured"]), photos:"", senior:isSeniorNight(g), bell:bell };
       };
       sportsGames.forEach(function(g){
         const senior = isSeniorNight(g);
@@ -367,8 +369,10 @@ function renderEvents(){
   if(!list.length){ lastEventsHtml = ""; grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
   const html = (eventsShowAll ? list : list.slice(0, EVENTS_MAX)).map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
-    const tags = (e.tags||[]).map(function(t){ return '<span class="tag'+(t==="Senior Night"?' star':'')+'">'+(t==="Senior Night"?'&#9733; ':'')+clubEsc(t)+'</span>'; }).join("");
-    return '<article class="ticket'+(e.senior?' senior':'')+'">'+
+    const tags = (e.tags||[]).map(function(t){
+      if(t==="Bell Game") return '<span class="tag bell">'+BELL_SVG+clubEsc(t)+'</span>';
+      return '<span class="tag'+(t==="Senior Night"?' star':'')+'">'+(t==="Senior Night"?'&#9733; ':'')+clubEsc(t)+'</span>'; }).join("");
+    return '<article class="ticket'+(e.senior?' senior':'')+(e.bell?' bell':'')+'">'+
       '<div class="stub" aria-hidden="true"><span class="mo">'+MO[e.when.getMonth()]+'</span><span class="day">'+e.when.getDate()+'</span></div>'+
       '<div class="body"><h3>'+clubEsc(e.name)+'</h3>'+
       (meta?'<p class="meta">'+meta+'</p>':"")+
@@ -667,6 +671,8 @@ function rowsToGames(rows){
   });
   return { games:dd, label:label };
 }
+function isBellGame(g){ return /bell\s*game/i.test(String((g && g.title)||"")); }
+const BELL_SVG = '<svg class="bell-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a1.5 1.5 0 0 0-1.5 1.5v.6A6.5 6.5 0 0 0 5.5 10.5v4.2L3.6 17.4A1 1 0 0 0 4.4 19h15.2a1 1 0 0 0 .8-1.6l-1.9-2.7v-4.2a6.5 6.5 0 0 0-5-6.4v-.6A1.5 1.5 0 0 0 12 2Zm-2.5 18a2.5 2.5 0 0 0 5 0h-5Z"/></svg>';
 function isSeniorNight(g){ return !!(g && (g.senior || /senior\s*(night|day)/i.test(String(g.title||"")))); }
 const SP_MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MO_ES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];

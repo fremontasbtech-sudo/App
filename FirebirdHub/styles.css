@@ -204,6 +204,11 @@ button.btn{background-clip:padding-box}
 .tag.star{ background:var(--cardinal); color:#fff; border-color:var(--cardinal-dark); }
 .ticket.senior{ border-color:var(--cardinal); box-shadow:4px 4px 0 var(--gold); }
 .ticket.senior .stub{ background:var(--cardinal); color:#fff; }
+/* Bell Game (vs Homestead): dark tag with a bell, gold-edged ticket */
+.tag.bell{ display:inline-flex; align-items:center; gap:4px; background:#1f1a17; color:#fff; border-color:#1f1a17; }
+.tag.bell .bell-ico{ width:11px; height:11px; }
+.ticket.bell{ border-color:#1f1a17; box-shadow:4px 4px 0 var(--gold); }
+.ticket.bell .stub{ background:#1f1a17; color:var(--gold); }
 
 /* ---------- Schedule ---------- */
 .clockcard{
