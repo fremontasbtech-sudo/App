@@ -477,7 +477,7 @@ const EVENTS_CACHE_KEY = "fh_events_v1";
    seniorNight column, which SportsSync fills, or "senior night" in the title).
 ===================================================== */
 const SPORTS_SHEET = SHEET_PROXY + "Sports";
-let sportsGames = null, sportsUpdatedLabel = "", sportFilter = "all", sportLevel = "all", sportsShowAll = false, sportsResultsAll = false;
+let sportsGames = null, sportsUpdatedLabel = "", sportFilter = "all", sportLevel = "all", sportsShowAll = false, sportsResultsAll = false, sportsExtra = 0;
 let sportsFetching = false, sportsFetchedAt = 0, sportsSig = "", sportsRetry = 0, sportsRetryTimer = null;
 
 const SPORT_ORDER = ["Football","Cross Country","Field Hockey","Flag Football","Girls Tennis","Girls Volleyball","Boys Water Polo","Girls Water Polo","Boys Basketball","Girls Basketball","Boys Soccer","Girls Soccer","Wrestling","Badminton","Baseball","Softball","Golf","Swimming & Diving","Boys Tennis","Track & Field","Boys Volleyball"];
@@ -846,58 +846,57 @@ function renderSports(){
     const m = String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     const mo = m?tr(SP_MO[+m[2]-1], MO_ES[+m[2]-1]):"TBA", day = m?+m[3]:"";
     const tags = [];
-    if(String(g.homeAway||"").trim()) tags.push('<span class="tag'+(g.home?' free':'')+'">'+(g.home?'Home':'Away')+'</span>');
+    if(String(g.homeAway||"").trim()) tags.push('<span class="tag'+(g.home?' free':'')+'">'+(g.home?tr('Home','Local'):tr('Away','Visitante'))+'</span>');
     if(g.league) tags.push('<span class="tag">League</span>');
     if(/scrimmage/i.test(g.kind||g.type||"")) tags.push('<span class="tag">Scrimmage</span>');
     if(g.push) tags.unshift('<span class="tag star">&#9733; Featured</span>');
     if(sr) tags.unshift('<span class="tag star">&#9733; Senior Night</span>');
     const line2 = isResult ? resultLine(g) : [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; ");
     const vs = g.opponent ? oppText(g.sport, g.opponent, g.homeAway) : "";
-    return '<article class="ticket'+(sr?' senior':'')+'"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
-      '<div class="body"><h3>'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h3>'+
+    return '<article class="ticket'+(sr?' senior':'')+'" tabindex="-1"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
+      '<div class="body"><h4 class="tkh">'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h4>'+
       (vs?('<p class="meta">'+vs+'</p>'):"")+
       (line2?('<p>'+line2+'</p>'):"")+
       tags.join(" ")+'</div></article>';
   }
-  const sechead = function(id, text){ return '<div class="sechead"><h2 id="'+id+'" style="font-size:20px">'+text+'</h2><span class="rule" aria-hidden="true"></span></div>'; };
+  const sechead = function(id, text){ return '<h3 class="subhead" id="'+id+'">'+text+'</h3>'; };
   const byDateLevel = function(a,b){ return String(a.date).localeCompare(String(b.date)) || levelRank(a.level)-levelRank(b.level) || sportTimeMin(a.time)-sportTimeMin(b.time); };
   let html = "";
 
+  const SPORTS_FIRST = 4, SPORTS_STEP = 10;
+  const moreBtn = function(left){ return '<div class="moreline"><button type="button" class="btn ghost" id="sportsViewAll">'+tr('Show '+Math.min(left,SPORTS_STEP)+' more','Ver '+Math.min(left,SPORTS_STEP)+' más')+'</button><span class="note">'+tr(left+' more coming up',left+' más por venir')+'</span></div>'; };
   if(sportFilter==="all"){
     // Featured (push=y): the next pinned game per sport (Varsity first on the same day),
-    // then pinned results from the last 7 days.
+    // then pinned results from the last 7 days. At most 2 of each, so the page stays short.
     const pushed = sportsGames.filter(function(g){ return g.push && levelFits(g); });
     const seen = {}, pu = [];
-    pushed.filter(function(g){ return !isResultGame(g,today); }).sort(byDateLevel).forEach(function(g){ if(!seen[g.sport]){ seen[g.sport]=1; pu.push(g); } });
+    pushed.filter(function(g){ return !isResultGame(g,today); }).sort(byDateLevel).forEach(function(g){ if(!seen[g.sport] && pu.length<2){ seen[g.sport]=1; pu.push(g); } });
     const weekAgo = isoAddDays(today,-7);
     const pr = pushed.filter(function(g){ return isResultGame(g,today) && g.date>=weekAgo; })
-      .sort(function(a,b){ return String(b.date).localeCompare(String(a.date)) || levelRank(a.level)-levelRank(b.level); }).slice(0,4);
+      .sort(function(a,b){ return String(b.date).localeCompare(String(a.date)) || levelRank(a.level)-levelRank(b.level); }).slice(0,2);
     if(pu.length || pr.length){
-      html += '<section aria-labelledby="h-featured" style="margin-bottom:var(--space-5)">'+sechead("h-featured","&#9733; Featured")+
+      html += '<section aria-labelledby="h-featured" class="sportsec">'+sechead("h-featured","&#9733; Featured")+
         '<div class="grid cols2">'+pu.map(function(g){ return gameCard(g,false); }).concat(pr.map(function(g){ return gameCard(g,true); })).join("")+'</div></section>';
     }
 
-    html += '<section aria-labelledby="h-inseason">'+sechead("h-inseason","Teams in season");
-    html += '<div class="sportgrid">'+sports.map(function(sp){
-      const next = sportsGames.filter(function(g){ return g.sport===sp && !isResultGame(g,today); }).sort(byDateLevel)[0];
-      const nx = next ? (fmtDateShort(next.date)+' &middot; '+oppText(sp, next.opponent, next.homeAway)) : tr('No upcoming '+eventNoun(sp,true), 'Sin '+eventNounEs(sp,true)+' por ahora');
-      return '<button type="button" class="sportcard" data-sportpick="'+clubEsc(sp)+'">'+
-        '<div class="sportcard-top"><span class="sportcard-name">'+clubEsc(sp)+'</span></div>'+
-        '<div class="sportcard-next"><span class="sportcard-lbl">NEXT</span> '+nx+'</div>'+
-        '<span class="sportcard-cta">View '+eventNoun(sp,true)+' &rarr;</span></button>';
-    }).join("")+'</div></section>';
-
-    const up = sportsGames.filter(function(g){ return sports.indexOf(g.sport)>=0 && !isResultGame(g,today) && levelFits(g); }).sort(byDateTime);
-    const weekEnd = isoAddDays(today,7);
-    const week = up.filter(function(g){ return g.date <= weekEnd; });
-    const shown = sportsShowAll ? up : (week.length ? week : up.slice(0,6));
-    const heading = sportsShowAll ? "All upcoming" : (week.length ? "This week" : "Coming up");
-    html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-thisweek">'+sechead("h-thisweek", heading);
+    // Up next: the first few games across every team (featured ones are already shown above).
+    const up = sportsGames.filter(function(g){ return sports.indexOf(g.sport)>=0 && !isResultGame(g,today) && levelFits(g) && pu.indexOf(g)<0; }).sort(byDateTime);
+    const shown = up.slice(0, SPORTS_FIRST + sportsExtra);
+    html += '<section class="sportsec" aria-labelledby="h-thisweek">'+sechead("h-thisweek", tr("Up next","Lo que sigue"));
     if(up.length){
       html += '<div class="grid cols2">'+shown.map(function(g){ return gameCard(g,false); }).join("")+'</div>';
-      if(!sportsShowAll && up.length>shown.length) html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">'+tr('View all '+up.length+' upcoming','Ver los '+up.length+' próximos')+'</button></div>';
+      if(up.length>shown.length) html += moreBtn(up.length-shown.length);
     } else html += '<p class="note">No upcoming games are listed right now.</p>';
     html += '</section>';
+
+    // Teams in season: one swipeable row; tap a team for its own schedule.
+    html += '<section class="sportsec" aria-labelledby="h-inseason">'+sechead("h-inseason","Teams in season");
+    html += '<div class="teamstrip scrollstrip">'+sports.map(function(sp){
+      const next = sportsGames.filter(function(g){ return g.sport===sp && !isResultGame(g,today); }).sort(byDateLevel)[0];
+      const nx = next ? (tr("Next ","Próximo ")+fmtDateShort(next.date)) : tr("No upcoming "+eventNoun(sp,true),"Sin "+eventNounEs(sp,true));
+      return '<button type="button" class="teamtile" data-sportpick="'+clubEsc(sp)+'">'+
+        '<span class="teamtile-name">'+clubEsc(sp)+'</span><span class="teamtile-next">'+nx+'</span></button>';
+    }).join("")+'</div></section>';
   } else {
     // One sport: a header, then its schedule and results.
     const inFilter = function(g){ return g.sport===sportFilter && levelFits(g); };
@@ -913,34 +912,39 @@ function renderSports(){
     html += '<section class="sporthero"><div class="sporthero-top"><h2>'+clubEsc(sportFilter)+'</h2></div>'+
       '<p class="sporthero-meta">'+(seasonName==="other" ? "" : tr(seasonName.charAt(0).toUpperCase()+seasonName.slice(1)+' season', 'Temporada de '+{fall:"otoño",winter:"invierno",spring:"primavera"}[seasonName]))+(levelsHere.length?((seasonName==="other"?"":" &middot; ")+levelsHere.map(clubEsc).join(", ")):'')+'</p>'+
       (next?('<p class="sporthero-next"><b>'+tr('Next '+eventNoun(sportFilter,false), (isMeetSport(sportFilter)?'Próxima ':'Próximo ')+eventNounEs(sportFilter,false))+':</b> '+fmtDateShort(next.date)+(next.time?(tr(' at ',' a las ')+clubEsc(next.time)):'')+' &middot; '+oppText(sportFilter, next.opponent, next.homeAway)+(next.location?(' &middot; '+clubEsc(next.location)):'')+'</p>'):'')+
-      '<p style="margin:10px 0 0"><a class="btn ghost" style="font-size:13px" href="'+sportPage(sportFilter)+'" target="_blank" rel="noopener">Team page &amp; roster &rarr;</a></p></section>';
+      '<p class="sporthero-link"><a class="btn ghost" href="'+sportPage(sportFilter)+'" target="_blank" rel="noopener">Team page &amp; roster &rarr;</a> <button type="button" class="btn ghost" data-sportpick="all">'+tr("All sports","Todos los deportes")+'</button></p></section>';
 
     const nounP = eventNoun(sportFilter, true);
-    const weekEnd = isoAddDays(today,7);
-    const week = upcoming.filter(function(g){ return g.date <= weekEnd; });
-    const shown = sportsShowAll ? upcoming : (week.length ? week : upcoming.slice(0,4));
-    html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-upsp">'+sechead("h-upsp", "Upcoming "+nounP);
+    const shown = upcoming.slice(0, SPORTS_FIRST + sportsExtra);
+    html += '<section class="sportsec" aria-labelledby="h-upsp">'+sechead("h-upsp", "Upcoming "+nounP);
     if(upcoming.length){
       html += '<div class="grid cols2">'+shown.map(function(g){ return gameCard(g,false); }).join("")+'</div>';
-      if(!sportsShowAll && upcoming.length>shown.length) html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsViewAll">'+tr('View all '+upcoming.length+' '+nounP, (isMeetSport(sportFilter)?'Ver las ':'Ver los ')+upcoming.length+' '+eventNounEs(sportFilter,true))+'</button></div>';
+      if(upcoming.length>shown.length) html += moreBtn(upcoming.length-shown.length);
     } else html += '<p class="note">'+tr('No upcoming '+nounP+' are listed right now.', 'Por ahora no hay '+eventNounEs(sportFilter,true)+' en el calendario.')+'</p>';
     html += '</section>';
     if(results.length){
-      const rShown = sportsResultsAll ? results : results.slice(0,12);
-      html += '<section style="margin-top:var(--space-5)" aria-labelledby="h-resp">'+sechead("h-resp","Recent results");
+      const rShown = sportsResultsAll ? results : results.slice(0,4);
+      html += '<section class="sportsec" aria-labelledby="h-resp">'+sechead("h-resp","Recent results");
       html += '<div class="grid cols2">'+rShown.map(function(g){ return gameCard(g,true); }).join("")+'</div>';
-      if(!sportsResultsAll && results.length>rShown.length) html += '<div style="text-align:center;margin-top:var(--space-3)"><button type="button" class="btn ghost" id="sportsResultsAll">'+tr('Show all '+results.length+' results','Ver los '+results.length+' resultados')+'</button></div>';
+      if(!sportsResultsAll && results.length>rShown.length) html += '<div class="moreline"><button type="button" class="btn ghost" id="sportsResultsAll">'+tr('Show all '+results.length+' results','Ver los '+results.length+' resultados')+'</button></div>';
       html += '</section>';
     }
   }
   body.innerHTML = html;
 }
-ddInit("sportSelect", function(v){ sportFilter = v; sportLevel = "all"; sportsShowAll = false; sportsResultsAll = false; renderSports(); });
-ddInit("levelSelect", function(v){ sportLevel = v; sportsShowAll = false; sportsResultsAll = false; renderSports(); });
+ddInit("sportSelect", function(v){ sportFilter = v; sportLevel = "all"; sportsShowAll = false; sportsResultsAll = false; sportsExtra = 0; renderSports(); });
+ddInit("levelSelect", function(v){ sportLevel = v; sportsShowAll = false; sportsResultsAll = false; sportsExtra = 0; renderSports(); });
 document.getElementById("sportsBody").addEventListener("click", function(e){
   const pick = e.target.closest && e.target.closest("[data-sportpick]");
-  if(pick){ sportFilter = pick.getAttribute("data-sportpick"); sportLevel = "all"; sportsShowAll = false; sportsResultsAll = false; renderSports(); window.scrollTo(0,0); return; }
-  if(e.target.closest("#sportsViewAll")){ sportsShowAll = true; renderSports(); }
+  if(pick){ sportFilter = pick.getAttribute("data-sportpick"); sportLevel = "all"; sportsShowAll = false; sportsResultsAll = false; sportsExtra = 0; renderSports(); window.scrollTo(0,0);
+    const h = document.querySelector("#sportsBody .sporthero h2") || document.getElementById("h-thisweek"); if(h){ h.setAttribute("tabindex","-1"); h.focus({preventScroll:true}); } return; }
+  if(e.target.closest("#sportsViewAll")){
+    const sec = e.target.closest("section"), before = sec ? sec.querySelectorAll(".ticket").length : 0, secId = sec && sec.getAttribute("aria-labelledby");
+    sportsExtra += 10; renderSports();
+    const sec2 = secId && document.querySelector('#sportsBody section[aria-labelledby="'+secId+'"]');
+    const first = sec2 && sec2.querySelectorAll(".ticket")[before];
+    if(first) first.focus({preventScroll:true});
+  }
   if(e.target.closest("#sportsResultsAll")){ sportsResultsAll = true; renderSports(); }
 });
 
@@ -985,7 +989,7 @@ function renderWeek(week){
   }).join("");
 }
 let pickedWeek = -1;
-/* --- wire the Normal/Special toggle + week picker --- */
+/* --- wire the special-week picker (opened by the "Special" day button) --- */
 function initSchedule(){
   const sel=document.getElementById("weekPick");
   sel.innerHTML='<option value="">Pick a week…</option>'+
@@ -995,15 +999,23 @@ function initSchedule(){
     if(v===""){ pickedWeek=-1; document.getElementById("weekView").innerHTML=""; document.getElementById("weekNote").textContent=""; return; }
     pickedWeek=+v; renderWeek(SPECIAL_WEEKS[+v]);
   });
-  document.querySelectorAll(".segmented button").forEach(b=>
-    b.addEventListener("click", ()=>{
-      const mode=b.dataset.mode;
-      document.querySelectorAll(".segmented button").forEach(x=>x.setAttribute("aria-pressed", x===b?"true":"false"));
-      document.getElementById("schedNormal").hidden = mode!=="normal";
-      document.getElementById("schedSpecial").hidden = mode!=="special";
-      if(mode==="special" && !sel.value){ sel.value="0"; pickedWeek=0; renderWeek(SPECIAL_WEEKS[0]); }
-    }));
 }
+function setSpecialMode(on){
+  document.getElementById("schedNormal").hidden = on;
+  document.getElementById("schedSpecial").hidden = !on;
+  const sel=document.getElementById("weekPick");
+  if(on && !sel.value){ sel.value="0"; pickedWeek=0; renderWeek(SPECIAL_WEEKS[0]); }
+}
+/* --- Schedule tab panes: bell schedule or the Schoology assignments list --- */
+let schedPane = "bells";
+function setSchedPane(p){
+  schedPane = (p==="sgy") ? "sgy" : "bells";
+  document.querySelectorAll(".panes button").forEach(b=>b.setAttribute("aria-pressed", b.dataset.pane===schedPane ? "true":"false"));
+  document.getElementById("paneBells").hidden = schedPane!=="bells";
+  document.getElementById("sgySched").hidden = schedPane!=="sgy";
+}
+document.querySelectorAll(".panes button").forEach(b=>b.addEventListener("click", ()=>setSchedPane(b.dataset.pane)));
+document.addEventListener("click", e=>{ const t=e.target.closest && e.target.closest("[data-schedpane]"); if(t) setSchedPane(t.getAttribute("data-schedpane")); });
 
 /* What applies today, in Fremont's time zone: null on a weekend; { noSchool, rows:[] } on
    a day with no classes (NO_CLASSES, or summer); else the bell schedule for the day,
@@ -1042,7 +1054,13 @@ function renderToday(){
 }
 document.querySelectorAll(".daypick button").forEach(b=>
   b.addEventListener("click", ()=>{
+    setSpecialMode(b.dataset.day==="special");
     if(b.dataset.day==="auto"){ pickedDay="auto"; renderToday(); return; }
+    if(b.dataset.day==="special"){
+      pickedDay="special";
+      document.querySelectorAll(".daypick button").forEach(x=>x.setAttribute("aria-pressed", x===b ? "true":"false"));
+      return;
+    }
     pickedDay=b.dataset.day;
     renderDay({rows:SCHEDULES[pickedDay].rows});
     document.querySelectorAll(".daypick button").forEach(x=>
@@ -1393,6 +1411,22 @@ document.getElementById("giveForm").addEventListener("submit", async e=>{
    of the Events sheet. A failure keeps the typed message and asks to try again. */
 const CONTACT_API = "https://www.fremontasb.org/api/contact";
 var fbOpenedAt = Date.now(); // the API drops forms sent within 2 s of opening (bots)
+/* More: the feedback form and About open in place from the quick links, one at a time. */
+(function(){
+  var pairs = [["fbOpen","fbPanel"],["aboutOpen","aboutPanel"]];
+  pairs.forEach(function(p){
+    var btn = document.getElementById(p[0]); if(!btn) return;
+    btn.addEventListener("click", function(){
+      var open = btn.getAttribute("aria-expanded")!=="true";
+      pairs.forEach(function(q){ var b=document.getElementById(q[0]), el=document.getElementById(q[1]); if(b&&el){ var on = (q===p) && open; b.setAttribute("aria-expanded", String(on)); el.hidden = !on; } });
+      if(open){
+        var panel = document.getElementById(p[1]);
+        panel.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"nearest"});
+        if(p[1]==="fbPanel"){ var f=document.getElementById("fbName"); if(f) setTimeout(function(){ f.focus({preventScroll:true}); }, 250); }
+      }
+    });
+  });
+})();
 document.getElementById("fbForm").addEventListener("focusin", function(){ if(!fbOpenedAt) fbOpenedAt=Date.now(); });
 document.getElementById("fbForm").addEventListener("submit", function(e){
   e.preventDefault();
@@ -1439,7 +1473,7 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
    Clubs — search + filter
 ===================================================== */
 let clubCat = "all";
-var CLUB_PREVIEW = 6;      // clubs shown before "Show all"
+var CLUB_PREVIEW = 8;      // clubs shown before "Show all"
 var clubsExpanded = false; // toggled by the Show all button
 function clubEsc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m];});}
 function clubCap(s){s=String(s||"");return s?s[0].toUpperCase()+s.slice(1):"";}
@@ -1476,7 +1510,7 @@ try{
   if(c && Array.isArray(c.clubs) && c.clubs.length){ CLUBS = c.clubs; clubsReady = true; }
 }catch(e){}
 function saveClubsCache(){ try{ localStorage.setItem(CLUBS_CACHE_KEY, JSON.stringify({ t:Date.now(), clubs:CLUBS })); }catch(e){} }
-var CLUB_SKELETON = '<div class="card club skel"><span class="skl w80" style="height:16px"></span><span class="skl w60"></span><span class="skl w40"></span><span class="skl w80"></span><span class="skl w60"></span></div>'.repeat(6);
+var CLUB_SKELETON = '<div class="clubrow skel" aria-hidden="true"><span class="skl w60" style="height:15px"></span><span class="skl w80"></span></div>'.repeat(8);
 var CLUB_ICON = {
   meet:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2v3M17 2v3M3.5 8.5h17M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5V19A1.5 1.5 0 0 1 19 20.5H5A1.5 1.5 0 0 1 3.5 19V6A1.5 1.5 0 0 1 5 4.5Z"/></svg>',
   adv:'<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg>',
@@ -1485,6 +1519,7 @@ var CLUB_ICON = {
 };
 var CLUB_CLAMP = 150; // purpose length above which we clamp + offer "Read more"
 function clubLetter(name){ var ch=String(name||"").trim().charAt(0).toUpperCase(); return /[A-Z]/.test(ch)?ch:"#"; }
+var clubOpen = {}; // club name -> expanded
 function clubCardHtml(c){
   var meet = c.meetingInfo ? clubEsc(c.meetingInfo) : clubMeetingLine(c);
   var advisor = c.teacherAdvisor || c.advisor || "";
@@ -1493,21 +1528,27 @@ function clubCardHtml(c){
   if(!emails.length){ var ct=String(c.contact||"").trim(); if(/@/.test(ct)&&ct[0]!=="@") emails=[ct]; }
   var desc = String(c.purpose||c.desc||"").trim();
   var cat = c._cat || clubCatOf(c);
-  var meta = '<p class="cmeta cpill"><span>'+clubEsc(clubCatLabel(cat))+'</span></p>';
-  meta += meet
+  var open = !!clubOpen[c.name];
+  var id = "club-"+String(c.name).toLowerCase().replace(/[^a-z0-9]+/g,"-").slice(0,40);
+  var meta = meet
     ? '<p class="cmeta">'+CLUB_ICON.meet+'<span>'+meet+'</span></p>'
     : '<p class="cmeta soon">'+CLUB_ICON.meet+'<span>'+clubT("Meeting info coming soon","Horario próximamente")+'</span></p>';
   if(advisor) meta += '<p class="cmeta">'+CLUB_ICON.adv+'<span><b>'+clubT("Advisor:","Asesor:")+'</b> '+clubEsc(advisor)+'</span></p>';
   if(leaders) meta += '<p class="cmeta">'+CLUB_ICON.led+'<span><b>'+clubT("Led by:","Liderado por:")+'</b> '+clubEsc(leaders)+'</span></p>';
-  var body = desc ? '<p class="cdesc clamp">'+clubEsc(desc)+'</p>' : "";
   var mailBtn = emails.length
-    ? '<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">'+CLUB_ICON.mail+'<span>'+clubT("Email","Correo")+'</span></a>'
+    ? '<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">'+CLUB_ICON.mail+'<span>'+clubT("Email the club","Escribe al club")+'</span></a>'
     : "";
-  return '<article class="card club">'+
-    '<h3>'+clubEsc(c.name)+'</h3>'+
-    '<div class="cmetas">'+meta+'</div>'+
-    body+
-    '<div class="cactions">'+mailBtn+'</div>'+
+  var sub = clubEsc(clubCatLabel(cat)) + (desc ? " &middot; "+clubEsc(desc) : "");
+  return '<article class="clubrow club'+(open?' open':'')+'" data-club="'+clubEsc(c.name)+'">'+
+    '<h3 class="clubrow-h"><button type="button" class="clubrow-head" aria-expanded="'+open+'" aria-controls="'+id+'">'+
+      '<span class="clubrow-title"><span class="clubrow-name">'+clubEsc(c.name)+'</span><span class="clubrow-sub">'+sub+'</span></span>'+
+      '<svg class="clubrow-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'+
+    '</button></h3>'+
+    '<div class="clubrow-body" id="'+id+'"'+(open?'':' hidden')+'>'+
+      (desc ? '<p class="cdesc">'+clubEsc(desc)+'</p>' : '')+
+      '<div class="cmetas">'+meta+'</div>'+
+      (mailBtn ? '<div class="cactions">'+mailBtn+'</div>' : '')+
+    '</div>'+
   '</article>';
 }
 function renderClubs(){
@@ -1526,7 +1567,7 @@ function renderClubs(){
   var total = all.length;
   if(!total){
     // Nothing loaded and nothing saved: a calm note, never an error banner or sample clubs.
-    grid.innerHTML = '<p class="note">'+clubT("The clubs list will show here soon. The full official clubs list is linked above.","La lista de clubes aparecerá aquí pronto. La lista oficial completa está en el enlace de arriba.")+'</p>';
+    grid.innerHTML = '<p class="note">'+clubT("The clubs list will show here soon. Until then, the full official clubs list is under Contact & links below.","La lista de clubes aparecerá aquí pronto. Mientras tanto, la lista oficial completa está en Contacto y enlaces, más abajo.")+'</p>';
     if(countEl) countEl.textContent = "";
     var ch0 = document.getElementById("clubChips"); if(ch0) ch0.innerHTML = "";
     var mw0 = document.getElementById("clubMoreWrap"); if(mw0) mw0.hidden = true;
@@ -1660,6 +1701,13 @@ document.getElementById("clubSearch").addEventListener("input", renderClubs);
 (function(){
   var grid = document.getElementById("clubGrid");
   var moreBtn0 = document.getElementById("clubShowAll");
+  if(grid) grid.addEventListener("click", function(e){
+    var h = e.target.closest ? e.target.closest(".clubrow-head") : null; if(!h) return;
+    var row = h.closest(".clubrow"), body = row.querySelector(".clubrow-body"); // the button sits inside an h3
+    var open = h.getAttribute("aria-expanded")!=="true";
+    h.setAttribute("aria-expanded", String(open)); row.classList.toggle("open", open); body.hidden = !open;
+    clubOpen[row.getAttribute("data-club")] = open;
+  });
   if(moreBtn0) moreBtn0.addEventListener("click", function(){ clubsExpanded = !clubsExpanded; renderClubs(); });
   var az = document.getElementById("azbar");
   if(az) az.addEventListener("click", function(e){
@@ -1684,6 +1732,35 @@ document.querySelectorAll("[data-cat]").forEach(b=>
     document.querySelectorAll("[data-cat]").forEach(x=>x.setAttribute("aria-pressed", x===b ? "true":"false"));
     renderClubs();
   }));
+
+/* Club key dates: past rows dim, the next one is marked and named in the fold's summary. */
+function renderClubDates(){
+  var rows = document.querySelectorAll("#clubDates .drow"), meta = document.getElementById("clubNextDate");
+  if(!rows.length) return;
+  var today = todayKeyPST(), next = null;
+  rows.forEach(function(r){
+    var past = (r.getAttribute("data-to")||"") < today;
+    r.classList.toggle("past", past);
+    r.classList.remove("next");
+    if(!past && !next) next = r;
+  });
+  if(next) next.classList.add("next");
+  if(meta){
+    if(!next){ meta.textContent = ""; return; }
+    var t = next.querySelector(".dtxt b"), st = next.querySelector(".dstamp");
+    var mo = st.querySelector("b"), dd = st.querySelector("span");
+    var moTxt = mo ? (fhLang==="es" && I18N_EN_ES[mo.textContent] ? I18N_EN_ES[mo.textContent] : mo.textContent) : "";
+    var when = fhLang==="es" ? ((dd ? dd.textContent+" " : "")+moTxt) : (moTxt+(dd ? " "+dd.textContent : ""));
+    meta.textContent = t ? (tr("Next: ","Próximo: ")+when+" · "+(fhLang==="es" && I18N_EN_ES[t.textContent] ? I18N_EN_ES[t.textContent] : t.textContent)) : "";
+  }
+}
+(function(){
+  var f = document.getElementById("clubSlidesFold");
+  if(f) f.addEventListener("toggle", function(){
+    var fr = f.querySelector("iframe[data-src]");
+    if(f.open && fr && !fr.src){ fr.src = fr.getAttribute("data-src"); }
+  });
+})();
 
 /* Club filter controls + "Find your club" matcher quiz (#4) */
 
@@ -2027,7 +2104,7 @@ function renderSgyHome(){
   if(!soon.length) html += '<div class="card sgyempty"><p>'+clubEsc(tr("You're all caught up. Nothing is due in Schoology in the next 2 months.","Estás al día. No tienes nada pendiente en Schoology en los próximos 2 meses."))+'</p></div>';
   else{
     html += '<div class="sgylist">'+soon.map(function(e){ return sgyRow(e,true); }).join("")+'</div>';
-    html += '<div class="btnrow"><a class="btn ghost" href="#schedule" data-nav="schedule">'+
+    html += '<div class="btnrow"><a class="btn ghost" href="#schedule" data-nav="schedule" data-schedpane="sgy">'+
       clubEsc(list.length>soon.length ? tr("See all "+list.length+" on the Schedule tab","Ver los "+list.length+" en Horario") : tr("Open the Schedule tab","Abrir Horario"))+'</a></div>';
   }
   el.hidden = false;
@@ -2037,9 +2114,11 @@ function renderSgyHome(){
 /* ---------- Schedule tab: the full list, grouped by day ---------- */
 function renderSgySched(){
   const el = document.getElementById("sgySched"); if(!el) return;
-  let head = '<div class="sechead"><h2 id="h-sgysched">'+clubEsc(tr("Your Schoology calendar","Tu calendario de Schoology"))+'</h2><span class="rule" aria-hidden="true"></span></div>';
-  if(!sgyConnected()){ el.innerHTML = head + sgyInviteHTML("sched"); return; }
+  let head = '<h2 class="sr" id="h-sgysched">'+clubEsc(tr("Your Schoology calendar","Tu calendario de Schoology"))+'</h2>';
+  const paneN = document.getElementById("sgyPaneN");
+  if(!sgyConnected()){ if(paneN) paneN.hidden = true; el.innerHTML = head + sgyInviteHTML("sched"); return; }
   const all = sgyUpcoming();
+  if(paneN){ paneN.hidden = !all.length; setText(paneN, String(all.length)); }
   const counts = {}; all.forEach(function(e){ counts[e.type]=(counts[e.type]||0)+1; });
   const types = ["assignment","quiz","discussion","event"].filter(function(t){ return counts[t]; });
   if(sgyFilter!=="all" && !counts[sgyFilter]) sgyFilter = "all";
@@ -2189,7 +2268,45 @@ function confettiBurst(el){
     p.style.background=colors[i%4]; p.style.left=(20+Math.random()*60)+"%"; el.appendChild(p);
     setTimeout(function(){ p.remove(); },1100); }
 }
+/* Compact standings strip: always visible at the top of Spirit; the bar race opens under it. */
+const RANK_EN = ["1st","2nd","3rd","4th"], RANK_ES = ["1.º","2.º","3.º","4.º"];
+function renderMiniBoard(){
+  const box=document.getElementById("miniBoard");
+  if(!box) return;
+  if(!spiritStandings || !spiritStandings.length){
+    if(spiritFailed){ box.removeAttribute("aria-busy"); box.innerHTML='<p class="mininote">'+tr("Standings will show here soon.","La clasificación aparecerá aquí pronto.")+'</p>'; }
+    else { box.setAttribute("aria-busy","true"); box.innerHTML='<p class="sr">'+tr("Loading the standings…","Cargando la clasificación…")+'</p>'+'<div class="mcell skel" aria-hidden="true"><span class="skl w60"></span><span class="skl w40" style="height:20px"></span></div>'.repeat(4); }
+    return;
+  }
+  box.removeAttribute("aria-busy");
+  const list=spiritStandings.slice().sort(function(a,b){ return b.pts-a.pts; });
+  const max=Math.max(1, list[0].pts);
+  box.innerHTML=list.map(function(s,i){
+    const cvar=CLSVAR[s.cls]||"--cardinal";
+    return '<div class="mcell'+(i===0?" lead":"")+'" style="--c:var('+cvar+')">'+
+      '<span class="mrank">'+tr(RANK_EN[i]||"",RANK_ES[i]||"")+'</span>'+
+      '<span class="mcls">'+clubEsc(tr(s.cls, CLS_ES[s.cls]||s.cls))+'</span>'+
+      '<span class="mpts">'+s.pts+'</span>'+
+      '<span class="mtrack" aria-hidden="true"><span style="width:'+Math.round(s.pts/max*100)+'%"></span></span>'+
+    '</div>';
+  }).join("");
+}
+(function(){
+  const t=document.getElementById("raceToggle"), box=document.getElementById("barRace");
+  if(!t || !box) return;
+  t.addEventListener("click", function(){
+    const open = box.hidden;
+    box.hidden = !open;
+    t.setAttribute("aria-expanded", String(open));
+    t.textContent = open ? "Hide chart" : "Show chart"; // the i18n observer swaps in Spanish
+    if(open){ // replay the bars growing in
+      box.querySelectorAll(".bfill").forEach(function(f){ f.style.width="0"; });
+      requestAnimationFrame(function(){ requestAnimationFrame(function(){ box.querySelectorAll(".bfill").forEach(function(f){ f.style.width=f.dataset.w+"%"; }); }); });
+    }
+  });
+})();
 function renderBarRace(){
+  renderMiniBoard();
   const box=document.getElementById("barRace");
   if(!box) return;
   if(!spiritStandings || !spiritStandings.length){
@@ -2259,6 +2376,7 @@ function tickNowChip(){
 }
 
 renderClubs();
+try{ renderClubDates(); }catch(e){}
 initSchedule();
 renderToday();
 syncScoreboard();
@@ -2399,6 +2517,25 @@ if(!FEATURES.fireBucks){
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
 var I18N_EN_ES = {
+  // v52 compact layout (2026-11-16)
+  "Assignments":"Tareas","Special":"Especial","Show chart":"Ver gráfica","Hide chart":"Ocultar gráfica","Choose…":"Elige…",
+  "Official 2026–27 FHS bell schedule. For the exact dates of a special week, trust the announcements.":"Horario oficial de FHS 2026–27. Para las fechas exactas de una semana especial, consulta los anuncios.",
+  "Your ID is used only to prevent duplicate submissions.":"Tu ID solo se usa para evitar envíos duplicados.",
+  "Dress up on a spirit day (submit a photo above)":"Vístete según el día de espíritu (envía una foto arriba)",
+  "Club info":"Información de clubes","Key dates & events":"Fechas y eventos clave","Start or run a club":"Crear o dirigir un club",
+  "Strikes:":"Faltas:","strike 1 is a warning, strike 2 is a meeting with you and your advisor, and strike 3 means the club is disbanded. You can appeal a strike within the same school year.":"la falta 1 es una advertencia, la falta 2 es una reunión contigo y tu asesor, y con la falta 3 el club se disuelve. Puedes apelar una falta dentro del mismo año escolar.",
+  "Contact & links":"Contacto y enlaces","@fremontclubs on Instagram, for the latest club news":"@fremontclubs en Instagram, con las últimas noticias de clubes",
+  "The full official clubs list":"La lista oficial completa de clubes","Handbook and tracker on the ASB site":"Manual y registro en el sitio de ASB",
+  "Multicultural Fair sign-up form":"Formulario de inscripción a la Feria Multicultural",
+  "The fall club fair on the quad at lunch. Meet the clubs and sign up in person.":"La feria de clubes de otoño en el patio a la hora del almuerzo. Conoce los clubes e inscríbete en persona.",
+  "Lunch, between the A and B buildings. Share your culture and recruit for your club.":"Almuerzo, entre los edificios A y B. Comparte tu cultura y recluta para tu club.",
+  "Team trivia in the evening, hosted by the Clubs Commission.":"Trivia por equipos en la noche, organizada por la Comisión de Clubes.",
+  "Clubs sell food on the quad at lunch.":"Los clubes venden comida en el patio a la hora del almuerzo.",
+  "Email the club":"Escribe al club","Sep":"Sep","Oct":"Oct",
+  "Team links & full schedules":"Enlaces del equipo y calendarios completos",
+  "Full schedules, rosters and live updates at fremonthsathletics.org":"Calendarios completos, plantillas y novedades en fremonthsathletics.org",
+  "Saved on this device. Live listings stay in the language they were entered.":"Se guarda en este dispositivo. Las listas en vivo se quedan en el idioma en que se ingresaron.",
+  "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit submissions go only to ASB Spirit, Tech, and the advisor. They’re never shared publicly, and student IDs are used solely to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de espíritu solo llegan a Espíritu, Tecnología y el asesor de ASB. Nunca se comparten públicamente, y los IDs de estudiante solo se usan para quitar entradas duplicadas. El modo movimiento cambia las tarjetas por animaciones al desplazarte y una fila de eventos deslizable.",
   "Show more events":"Ver más eventos","Show fewer events":"Ver menos eventos",
   "until class":"para la clase",
   // Sports view
@@ -2463,7 +2600,7 @@ var I18N_EN_ES = {
   "Submit your Spirit Wear!":"¡Envía tu Spirit Wear!","Full name":"Nombre completo","Enter your first and last name.":"Escribe tu nombre y apellido.",
   "Grade":"Grado","Choose your grade…":"Elige tu grado…","9 · Freshman":"9 · Primer año","10 · Sophomore":"10 · Segundo año","11 · Junior":"11 · Tercer año","12 · Senior":"12 · Cuarto año",
   "Pick your grade so points go to the right class.":"Elige tu grado para que los puntos vayan a la clase correcta.",
-  "Student ID":"Identificación estudiantil","Used only to prevent duplicate submissions.":"Se usa solo para evitar envíos duplicados.",
+  "Student ID":"ID estudiantil","Used only to prevent duplicate submissions.":"Se usa solo para evitar envíos duplicados.",
   "Enter your student ID (numbers only, 5–7 digits).":"Escribe tu ID estudiantil (solo números, 5–7 dígitos).",
   "Spirit day":"Día de espíritu","Which day is this for?":"¿Para qué día es esto?",
   "Mon · Island (beach)":"Lun · Isla (playa)","Tue · Outwit (nerd)":"Mar · Outwit (nerd)","Wed · Outlast (camo)":"Mié · Outlast (camuflaje)","Thu · Outplay (jersey)":"Jue · Outplay (jersey)","Fri · Tribe (class colors)":"Vie · Tribu (colores de clase)",
@@ -2541,9 +2678,11 @@ var I18N_EN_ES = {
   "Accessibility issues? Tell us in the feedback box. We fix those first.":"¿Problemas de accesibilidad? Dinos en la caja de comentarios. Esos los arreglamos primero."
 };
 var I18N_ATTR = {
+  "Schedule view":"Vista del horario","Class spirit standings":"Clasificación de espíritu por clase","Class spirit standings chart":"Gráfica de la clasificación de espíritu",
+  "Filter clubs by category":"Filtrar clubes por categoría","Choose a day":"Elige un día","Team resources":"Recursos del equipo",
   "Search clubs by name…":"Busca clubes por nombre…",
   "Ask about schedule, clubs, sports…":"Pregunta sobre horario, clubes, deportes…",
-  "Your name":"Tu nombre","Student ID":"Identificación estudiantil"
+  "Your name":"Tu nombre","Student ID":"ID estudiantil"
 };
 var fhLang = "en", fhTextSize = "normal";
 try{ fhLang = localStorage.getItem("fhLang") || "en"; }catch(e){}
@@ -2571,6 +2710,12 @@ function applyAttrI18n(es){
     if(!el.hasAttribute("data-ph-en")) el.setAttribute("data-ph-en", el.getAttribute("placeholder")||"");
     var en = el.getAttribute("data-ph-en");
     el.setAttribute("placeholder", (es && I18N_ATTR[en]) || en);
+  });
+  document.querySelectorAll("[aria-label]").forEach(function(el){
+    var cur = el.getAttribute("aria-label")||"";
+    if(!el.hasAttribute("data-al-en")){ if(!I18N_ATTR[cur]) return; el.setAttribute("data-al-en", cur); }
+    var en = el.getAttribute("data-al-en");
+    el.setAttribute("aria-label", (es && I18N_ATTR[en]) || en);
   });
 }
 var _i18nObserver = null;
@@ -2604,8 +2749,8 @@ function applyLang(){
   if(typeof renderClubs==="function" && document.getElementById("clubGrid")) { try{ renderClubs(); }catch(e){} }
   // Text the app builds itself (tr) is redrawn in the new language.
   try{
-    renderBarRace(); tickClock(); tickNowChip(); tickCountdown(); renderFTV(); updateSportsStamp();
-    if(pickedDay==="auto") renderToday(); else renderDay({rows:SCHEDULES[pickedDay].rows});
+    renderBarRace(); tickClock(); tickNowChip(); tickCountdown(); renderFTV(); updateSportsStamp(); renderClubDates();
+    if(pickedDay==="auto") renderToday(); else if(SCHEDULES[pickedDay]) renderDay({rows:SCHEDULES[pickedDay].rows}); else if(pickedWeek>=0) renderWeek(SPECIAL_WEEKS[pickedWeek]);
     if(pickedWeek>=0) renderWeek(SPECIAL_WEEKS[pickedWeek]);
     applySignedInUI(); refreshSigninDialog(); renderSchoology();
   }catch(e){}

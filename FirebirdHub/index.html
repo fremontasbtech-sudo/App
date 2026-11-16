@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=44">
+<link rel="stylesheet" href="styles.css?v=45">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -90,110 +90,98 @@
 
 <!-- ================= SCHEDULE ================= -->
 <div class="view" id="view-schedule" role="region" aria-label="Bell schedule">
-  <div class="sechead">
-    <h2>Bell schedule</h2>
-    <span class="rule" aria-hidden="true"></span>
-  </div>
+  <h2 class="sr">Bell schedule</h2>
 
   <div class="clockcard">
     <div class="ringwrap" aria-hidden="true">
-      <svg width="150" height="150" viewBox="0 0 150 150">
-        <circle class="base" cx="75" cy="75" r="66" fill="none" stroke-width="10"/>
-        <circle class="prog" id="ringProg" cx="75" cy="75" r="66" fill="none" stroke-width="10" stroke-dasharray="414.7" stroke-dashoffset="0"/>
+      <svg width="76" height="76" viewBox="0 0 150 150">
+        <circle class="base" cx="75" cy="75" r="66" fill="none" stroke-width="14"/>
+        <circle class="prog" id="ringProg" cx="75" cy="75" r="66" fill="none" stroke-width="14" stroke-dasharray="414.7" stroke-dashoffset="0"/>
       </svg>
-      <div class="mid">
-        <b id="ringTime">--:--</b>
-        <span id="ringLabel">left</span>
-      </div>
     </div>
     <div class="clockinfo" role="status" aria-live="polite">
       <div class="now" id="nowPeriod">Loading…</div>
       <div class="sub" id="nowSub"></div>
     </div>
+    <div class="clockleft"><b id="ringTime">--:--</b><span id="ringLabel">left</span></div>
   </div>
 
-  <div class="segmented" role="group" aria-label="Schedule type">
-    <button type="button" data-mode="normal" aria-pressed="true">Normal week</button>
-    <button type="button" data-mode="special" aria-pressed="false">Special weeks</button>
+  <div class="panes" role="group" aria-label="Schedule view">
+    <button type="button" data-pane="bells" aria-pressed="true">Bell schedule</button>
+    <button type="button" data-pane="sgy" aria-pressed="false">Assignments <span class="panen" id="sgyPaneN" hidden></span></button>
   </div>
 
-  <div id="schedNormal">
+  <div id="paneBells">
     <div class="daypick" role="group" aria-label="Choose a day">
       <button type="button" data-day="auto" aria-pressed="true">Today</button>
-      <button type="button" data-day="mon" aria-pressed="false">Monday</button>
+      <button type="button" data-day="mon" aria-pressed="false">Mon</button>
       <button type="button" data-day="a" aria-pressed="false">A day</button>
       <button type="button" data-day="b" aria-pressed="false">B day</button>
+      <button type="button" data-day="special" aria-pressed="false">Special</button>
     </div>
-    <div class="schedwrap">
-      <table>
-        <caption class="sr">Bell schedule for the selected day</caption>
-        <thead><tr><th scope="col">Period</th><th scope="col">Starts</th><th scope="col">Ends</th></tr></thead>
-        <tbody id="schedBody"></tbody>
-      </table>
+
+    <div id="schedNormal">
+      <div class="schedwrap">
+        <table>
+          <caption class="sr">Bell schedule for the selected day</caption>
+          <thead><tr><th scope="col">Period</th><th scope="col">Starts</th><th scope="col">Ends</th></tr></thead>
+          <tbody id="schedBody"></tbody>
+        </table>
+      </div>
     </div>
+
+    <div id="schedSpecial" hidden>
+      <div class="field">
+        <label for="weekPick">Choose a special week</label>
+        <select id="weekPick"></select>
+      </div>
+      <p class="note" id="weekNote" role="status" aria-live="polite"></p>
+      <div id="weekView"></div>
+    </div>
+
+    <p class="note" id="schedNote">Official 2026–27 FHS bell schedule. For the exact dates of a special week, trust the announcements.</p>
   </div>
 
-  <div id="schedSpecial" hidden>
-    <div class="field" style="max-width:460px">
-      <label for="weekPick">Choose a special week</label>
-      <select id="weekPick"></select>
-    </div>
-    <p class="note" id="weekNote" role="status" aria-live="polite"></p>
-    <div id="weekView"></div>
-  </div>
-
-  <p class="note" id="schedNote">Official 2026–27 FHS bell schedule. The special weeks (rallies, finals, CAASPP, holidays) are built right in. Dates shift a little year to year, so for the exact week trust the announcements. Go Firebirds!</p>
-
-  <section id="sgySched" class="sgysec sgysched" aria-labelledby="h-sgysched"></section>
+  <section id="sgySched" class="sgysec sgysched" aria-labelledby="h-sgysched" hidden></section>
 </div>
 
 <!-- ================= SPIRIT ================= -->
 <div class="view" id="view-spirit" role="region" aria-label="Spirit points">
-  <div class="sechead">
-    <h2>Spirit points</h2>
-    <span class="rule" aria-hidden="true"></span>
+  <h2 class="sr">Spirit points</h2>
+
+  <div class="standings">
+    <div class="minibar" id="miniBoard" role="group" aria-label="Class spirit standings"></div>
+    <button type="button" class="linkbtn chartbtn" id="raceToggle" aria-expanded="false" aria-controls="barRace">Show chart</button>
   </div>
+  <div class="barrace" id="barRace" role="group" aria-label="Class spirit standings chart" hidden></div>
 
-  <div class="barrace" id="barRace" aria-label="Class spirit standings"></div>
-
-  <div class="grid cols2">
-    <div class="card">
-      <h3 style="margin-bottom:12px">How points work</h3>
-      <ul class="ptrules">
-        <li><span class="pt">+1</span> Dress up on a spirit day (submit a photo below)</li>
-        <li><span class="pt">+25</span> Your grade wins the rally</li>
-        <li><span class="pt">+12</span> Your grade takes second at the rally</li>
-        <li><span class="pt">+12</span> Your grade wins an Olympia (3v3 hoops, soccer, chess…)</li>
-        <li><span class="pt">★</span> Teacher bonus, awarded by staff and added by Spirit</li>
-      </ul>
-      <p class="note">One dress-up submission per student per day, and duplicates are removed before points post. Photos are only seen by ASB Spirit &amp; Tech and your advisor.</p>
-    </div>
-
-    <div class="card">
-      <h3 style="margin-bottom:12px">Submit your Spirit Wear!</h3>
+  <div class="card spiritcard">
+      <h3>Submit your Spirit Wear!</h3>
       <form id="spiritForm" novalidate>
         <div class="field">
           <label for="spName">Full name <span class="req" aria-hidden="true">*</span></label>
           <input type="text" id="spName" name="name" autocomplete="name" required>
           <p class="fielderr" id="spNameErr">Enter your first and last name.</p>
         </div>
-        <div class="field">
-          <label for="spGrade">Grade <span class="req" aria-hidden="true">*</span></label>
-          <select id="spGrade" name="grade" required>
-            <option value="">Choose your grade…</option>
-            <option value="9">9 · Freshman</option>
-            <option value="10">10 · Sophomore</option>
-            <option value="11">11 · Junior</option>
-            <option value="12">12 · Senior</option>
-          </select>
-          <p class="fielderr" id="spGradeErr">Pick your grade so points go to the right class.</p>
+        <div class="fieldrow">
+          <div class="field">
+            <label for="spGrade">Grade <span class="req" aria-hidden="true">*</span></label>
+            <select id="spGrade" name="grade" required>
+              <option value="">Choose…</option>
+              <option value="9">9 · Freshman</option>
+              <option value="10">10 · Sophomore</option>
+              <option value="11">11 · Junior</option>
+              <option value="12">12 · Senior</option>
+            </select>
+            <p class="fielderr" id="spGradeErr">Pick your grade so points go to the right class.</p>
+          </div>
+          <div class="field">
+            <label for="spId">Student ID <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="spId" name="studentId" inputmode="numeric" autocomplete="off" required aria-describedby="spIdHint">
+            <p class="fielderr" id="spIdErr">Enter your student ID (numbers only, 5–7 digits).</p>
+          </div>
         </div>
-        <div class="field">
-          <label for="spId">Student ID <span class="req" aria-hidden="true">*</span></label>
-          <input type="text" id="spId" name="studentId" inputmode="numeric" autocomplete="off" required>
-          <p class="hint">Used only to prevent duplicate submissions.</p>
-          <p class="fielderr" id="spIdErr">Enter your student ID (numbers only, 5–7 digits).</p>
-        </div>
+        <p class="hint fieldhint" id="spIdHint">Your ID is used only to prevent duplicate submissions.</p>
         <div class="field">
           <label for="spDay">Spirit day <span class="req" aria-hidden="true">*</span></label>
           <select id="spDay" name="day" required>
@@ -236,48 +224,26 @@
         <p class="hint" id="spSubmitHint" style="text-align:center; margin-top:6px">Add your photo and day, then tap <b>Check my fit</b> to unlock this.</p>
         <p class="formok" id="spiritOk" role="status" tabindex="-1"></p>
       </form>
-    </div>
   </div>
+
+  <details class="fold">
+    <summary>How points work</summary>
+    <div class="foldbody">
+      <ul class="ptrules">
+        <li><span class="pt">+1</span> Dress up on a spirit day (submit a photo above)</li>
+        <li><span class="pt">+25</span> Your grade wins the rally</li>
+        <li><span class="pt">+12</span> Your grade takes second at the rally</li>
+        <li><span class="pt">+12</span> Your grade wins an Olympia (3v3 hoops, soccer, chess…)</li>
+        <li><span class="pt">★</span> Teacher bonus, awarded by staff and added by Spirit</li>
+      </ul>
+      <p class="note">One dress-up submission per student per day, and duplicates are removed before points post. Photos are only seen by ASB Spirit &amp; Tech and your advisor.</p>
+    </div>
+  </details>
 </div>
 
 <!-- ================= CLUBS ================= -->
 <div class="view" id="view-clubs" role="region" aria-label="Clubs">
-  <div class="sechead">
-    <h2>Clubs</h2>
-    <span class="rule" aria-hidden="true"></span>
-  </div>
-  <p class="clubig"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span>Follow <a href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener">@fremontclubs</a> on Instagram for the latest club info.</span></p>
-  <section style="margin-top:var(--space-5)" aria-labelledby="h-cdates">
-    <div class="sechead">
-      <h2 id="h-cdates">Key dates &amp; deadlines</h2>
-      <span class="rule" aria-hidden="true"></span>
-    </div>
-    <div class="grid cols2">
-      <div class="card">
-        <h3 style="margin-bottom:8px">Fall semester</h3>
-        <ul style="margin:0; padding-left:18px; line-height:1.8">
-          <li><b>Sep 2&ndash;9</b> &middot; <span>New club interviews</span></li>
-          <li><b>Sep 9&ndash;10</b> &middot; <span>Clubs list finalized</span></li>
-          <li><b>Sep 9&ndash;13</b> &middot; <span>Clubs Day sign-ups (for clubs)</span></li>
-          <li><b>Sep 16</b> &middot; <span>Clubs Day</span></li>
-          <li><b>Sep 30</b> &middot; <span>First monthly check-in due, 11:59 PM</span></li>
-          <li><b>Oct 25</b> &middot; <span>Multicultural Fair sign-ups close, 11:59 PM</span></li>
-          <li><b>Oct 28</b> &middot; <span>Multicultural Fair</span></li>
-        </ul>
-      </div>
-      <div class="card">
-        <h3 style="margin-bottom:8px">Spring semester</h3>
-        <ul style="margin:0; padding-left:18px; line-height:1.8">
-          <li><b>January</b> &middot; <span>Second-round new club applications open</span></li>
-          <li><b>Jan 27</b> &middot; <span>Club Trivia Night</span></li>
-          <li><b>Apr 21</b> &middot; <span>Club Grub Day</span></li>
-          <li><b>May</b> &middot; <span>Club renewals</span></li>
-        </ul>
-        <p class="hint" style="margin-top:10px">A monthly check-in form goes out on the 1st of every month and is due at the end of that month.</p>
-      </div>
-    </div>
-  </section>
-
+  <h2 class="sr">Clubs</h2>
 
   <div class="clubtools">
     <div class="clubsearch">
@@ -286,84 +252,40 @@
       <input type="text" id="clubSearch" placeholder="Search clubs by name…" autocomplete="off">
       <button type="button" class="clubclear" id="clubClear" aria-label="Clear search" hidden>&times;</button>
     </div>
-    <p class="clubcount" id="clubCount" aria-live="polite"></p>
   </div>
-  <div class="chips clubchips" id="clubChips" role="group" aria-label="Filter clubs by category"></div>
-  <p class="clubsheet"><a id="clubSheetLink" href="https://docs.google.com/spreadsheets/d/1IQo9QG0ubONWAeaZfwPQ2GJH7zpBr_QexsH9o0XTOLg/edit?usp=sharing" target="_blank" rel="noopener">View the full official clubs list &#8599;</a></p>
-  <div class="grid cols2 stagger" id="clubGrid" aria-live="polite"></div>
+  <div class="chips clubchips scrollstrip" id="clubChips" role="group" aria-label="Filter clubs by category"></div>
+  <p class="clubcount" id="clubCount" aria-live="polite"></p>
+  <div class="clublist stagger" id="clubGrid"></div>
   <div class="clubmore" id="clubMoreWrap" hidden><button type="button" class="btn ghost" id="clubShowAll" aria-expanded="false"></button></div>
   <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the search.</p>
 
-  <section style="margin-top:var(--space-5)" aria-labelledby="h-cevents">
-    <div class="sechead">
-      <h2 id="h-cevents">Club events this year</h2>
-      <span class="rule" aria-hidden="true"></span>
-    </div>
-    <div class="grid cols2 stagger">
-      <article class="ticket">
-        <div class="stub" aria-hidden="true"><span class="mo">Sep</span><span class="day">16</span></div>
-        <div class="body">
-          <h3>Clubs Day</h3>
-          <p class="meta">Wed Sep 16 &middot; the quad &middot; lunch</p>
-          <p>The fall club fair. Walk the quad, meet the clubs, and sign up in person.</p>
-          <span class="tag">Clubs</span>
-        </div>
-      </article>
-      <article class="ticket">
-        <div class="stub" aria-hidden="true"><span class="mo">Oct</span><span class="day">28</span></div>
-        <div class="body">
-          <h3>Multicultural Fair</h3>
-          <p class="meta">Wed Oct 28 &middot; lunch &middot; between the A and B buildings</p>
-          <p>Share your culture and recruit for your club. Any student can sign up by Oct 25.</p>
-          <p><a href="https://forms.gle/9b6vJJPCJVnpsv2G8" target="_blank" rel="noopener">Sign up to represent your culture</a></p>
-          <span class="tag">Clubs</span>
-        </div>
-      </article>
-      <article class="ticket">
-        <div class="stub" aria-hidden="true"><span class="mo">Jan</span><span class="day">27</span></div>
-        <div class="body">
-          <h3>Club Trivia Night</h3>
-          <p class="meta">Wed Jan 27 &middot; evening</p>
-          <p>Team trivia hosted by the Clubs Commission. Bring your club and test what you know.</p>
-          <span class="tag">Clubs</span>
-        </div>
-      </article>
-      <article class="ticket">
-        <div class="stub" aria-hidden="true"><span class="mo">Apr</span><span class="day">21</span></div>
-        <div class="body">
-          <h3>Club Grub Day</h3>
-          <p class="meta">Wed Apr 21 &middot; the quad &middot; lunch</p>
-          <p>Clubs sell food on campus. Come hungry and support your favorite clubs.</p>
-          <span class="tag">Clubs</span>
-        </div>
-      </article>
-    </div>
-  </section>
+  <section class="infoblock" aria-labelledby="h-cinfo">
+    <h2 id="h-cinfo" class="subhead">Club info</h2>
 
-  <section style="margin-top:var(--space-5)" aria-labelledby="h-cslides">
-    <div class="sechead">
-      <h2 id="h-cslides">Club info meeting slides</h2>
-      <span class="rule" aria-hidden="true"></span>
-    </div>
-    <div class="card">
-      <p style="margin-top:0; color:var(--ink-soft)">The full Clubs Commission info deck, with everything above in more detail.</p>
-      <div style="max-width:620px; margin:4px auto 14px; border:2px solid var(--ink); box-shadow:4px 4px 0 var(--ink); background:#000">
-        <div style="position:relative; width:100%; padding-top:61%">
-          <iframe src="https://docs.google.com/presentation/d/1GV6dM2eOitIWyesUN5ciMVs3Cq9pqc8a-hBYtz1OmIs/embed?start=false&amp;loop=false&amp;delayms=60000" title="Fremont Clubs info meeting slides" frameborder="0" allowfullscreen="true" loading="lazy" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0"></iframe>
-        </div>
+    <details class="fold">
+      <summary>Key dates &amp; events <span class="foldmeta" id="clubNextDate"></span></summary>
+      <div class="foldbody">
+        <ol class="datelist" id="clubDates">
+          <li class="drow" data-from="2026-09-02" data-to="2026-09-09"><span class="dstamp"><b>Sep</b><span>2–9</span></span><span class="dtxt"><b>New club interviews</b></span></li>
+          <li class="drow" data-from="2026-09-09" data-to="2026-09-10"><span class="dstamp"><b>Sep</b><span>9–10</span></span><span class="dtxt"><b>Clubs list finalized</b></span></li>
+          <li class="drow" data-from="2026-09-09" data-to="2026-09-13"><span class="dstamp"><b>Sep</b><span>9–13</span></span><span class="dtxt"><b>Clubs Day sign-ups (for clubs)</b></span></li>
+          <li class="drow" data-from="2026-09-16" data-to="2026-09-16"><span class="dstamp"><b>Sep</b><span>16</span></span><span class="dtxt"><b>Clubs Day</b><span>The fall club fair on the quad at lunch. Meet the clubs and sign up in person.</span></span></li>
+          <li class="drow" data-from="2026-09-30" data-to="2026-09-30"><span class="dstamp"><b>Sep</b><span>30</span></span><span class="dtxt"><b>First monthly check-in due, 11:59 PM</b></span></li>
+          <li class="drow" data-from="2026-10-25" data-to="2026-10-25"><span class="dstamp"><b>Oct</b><span>25</span></span><span class="dtxt"><b>Multicultural Fair sign-ups close, 11:59 PM</b></span></li>
+          <li class="drow" data-from="2026-10-28" data-to="2026-10-28"><span class="dstamp"><b>Oct</b><span>28</span></span><span class="dtxt"><b>Multicultural Fair</b><span>Lunch, between the A and B buildings. Share your culture and recruit for your club.</span></span></li>
+          <li class="drow" data-from="2027-01-01" data-to="2027-01-31"><span class="dstamp"><b>Jan</b></span><span class="dtxt"><b>Second-round new club applications open</b></span></li>
+          <li class="drow" data-from="2027-01-27" data-to="2027-01-27"><span class="dstamp"><b>Jan</b><span>27</span></span><span class="dtxt"><b>Club Trivia Night</b><span>Team trivia in the evening, hosted by the Clubs Commission.</span></span></li>
+          <li class="drow" data-from="2027-04-21" data-to="2027-04-21"><span class="dstamp"><b>Apr</b><span>21</span></span><span class="dtxt"><b>Club Grub Day</b><span>Clubs sell food on the quad at lunch.</span></span></li>
+          <li class="drow" data-from="2027-05-01" data-to="2027-05-31"><span class="dstamp"><b>May</b></span><span class="dtxt"><b>Club renewals</b></span></li>
+        </ol>
+        <p class="hint">A monthly check-in form goes out on the 1st of every month and is due at the end of that month. <a href="https://forms.gle/9b6vJJPCJVnpsv2G8" target="_blank" rel="noopener">Multicultural Fair sign-up form</a></p>
       </div>
-      <a class="btn gold" style="font-size:15px" href="https://docs.google.com/presentation/d/1GV6dM2eOitIWyesUN5ciMVs3Cq9pqc8a-hBYtz1OmIs/embed?start=false&amp;loop=false" target="_blank" rel="noopener">Open the slides in a new tab</a>
-    </div>
-  </section>
+    </details>
 
-  <section style="margin-top:var(--space-5)" aria-labelledby="h-start">
-    <div class="sechead">
-      <h2 id="h-start">How clubs work</h2>
-      <span class="rule" aria-hidden="true"></span>
-    </div>
-    <div class="grid cols2">
-      <div class="card">
-        <h3 style="margin-bottom:12px">Starting a new club</h3>
+    <details class="fold">
+      <summary>Start or run a club</summary>
+      <div class="foldbody">
+        <h3 class="foldh">Starting a new club</h3>
         <ol class="steps">
           <li>Find a teacher advisor who can be at every meeting.</li>
           <li>Get 10+ interested students. All 10 type their own names from their own accounts so signatures can be verified.</li>
@@ -371,67 +293,51 @@
           <li>Submit the new-club application form, then complete your club interview.</li>
           <li>If you pass, you get a confirmation email from fremontclubs@gmail.com.</li>
         </ol>
-        <p class="hint" style="margin-top:8px">Missed this round? A second application round opens in January.</p>
-      </div>
-      <div class="card">
-        <h3 style="margin-bottom:12px">Staying official</h3>
-        <ul class="ptrules">
+        <p class="hint">Missed this round? A second application round opens in January.</p>
+        <h3 class="foldh">Staying official</h3>
+        <ul class="ticks">
           <li>Hold at least one meeting a month.</li>
           <li>Complete the monthly check-in: a photo of your meeting with 10 members and your advisor.</li>
           <li>Take part in at least 2 club events a year.</li>
           <li>Keep your club&rsquo;s Google Drive folder updated.</li>
         </ul>
-        <p style="margin:10px 0 4px; font-weight:700">Strikes</p>
-        <p style="margin-top:0; color:var(--ink-soft)">Strike 1 is a warning, strike 2 is a meeting with you and your advisor, and strike 3 means the club is disbanded. You can appeal a strike within the same school year.</p>
+        <p class="hint"><b>Strikes:</b> strike 1 is a warning, strike 2 is a meeting with you and your advisor, and strike 3 means the club is disbanded. You can appeal a strike within the same school year.</p>
       </div>
-    </div>
-  </section>
+    </details>
 
-  <section style="margin-top:var(--space-5)" aria-labelledby="h-cinfo">
-    <div class="sechead">
-      <h2 id="h-cinfo">Questions &amp; links</h2>
-      <span class="rule" aria-hidden="true"></span>
-    </div>
-    <div class="grid cols2">
-      <div class="card">
-        <h3 style="margin-bottom:10px">Get in touch</h3>
-        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span><a href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener">@fremontclubs</a> on Instagram</span></p>
-        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="2" fill="none"/></svg><span><a href="mailto:fremontclubs@gmail.com">fremontclubs@gmail.com</a></span></p>
+    <details class="fold" id="clubSlidesFold">
+      <summary>Club info meeting slides</summary>
+      <div class="foldbody">
+        <div class="slideframe">
+          <iframe data-src="https://docs.google.com/presentation/d/1GV6dM2eOitIWyesUN5ciMVs3Cq9pqc8a-hBYtz1OmIs/embed?start=false&amp;loop=false&amp;delayms=60000" title="Fremont Clubs info meeting slides" allowfullscreen></iframe>
+        </div>
+        <a class="linkrow" href="https://docs.google.com/presentation/d/1GV6dM2eOitIWyesUN5ciMVs3Cq9pqc8a-hBYtz1OmIs/embed?start=false&amp;loop=false" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M10 6H5v13h13v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Open the slides in a new tab</span></a>
       </div>
-      <div class="card">
-        <h3 style="margin-bottom:10px">Handbook, tracker &amp; clubs list</h3>
-        <p style="margin-top:0; color:var(--ink-soft)">The club handbook, accountability tracker, and the full clubs list live on the ASB site.</p>
-        <a class="btn gold" style="font-size:15px" href="https://www.fremontasb.org/clubs" target="_blank" rel="noopener">Open the clubs page</a>
-      </div>
-    </div>
-  </section>
+    </details>
 
-  </div>
+    <details class="fold">
+      <summary>Contact &amp; links</summary>
+      <div class="foldbody">
+        <a class="linkrow" href="https://www.instagram.com/fremontclubs" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span>@fremontclubs on Instagram, for the latest club news</span></a>
+        <a class="linkrow" href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=fremontclubs%40gmail.com" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="m4 7 8 6 8-6" stroke="currentColor" stroke-width="2" fill="none"/></svg><span>fremontclubs@gmail.com</span></a>
+        <a class="linkrow" id="clubSheetLink" href="https://docs.google.com/spreadsheets/d/1IQo9QG0ubONWAeaZfwPQ2GJH7zpBr_QexsH9o0XTOLg/edit?usp=sharing" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M10 6H5v13h13v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The full official clubs list</span></a>
+        <a class="linkrow" href="https://www.fremontasb.org/clubs" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M10 6H5v13h13v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Handbook and tracker on the ASB site</span></a>
+      </div>
+    </details>
+  </section>
+</div>
 
 <!-- ================= SPORTS ================= -->
 <div class="view" id="view-sports" role="region" aria-label="Sports">
-  <div class="sechead">
-    <h2 data-i18n="sports.title">Sports</h2>
-    <span class="rule" aria-hidden="true"></span>
-  </div>
-  <p class="note" id="sportsUpdated" aria-live="polite"></p>
-  <p class="note" style="margin:0 0 10px; font-size:14px"><a class="sportlink" href="https://www.fremonthsathletics.org" target="_blank" rel="noopener">Full schedules, rosters &amp; live updates at fremonthsathletics.org &rarr;</a></p>
-  <div class="sportres" id="sportRes" aria-label="Team resources">
-    <a href="https://www.fremonthsathletics.org/register-clearance" target="_blank" rel="noopener"><span data-i18n="res.register">Register</span></a>
-    <a href="https://www.fremonthsathletics.org/shop" target="_blank" rel="noopener"><span data-i18n="res.shop">Team shop</span></a>
-    <a href="https://fhsathleticsboosters.org/" target="_blank" rel="noopener"><span data-i18n="res.donate">Donate</span></a>
-    <a href="https://www.fremonthsathletics.org/news" target="_blank" rel="noopener"><span data-i18n="res.news">News</span></a>
-    <a href="https://www.fremonthsathletics.org/calendar" target="_blank" rel="noopener"><span data-i18n="res.calendar">Calendar</span></a>
-    <a href="https://www.fremonthsathletics.org/contact" target="_blank" rel="noopener"><span data-i18n="res.contact">Contact</span></a>
-  </div>
+  <h2 class="sr" data-i18n="sports.title">Sports</h2>
   <div class="sportfilters" id="sportFilters" hidden>
-    <div class="selwrap"><span id="sportSelectLbl" data-i18n="sports.sport">Sport</span>
+    <div class="selwrap"><span class="sr" id="sportSelectLbl" data-i18n="sports.sport">Sport</span>
       <div class="dd">
         <button type="button" class="dd-btn" id="sportSelect" aria-haspopup="listbox" aria-expanded="false" aria-controls="sportSelectList" aria-labelledby="sportSelectLbl sportSelect"><span class="dd-val">All sports</span><svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
         <ul class="dd-list" id="sportSelectList" role="listbox" aria-labelledby="sportSelectLbl" tabindex="-1" hidden></ul>
       </div>
     </div>
-    <div class="selwrap"><span id="levelSelectLbl" data-i18n="sports.level">Level</span>
+    <div class="selwrap"><span class="sr" id="levelSelectLbl" data-i18n="sports.level">Level</span>
       <div class="dd">
         <button type="button" class="dd-btn" id="levelSelect" aria-haspopup="listbox" aria-expanded="false" aria-controls="levelSelectList" aria-labelledby="levelSelectLbl levelSelect"><span class="dd-val">All levels</span><svg class="dd-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
         <ul class="dd-list" id="levelSelectList" role="listbox" aria-labelledby="levelSelectLbl" tabindex="-1" hidden></ul>
@@ -441,6 +347,22 @@
   <div id="sportsBody">
     <p class="note">Loading Fremont Athletics…</p>
   </div>
+
+  <details class="fold sportlinks">
+    <summary>Team links &amp; full schedules</summary>
+    <div class="foldbody">
+      <a class="linkrow" href="https://www.fremonthsathletics.org" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8M10 6H5v13h13v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Full schedules, rosters and live updates at fremonthsathletics.org</span></a>
+      <div class="sportres" id="sportRes" aria-label="Team resources">
+        <a href="https://www.fremonthsathletics.org/register-clearance" target="_blank" rel="noopener"><span data-i18n="res.register">Register</span></a>
+        <a href="https://www.fremonthsathletics.org/shop" target="_blank" rel="noopener"><span data-i18n="res.shop">Team shop</span></a>
+        <a href="https://fhsathleticsboosters.org/" target="_blank" rel="noopener"><span data-i18n="res.donate">Donate</span></a>
+        <a href="https://www.fremonthsathletics.org/news" target="_blank" rel="noopener"><span data-i18n="res.news">News</span></a>
+        <a href="https://www.fremonthsathletics.org/calendar" target="_blank" rel="noopener"><span data-i18n="res.calendar">Calendar</span></a>
+        <a href="https://www.fremonthsathletics.org/contact" target="_blank" rel="noopener"><span data-i18n="res.contact">Contact</span></a>
+      </div>
+    </div>
+  </details>
+  <p class="note" id="sportsUpdated" aria-live="polite"></p>
 </div>
 
 <!-- ================= MORE ================= -->
@@ -496,44 +418,44 @@
     </div>
   </section>
 
-  <section aria-labelledby="h-settings">
-    <div class="sechead">
-      <h2 id="h-settings" data-i18n="settings.title">Settings</h2>
-      <span class="rule" aria-hidden="true"></span>
-    </div>
-    <div class="card settingscard">
+  <div class="moretop">
+    <section class="setpanel" aria-labelledby="h-settings">
+      <h2 id="h-settings" class="subhead" data-i18n="settings.title">Settings</h2>
       <div class="setrow">
-        <span class="setlabel" data-i18n="settings.language">Language</span>
-        <div class="segbtns" role="group" aria-label="Language">
-          <button type="button" class="segbtn" data-lang="en" aria-pressed="true">English</button>
-          <button type="button" class="segbtn" data-lang="es" aria-pressed="false">Español</button>
+        <span class="setlabel" id="lblLang" data-i18n="settings.language">Language</span>
+        <div class="segbtns" role="group" aria-labelledby="lblLang">
+          <button type="button" class="segbtn" data-lang="en" aria-pressed="true" lang="en">English</button>
+          <button type="button" class="segbtn" data-lang="es" aria-pressed="false" lang="es">Español</button>
         </div>
       </div>
       <div class="setrow">
-        <span class="setlabel" data-i18n="settings.textsize">Text size</span>
-        <div class="segbtns" role="group" aria-label="Text size">
+        <span class="setlabel" id="lblSize" data-i18n="settings.textsize">Text size</span>
+        <div class="segbtns" role="group" aria-labelledby="lblSize">
           <button type="button" class="segbtn" data-textsize="normal" aria-pressed="true" data-i18n="settings.normal">Normal</button>
           <button type="button" class="segbtn" data-textsize="large" aria-pressed="false" data-i18n="settings.large">Large</button>
         </div>
       </div>
       <div class="setrow">
-        <span class="setlabel" data-i18n="settings.motion">Motion mode</span>
-        <button type="button" class="btn ghost" id="motionToggle2" aria-pressed="false" style="font-size:14px">Off</button>
+        <span class="setlabel" id="lblMotion" data-i18n="settings.motion">Motion mode</span>
+        <div class="segbtns"><button type="button" class="segbtn" id="motionToggle2" aria-pressed="false" aria-labelledby="lblMotion motionToggle2">Off</button></div>
       </div>
-      <p class="hint" style="margin:6px 0 0" data-i18n="settings.hint">Your choices are saved on this device. Menus and buttons switch to Spanish; live listings stay in the language they were entered.</p>
-    </div>
-  </section>
+      <p class="hint" data-i18n="settings.hint">Saved on this device. Live listings stay in the language they were entered.</p>
+    </section>
 
-  <div class="sechead">
-    <h2>Feedback &amp; more</h2>
-    <span class="rule" aria-hidden="true"></span>
+    <section class="quickpanel" aria-labelledby="h-fbmore">
+      <h2 id="h-fbmore" class="subhead">Feedback &amp; more</h2>
+      <button type="button" class="linkrow strong" id="fbOpen" aria-expanded="false" aria-controls="fbPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Tell ASB anything</span></button>
+      <a class="linkrow" href="https://www.instagram.com/firebirdfelipe" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span>@firebirdfelipe</span></a>
+      <a class="linkrow" href="https://www.fremontasb.org" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="2"/></svg><span>fremontasb.org</span></a>
+      <button type="button" class="linkrow" id="aboutOpen" aria-expanded="false" aria-controls="aboutPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>About this app</span></button>
+    </section>
   </div>
 
-  <div class="grid cols2">
-    <div class="card">
-      <h3 style="margin-bottom:12px">Tell ASB anything</h3>
-      <p style="margin-top:0; color:var(--ink-soft)">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. It comes straight to us, with no extra steps.</p>
-      <form id="fbForm" novalidate>
+  <div class="card fbpanel" id="fbPanel" hidden>
+    <h3>Tell ASB anything</h3>
+    <p class="hint">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. It comes straight to us, with no extra steps.</p>
+    <form id="fbForm" novalidate>
+      <div class="fieldrow">
         <div class="field">
           <label for="fbName">Your name <span class="req" aria-hidden="true">*</span></label>
           <input type="text" id="fbName" autocomplete="name" required>
@@ -544,30 +466,20 @@
           <input type="email" id="fbEmail" inputmode="email" autocomplete="email" placeholder="you@student.fuhsd.org" required>
           <p class="fielderr" id="fbEmailErr">Add a valid email so ASB can reply.</p>
         </div>
-        <div class="field">
-          <label for="fbMsg">Message <span class="req" aria-hidden="true">*</span></label>
-          <textarea id="fbMsg" rows="4" required></textarea>
-          <p class="fielderr" id="fbMsgErr">Write a message first. Even one sentence helps.</p>
-        </div>
-        <button class="btn primary" type="submit">Send to ASB</button>
-        <p class="formok" id="fbOk" role="status" tabindex="-1"></p>
-      </form>
-    </div>
+      </div>
+      <div class="field">
+        <label for="fbMsg">Message <span class="req" aria-hidden="true">*</span></label>
+        <textarea id="fbMsg" rows="4" required></textarea>
+        <p class="fielderr" id="fbMsgErr">Write a message first. Even one sentence helps.</p>
+      </div>
+      <button class="btn primary" type="submit">Send to ASB</button>
+      <p class="formok" id="fbOk" role="status" tabindex="-1"></p>
+    </form>
+  </div>
 
-    <div>
-      <div class="card" style="margin-bottom:var(--space-3)">
-        <h3 style="margin-bottom:10px">Find ASB</h3>
-        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span><a href="https://www.instagram.com/firebirdfelipe" target="_blank" rel="noopener">@firebirdfelipe</a> on Instagram</span></p>
-        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="2"/></svg><span><a href="https://www.fremontasb.org" target="_blank" rel="noopener">fremontasb.org</a> for photos, FTV, resources, and store links</span></p>
-        <p class="iconline"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/></svg><span>ASB Leadership · Fremont High School, Sunnyvale (FUHSD)</span></p>
-      </div>
-      <div class="card">
-        <h3 style="margin-bottom:10px">About this app</h3>
-        <p style="margin-top:0; color:var(--ink-soft)">Built by the ASB Tech Commission. Spirit submissions go only to ASB Spirit, Tech, and the advisor. They&rsquo;re never shared publicly, and student IDs are used solely to remove duplicate entries. Questions? Drop a note in the feedback box.</p>
-        <p style="margin:14px 0 0"><button type="button" class="btn ghost" id="motionToggle" aria-pressed="false" style="font-size:14px">Motion mode: Off</button></p>
-        <p class="hint" style="margin-top:8px">Motion mode swaps the card layout for scroll animations and a swipeable events row. Off keeps the classic look.</p>
-      </div>
-    </div>
+  <div class="card aboutpanel" id="aboutPanel" hidden>
+    <h3>About this app</h3>
+    <p class="hint">Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit submissions go only to ASB Spirit, Tech, and the advisor. They&rsquo;re never shared publicly, and student IDs are used solely to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.</p>
   </div>
 </div>
 
@@ -693,6 +605,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
-<script src="app.js?v=51"></script>
+<script src="app.js?v=52"></script>
 </body>
 </html>
