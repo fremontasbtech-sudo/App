@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=45">
+<link rel="stylesheet" href="styles.css?v=46">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -249,15 +249,17 @@
     <div class="clubsearch">
       <svg class="si" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
       <label class="sr" for="clubSearch">Search clubs</label>
-      <input type="text" id="clubSearch" placeholder="Search clubs by name…" autocomplete="off">
+      <input type="text" id="clubSearch" placeholder="Search clubs…" autocomplete="off">
       <button type="button" class="clubclear" id="clubClear" aria-label="Clear search" hidden>&times;</button>
     </div>
+    <button type="button" class="btn gold matchbtn" id="findClubBtn" aria-haspopup="dialog">Find your club</button>
   </div>
   <div class="chips clubchips scrollstrip" id="clubChips" role="group" aria-label="Filter clubs by category"></div>
   <p class="clubcount" id="clubCount" aria-live="polite"></p>
   <div class="clublist stagger" id="clubGrid"></div>
   <div class="clubmore" id="clubMoreWrap" hidden><button type="button" class="btn ghost" id="clubShowAll" aria-expanded="false"></button></div>
   <p class="note" id="clubEmpty" hidden>No clubs match that search. Try a different name or clear the search.</p>
+  <dialog id="matchDialog" class="quiz" aria-labelledby="quizTitle"><div id="quizBody"></div></dialog>
 
   <section class="infoblock" aria-labelledby="h-cinfo">
     <h2 id="h-cinfo" class="subhead">Club info</h2>
@@ -605,6 +607,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
-<script src="app.js?v=52"></script>
+<script src="app.js?v=53"></script>
 </body>
 </html>

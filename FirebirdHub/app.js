@@ -1802,7 +1802,7 @@ function renderQuizStep(){
     (Q.multi?'<p class="quizhint">Pick any that fit</p>':"")+
     '<div class="quizopts">'+Q.opts.map(function(o,i){ return '<button type="button" class="quizopt" data-i="'+i+'">'+clubEsc(o.t)+'</button>'; }).join("")+'</div>'+
     (Q.multi?'<button type="button" class="btn primary quiznext" id="quizNext">Next</button>':"")+
-    '<p class="quizstepn">Question '+(quizStep+1)+' of '+MATCH_QS.length+'</p>';
+    '<p class="quizstepn">'+tr('Question '+(quizStep+1)+' of '+MATCH_QS.length,'Pregunta '+(quizStep+1)+' de '+MATCH_QS.length)+'</p>';
   body.querySelector("#quizClose").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
   body.querySelectorAll(".quizopt").forEach(function(btn){
     btn.onclick=function(){
@@ -1824,17 +1824,17 @@ function scoreClubs(){
 function renderQuizResults(){
   const ranked=scoreClubs().filter(function(r){return r.score>0;}).slice(0,3);
   const body=document.getElementById("quizBody"); if(!body) return;
-  let html='<div class="quizhead"><span class="quizprog"><span style="width:100%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div><h2 class="quizq">Your top matches</h2>';
+  let html='<div class="quizhead"><span class="quizprog"><span style="width:100%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div><h2 id="quizTitle" class="quizq">Your top matches</h2>';
   if(!ranked.length){ html+='<p class="note">No strong match yet. Try browsing all clubs.</p>'; }
   else html+=ranked.map(function(r){
     const c=r.club;
     var emails=Array.isArray(c.emails)?c.emails.filter(Boolean):[];
     var meet=c.meetingInfo?('<p class="matchcat">'+clubEsc(c.meetingInfo)+'</p>'):"";
     var desc=String(c.purpose||c.desc||"").trim();
-    return '<div class="matchcard"><div class="matchtop"><h3>'+clubEsc(c.name)+'</h3><span class="matchpct">'+r.pct+'% match</span></div>'+
+    return '<div class="matchcard"><div class="matchtop"><h3>'+clubEsc(c.name)+'</h3><span class="matchpct">'+r.pct+tr('% match','% de afinidad')+'</span></div>'+
       '<p class="matchcat"><b>'+clubEsc(clubCatLabel(r.cat))+'</b></p>'+ meet +
       (desc?'<p class="matchwhy">'+clubEsc(desc.slice(0,140))+(desc.length>140?"…":"")+'</p>':"")+
-      (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">Email</a>':"")+'</div>';
+      (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">Email the club</a>':"")+'</div>';
   }).join("");
   html+='<div class="quizactions"><button type="button" class="btn ghost" id="quizRetake">Retake</button><button type="button" class="btn primary" id="quizDone">Browse all clubs</button></div>';
   body.innerHTML=html;
@@ -2518,6 +2518,13 @@ if(!FEATURES.fireBucks){
 ===================================================== */
 var I18N_EN_ES = {
   // v52 compact layout (2026-11-16)
+  "What are you most into?":"¿Qué es lo que más te gusta?","Pick any that fit":"Elige todas las que te queden",
+  "Science, tech & building":"Ciencia, tecnología y construir cosas","Art, music & performing":"Arte, música y actuación","Culture, identity & language":"Cultura, identidad e idioma",
+  "Service & giving back":"Servicio y ayudar a los demás","Business, debate & academics":"Negocios, debate y estudios","Sports & games":"Deportes y juegos",
+  "How do you like to get involved?":"¿Cómo te gusta participar?","Hands-on projects":"Proyectos prácticos","With a team or community":"Con un equipo o una comunidad","Competing & achieving":"Competir y lograr metas",
+  "Pick your energy":"Elige tu energía","Social & group":"Social y en grupo","Focused & solo":"Concentrado y por tu cuenta",
+  "Your main goal?":"¿Cuál es tu meta principal?","Meet new people":"Conocer gente nueva","Build a skill":"Desarrollar una habilidad","Give back":"Ayudar a los demás","Just have fun":"Divertirme",
+  "Next":"Siguiente","Your top matches":"Tus mejores opciones","Retake":"Repetir","Browse all clubs":"Ver todos los clubes","No strong match yet. Try browsing all clubs.":"Todavía no hay una opción clara. Prueba a ver todos los clubes.",
   "Assignments":"Tareas","Special":"Especial","Show chart":"Ver gráfica","Hide chart":"Ocultar gráfica","Choose…":"Elige…",
   "Official 2026–27 FHS bell schedule. For the exact dates of a special week, trust the announcements.":"Horario oficial de FHS 2026–27. Para las fechas exactas de una semana especial, consulta los anuncios.",
   "Your ID is used only to prevent duplicate submissions.":"Tu ID solo se usa para evitar envíos duplicados.",
@@ -2678,6 +2685,7 @@ var I18N_EN_ES = {
   "Accessibility issues? Tell us in the feedback box. We fix those first.":"¿Problemas de accesibilidad? Dinos en la caja de comentarios. Esos los arreglamos primero."
 };
 var I18N_ATTR = {
+  "Search clubs…":"Busca clubes…",
   "Schedule view":"Vista del horario","Class spirit standings":"Clasificación de espíritu por clase","Class spirit standings chart":"Gráfica de la clasificación de espíritu",
   "Filter clubs by category":"Filtrar clubes por categoría","Choose a day":"Elige un día","Team resources":"Recursos del equipo",
   "Search clubs by name…":"Busca clubes por nombre…",

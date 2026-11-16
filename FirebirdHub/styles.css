@@ -1121,3 +1121,9 @@ dialog, .announce-modal, dialog.quiz{border-radius:0}
 .ticket .tkh{font-family:var(--font-display); text-transform:uppercase; letter-spacing:.03em; line-height:1.08; margin:0; font-size:17px; font-weight:600; color:var(--cardinal-dark)}
 .ticket:focus-visible{outline-offset:2px}
 .clubrow-h{margin:0; font:inherit; text-transform:none; letter-spacing:0; line-height:inherit}
+
+/* Clubs: "Find your club" quiz button sits beside the search box */
+.clubtools{flex-wrap:nowrap; gap:10px; align-items:stretch}
+.clubsearch{min-width:0; flex:1 1 auto}
+.matchbtn{flex:none; margin-left:0; font-size:15px; padding:8px 12px; white-space:nowrap; box-shadow:var(--hard)}
+.quizprog{border-radius:0}
