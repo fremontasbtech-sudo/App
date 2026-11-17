@@ -209,6 +209,9 @@ button.btn{background-clip:padding-box}
 .tag.bell .bell-ico{ width:11px; height:11px; }
 .ticket.bell{ border-color:#1f1a17; box-shadow:4px 4px 0 var(--gold); }
 .ticket.bell .stub{ background:#1f1a17; color:var(--gold); }
+/* A day with no classes (NO_CLASSES) in Upcoming: a quiet paper stub */
+.ticket.offday .stub{ background:var(--paper); color:var(--ink); border-right:2px dashed var(--ink); }
+.ticket.offday .stub .mo{ color:var(--cardinal-dark); }
 
 /* ---------- Schedule ---------- */
 .clockcard{
@@ -652,7 +655,10 @@ body.dd-open .askfab{visibility:hidden} /* a Sport or Level list is open: don't 
 .askpanel[hidden]{display:none !important}
 .askback[hidden]{display:none !important}
 .askhead{display:flex; align-items:center; justify-content:space-between; padding:11px 14px; background:var(--cardinal,#8F1106); color:#fff; font-size:16px}
-.askx{background:transparent; border:0; color:#fff; font-size:24px; line-height:1; cursor:pointer; padding:0 4px}
+.askx{background:transparent; border:0; color:#fff; font-size:24px; line-height:1; cursor:pointer; padding:0 4px; min-width:44px; min-height:44px; margin:-10px -10px -10px 0}
+.askx:focus-visible{outline:3px solid var(--gold); outline-offset:-3px}
+.askform input, .askform .btn{min-height:44px}
+.askform input:focus-visible{outline:3px solid var(--cardinal); outline-offset:1px}
 .asklog{flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px}
 .askmsg{max-width:85%; padding:9px 12px; border-radius:var(--r); font-size:14px; line-height:1.4; white-space:pre-wrap}
 .askmsg.bot{align-self:flex-start; background:#fff; border:1.5px solid var(--line,#e4d9c4); color:var(--ink,#271510)}
@@ -1001,6 +1007,10 @@ h1{font-size:clamp(27px,6vw,52px)}
 .crown{border-radius:0}
 .spiritcard{margin-bottom:var(--space-3)}
 .spiritcard > h3{margin-bottom:10px}
+/* Spirit Wear closed (no backend or no spirit week): a calm card in the house style */
+.spiritclosed{border-left:8px solid var(--cardinal)}
+.spiritclosed > h3{margin-bottom:6px; font-size:19px; line-height:1.25}
+.spiritclosed > p{margin:0; color:var(--ink-soft); font-size:15px}
 .ptrules .pt{border-radius:0; font-size:15px; min-width:46px; padding:2px 6px}
 .ptrules li{font-size:14.5px}
 .filewrap{border-radius:0; padding:10px}

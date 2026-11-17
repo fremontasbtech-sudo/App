@@ -9,8 +9,15 @@
  * The TODAY line is rebuilt on every call in Pacific time from the FUHSD calendar below.
  */
 const MODEL = "gemini-3.6-flash";
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/" + MODEL + ":generateContent";
+// Lighter model tried once when the main one is overloaded or out of quota (429 or 5xx).
+// The website's announcement titles use it for the same reason (higher capacity).
+const FALLBACK_MODEL = "gemini-flash-lite-latest";
+const geminiUrl = m => "https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent";
 const GEMINI_TIMEOUT_MS = 12000;
+const RETRY_BACKOFF_MS = 700;
+// Conversation memory: the app sends the last few turns so a follow-up ("Girls") answers
+// Felipe's own clarifying question. Anything that isn't exactly this shape is ignored.
+const HISTORY_MAX_TURNS = 6, HISTORY_MAX_CHARS = 500;
 const SHEET_PROXY = "https://www.fremontasb.org/api/sheet?tab=";
 const SOURCES = {
   events: SHEET_PROXY + "Events",
@@ -73,7 +80,7 @@ MEETS vs GAMES: Cross Country, Track and Swimming have MEETS at a venue (Hayward
 SPIRIT vs SPORTS EVENTS: items under UPCOMING EVENTS are ASB, spirit or club events; describe each from its own description, never from its name alone. "Firebird Football" is a Homecoming-week CLASS-vs-CLASS football spirit competition run by ASB. It is NOT the school Football team's games and NOT the Flag Football sport. Never assume an event is a sport just because its name contains a sport.
 
 SPORTS: full schedules, scores and results are on the Sports tab (filter by sport and level), with register/clearance, team shop, boosters/donate and contact links.
-SPIRIT: live class spirit-points standings are on the Spirit tab.
+SPIRIT: live class spirit-points standings are on the Spirit tab. Spirit Wear (dress-up photo) submissions open only during spirit weeks; while one is on, the Spirit tab shows the form and that week's dress-up days, and the rest of the year it says submissions open during spirit weeks. You cannot see whether the form is open today, so when a student asks about submitting, tell them to check the Spirit tab. Never promise that a photo was received or that a point was earned.
 `.trim();
 
 /* ---------- small helpers ---------- */
@@ -302,6 +309,7 @@ RULES:
 - Lead with the DIRECT answer in the first sentence, drawn from the DATA and FACTS below. Keep it to 1-3 sentences (a short list is fine when the student asks for options). Warm, student-facing, plain full sentences, no markdown headers, no emoji.
 - Never use em dashes (the long dash). Use commas or periods instead.
 - If the question is ambiguous or missing a detail you truly need (which sport, which level like JV vs Varsity, which day, or which club), ask ONE short clarifying question instead of guessing. If it is already clear, just answer.
+- Earlier turns of this conversation may come before the new message. Read a short follow-up ("Girls", "JV", "what about Friday?") as the answer to your last question or a refinement of the last topic, and answer it directly. Never ask the same clarifying question twice.
 - Use TODAY, TOMORROW and the bell-schedule times to answer "is there school today", "what time does school start", "when is lunch today", "what time is 3rd period" and similar. If TODAY or TOMORROW says there are no classes, say so plainly with the reason and do not list period times for that day.
 - "Next game/meet/event" = the SOONEST dated item that matches. Give the weekday, date, time, opponent or meet, and place exactly as the line in LIVE DATA says. Never work out a weekday yourself.
 - Senior nights: use the SENIOR NIGHTS list. FEATURED marks a game ASB is promoting.
@@ -347,6 +355,32 @@ function rateLimited(ip){
   return 0;
 }
 
+/* Prior turns from the client, validated strictly: an array of { role:"user"|"model",
+   text:string }, at most the last 6, each trimmed to 500 characters. Anything else (other
+   roles, non-strings, extra fields, a non-array) is dropped. Gemini wants the turns to
+   alternate and start with "user", so same-role neighbors are merged and a leading model
+   turn is dropped. Returns Gemini "contents" entries. */
+function cleanHistory(raw){
+  if(!Array.isArray(raw)) return [];
+  const turns = [];
+  for(const t of raw.slice(-HISTORY_MAX_TURNS)){
+    if(!t || typeof t !== "object" || Array.isArray(t)) continue;
+    if(t.role !== "user" && t.role !== "model") continue;
+    if(typeof t.text !== "string") continue;
+    const text = t.text.replace(/\s+/g," ").trim().slice(0, HISTORY_MAX_CHARS);
+    if(!text) continue;
+    const last = turns[turns.length-1];
+    if(last && last.role === t.role) last.text = (last.text+" "+text).slice(0, HISTORY_MAX_CHARS*2);
+    else turns.push({ role:t.role, text });
+  }
+  while(turns.length && turns[0].role !== "user") turns.shift();
+  // The new question is a user turn, so the history must end on a model turn.
+  while(turns.length && turns[turns.length-1].role !== "model") turns.pop();
+  return turns.map(t=> ({ role:t.role, parts:[{ text:t.text }] }));
+}
+const sleep = ms => new Promise(r=> setTimeout(r, ms));
+const transient = st => st===429 || st>=500 || st===0;
+
 const MSG = {
   noKey: "Ask Felipe isn't set up yet. For now, please check the Schedule, Clubs, Sports and More tabs.",
   busy: "Felipe needs a short break. Please wait a minute and ask again, or check the Schedule, Clubs and Sports tabs in the meantime.",
@@ -354,6 +388,7 @@ const MSG = {
   error: "Felipe is having a moment. Please try again in a bit, or check the Schedule, Clubs and Sports tabs."
 };
 
+export { cleanHistory };
 export default async function handler(req, res){
   res.setHeader("Vary", "Origin");
   if(!originOk(req)){ res.status(403).json({ error:"origin not allowed" }); return; }
@@ -366,12 +401,13 @@ export default async function handler(req, res){
   if(req.method !== "POST"){ res.status(405).json({error:"POST only"}); return; }
   let body = req.body;
   if(typeof body === "string"){ try{ body = JSON.parse(body); }catch(e){ body = {}; } }
-  const q = (body && body.question ? String(body.question) : "").slice(0, 500).trim();
+  const q = (body && typeof body.question === "string" ? body.question : "").slice(0, 500).trim();
   if(!q){ res.status(400).json({error:"missing question"}); return; }
+  const history = cleanHistory(body && body.history);
   const wait = rateLimited(clientIp(req));
-  if(wait){ res.setHeader("Retry-After", String(wait)); res.status(429).json({ answer:MSG.busy }); return; }
+  if(wait){ res.setHeader("Retry-After", String(wait)); res.status(429).json({ answer:MSG.busy, fallback:true }); return; }
   const key = process.env.GEMINI_API_KEY;
-  if(!key){ res.status(200).json({ answer:MSG.noKey }); return; }
+  if(!key){ res.status(200).json({ answer:MSG.noKey, fallback:true }); return; }
   try{
     const system = buildSystem(todayLines(nowPT())+"\n\n"+await liveContext());
     const safetySettings = [
@@ -383,30 +419,47 @@ export default async function handler(req, res){
     // "low" thinking keeps Felipe fast on Gemini 3 (never thinkingBudget 0: it returns empty
     // answers). If a model/version ever rejects that config or answers empty, retry once
     // without it so Felipe never goes dark. Each call gives up after 12 s.
-    async function callGemini(useThinking){
+    // Earlier turns (validated above) come first, then the new question.
+    const contents = history.concat([{ role:"user", parts:[{ text:q }] }]);
+    async function callGemini(useThinking, model){
       const generationConfig = useThinking
         ? { temperature:0.25, maxOutputTokens:2048, thinkingConfig:{ thinkingLevel:"low" } }
         : { temperature:0.25, maxOutputTokens:2048 };
       const payload = {
         systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role:"user", parts:[{ text:q }] }],
+        contents,
         generationConfig, safetySettings
       };
       const ctrl = new AbortController(), timer = setTimeout(()=> ctrl.abort(), GEMINI_TIMEOUT_MS);
       try{
-        const r = await fetch(GEMINI_URL, { method:"POST", headers:{ "Content-Type":"application/json", "x-goog-api-key":key }, body: JSON.stringify(payload), signal: ctrl.signal });
+        const r = await fetch(geminiUrl(model || MODEL), { method:"POST", headers:{ "Content-Type":"application/json", "x-goog-api-key":key }, body: JSON.stringify(payload), signal: ctrl.signal });
         const data = await r.json().catch(()=> ({}));
         let a=""; try{ a=(data.candidates[0].content.parts||[]).filter(p=>!p.thought).map(p=>p.text||"").join(" ").trim(); }catch(e){}
         return { text:a, ok:r.ok, status:r.status, retry: r.ok || r.status===400 };
+      }catch(e){
+        return { text:"", ok:false, status:0, retry:false };   // timeout or network: transient
       } finally { clearTimeout(timer); }
     }
+    // At most 3 Gemini calls. A config Gemini rejected (400) is never sent again.
+    const started = Date.now(), fresh = ()=> Date.now()-started < 12000; // no retries after a slow failure
+    let calls = 1, thinking = true;
     let out = await callGemini(true);
-    if(!out.text && out.retry) out = await callGemini(false);
+    if(!out.text && out.retry){ thinking = false; calls++; out = await callGemini(false); }
+    // Overloaded or out of quota (429, 5xx, or a network error that fails fast): wait a moment,
+    // retry once with the last config Gemini accepted, then once on the lighter model (no
+    // thinkingConfig: older models reject thinkingLevel). A call that times out (12 s) is past
+    // the 12 s window, so it is not retried.
+    if(!out.text && transient(out.status) && fresh()){
+      console.warn("ask: Gemini HTTP "+out.status+", retrying");
+      await sleep(RETRY_BACKOFF_MS);
+      if(calls < 2){ calls++; out = await callGemini(thinking); }
+      if(!out.text && transient(out.status) && fresh() && calls < 3){ calls++; out = await callGemini(false, FALLBACK_MODEL); }
+    }
     // An empty 200 (e.g. a safety block) is "ask something else"; a Gemini error (429 quota
     // used up, 5xx, a rejected key) is "try again later", since a new question hits the same wall.
     if(!out.text && !out.ok) console.warn("ask: Gemini HTTP "+out.status);
-    res.status(200).json({ answer: out.text ? noEmDash(out.text) : (out.ok ? MSG.empty : MSG.error) });
+    res.status(200).json(out.text ? { answer: noEmDash(out.text) } : { answer: out.ok ? MSG.empty : MSG.error, fallback:true });
   }catch(e){
-    res.status(200).json({ answer:MSG.error });
+    res.status(200).json({ answer:MSG.error, fallback:true });
   }
 }

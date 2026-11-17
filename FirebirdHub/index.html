@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=46">
+<link rel="stylesheet" href="styles.css?v=47">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -155,7 +155,14 @@
   </div>
   <div class="barrace" id="barRace" role="group" aria-label="Class spirit standings chart" hidden></div>
 
-  <div class="card spiritcard">
+  <!-- Shown while Spirit Wear submissions are closed (no backend yet, or no spirit week now).
+       app.js renderSpiritWear() swaps it for the form below when both are ready. -->
+  <div class="card spiritcard spiritclosed" id="spiritClosed">
+    <h3>Spirit Wear submissions open during spirit weeks.</h3>
+    <p>When the next spirit week starts, its dress-up days will show here.</p>
+  </div>
+
+  <div class="card spiritcard" id="spiritFormCard" hidden>
       <h3>Submit your Spirit Wear!</h3>
       <form id="spiritForm" novalidate>
         <div class="field">
@@ -186,11 +193,7 @@
           <label for="spDay">Spirit day <span class="req" aria-hidden="true">*</span></label>
           <select id="spDay" name="day" required>
             <option value="">Which day is this for?</option>
-            <option value="island">Mon · Island (beach)</option>
-            <option value="nerd">Tue · Outwit (nerd)</option>
-            <option value="camo">Wed · Outlast (camo)</option>
-            <option value="jersey">Thu · Outplay (jersey)</option>
-            <option value="colors">Fri · Tribe (class colors)</option>
+            <!-- The days come from SPIRIT_DAYS in app.js (only the current spirit week's). -->
           </select>
           <p class="fielderr" id="spDayErr">Choose the spirit day you dressed up for.</p>
         </div>
@@ -230,7 +233,7 @@
     <summary>How points work</summary>
     <div class="foldbody">
       <ul class="ptrules">
-        <li><span class="pt">+1</span> Dress up on a spirit day (submit a photo above)</li>
+        <li><span class="pt">+1</span> Dress up on a spirit day during a spirit week</li>
         <li><span class="pt">+25</span> Your grade wins the rally</li>
         <li><span class="pt">+12</span> Your grade takes second at the rally</li>
         <li><span class="pt">+12</span> Your grade wins an Olympia (3v3 hoops, soccer, chess…)</li>
@@ -481,7 +484,7 @@
 
   <div class="card aboutpanel" id="aboutPanel" hidden>
     <h3>About this app</h3>
-    <p class="hint">Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit submissions go only to ASB Spirit, Tech, and the advisor. They&rsquo;re never shared publicly, and student IDs are used solely to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.</p>
+    <p class="hint">Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.</p>
   </div>
 </div>
 
@@ -533,14 +536,14 @@
 
 </main>
 
-<button id="askFab" class="askfab" type="button" aria-label="Ask Felipe">Ask Felipe</button>
+<button id="askFab" class="askfab" type="button" aria-expanded="false" aria-controls="askPanel" aria-haspopup="dialog">Ask Felipe</button>
 <div id="askBack" class="askback" hidden></div>
-<div id="askPanel" class="askpanel" hidden role="dialog" aria-label="Ask Felipe">
-  <div class="askhead"><b>Ask Felipe</b><button id="askClose" class="askx" type="button" aria-label="Close">&times;</button></div>
-  <div id="askLog" class="asklog"><div class="askmsg bot">Hi! Ask me about the bell schedule, clubs, events, or sports.</div></div>
+<div id="askPanel" class="askpanel" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
+  <div class="askhead"><b id="askTitle">Ask Felipe</b><button id="askClose" class="askx" type="button" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
+  <div id="askLog" class="asklog" role="log" aria-live="polite" aria-relevant="additions"><div class="askmsg bot">Hi! Ask me about the bell schedule, clubs, events, or sports.</div></div>
   <form id="askForm" class="askform" autocomplete="off">
     <input id="askInput" type="text" maxlength="500" placeholder="Ask about schedule, clubs, sports…" aria-label="Your question">
-    <button class="btn primary" type="submit" aria-label="Send">Send</button>
+    <button class="btn primary" type="submit">Send</button>
   </form>
   <p class="askdis">School questions only · answers aren't monitored live</p>
 </div>
@@ -607,6 +610,6 @@
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
-<script src="app.js?v=53"></script>
+<script src="app.js?v=54"></script>
 </body>
 </html>

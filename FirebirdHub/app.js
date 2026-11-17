@@ -6,11 +6,28 @@ document.documentElement.classList.add('js');
 ===================================================== */
 const CONFIG = {
   // Paste the Apps Script web-app /exec URL (see App/backend/README.md).
-  // While empty, the app runs in demo mode (everything confirmed locally only).
+  // While empty, nothing can be saved, so the Spirit Wear form stays hidden (Spirit shows
+  // "submissions open during spirit weeks" instead). Setting it brings the form back.
   apiUrl: "",
   // Paste the school Google OAuth client ID to enable real sign-in.
   googleClientId: "406202107849-qqtk7fth5t3qu1en1kitjr6il1oh5t7f.apps.googleusercontent.com"
 };
+
+/* Spirit Wear dress-up days. The submit form (with the Fit Check) shows only while
+   CONFIG.apiUrl is set AND one of these days is today or up to 2 days ago; otherwise Spirit
+   shows the "submissions open during spirit weeks" card. Add each spirit week's days here.
+   id must match a theme in vision.js (island, nerd, camo, jersey, colors) or the Fit Check
+   falls back to its color check. Example: the Survivor BTS week, Aug 24 to 28, 2026.
+   Felipe (api/ask.js STATIC_FACTS, the SPIRIT line) only says submissions open during spirit
+   weeks and points students to the Spirit tab. If you change how Spirit Wear works, update
+   that line too, so Felipe and the Spirit tab never disagree. */
+const SPIRIT_DAYS = [
+  { date:"2026-08-24", id:"island", en:"Mon · Island (beach)",       es:"Lun · Isla (playa)" },
+  { date:"2026-08-25", id:"nerd",   en:"Tue · Outwit (nerd)",        es:"Mar · Outwit (nerd)" },
+  { date:"2026-08-26", id:"camo",   en:"Wed · Outlast (camo)",       es:"Mié · Outlast (camuflaje)" },
+  { date:"2026-08-27", id:"jersey", en:"Thu · Outplay (jersey)",     es:"Jue · Outplay (jersey)" },
+  { date:"2026-08-28", id:"colors", en:"Fri · Tribe (class colors)", es:"Vie · Tribu (colores de clase)" }
+];
 
 // Feature flags — flip to true to bring a feature back into the live app.
 // Fire Bucks (Firebird Card, QR, teacher "give" screen) stays built in the repo,
@@ -98,7 +115,7 @@ const SCHED_LABEL_ES = { mon:"Lunes", a:"D\u00eda A \u00b7 mar y jue", b:"D\u00e
 const SCHOOL_YEAR = { first:"2026-08-17", last:"2027-06-03" };
 const NO_CLASSES = [
   ["2026-09-07","2026-09-07","Labor Day","D\u00eda del Trabajo"],
-  ["2026-10-12","2026-10-12","Teacher Non-Duty Day","D\u00eda sin clases para maestros"],
+  ["2026-10-12","2026-10-12","Teacher Non-Duty Day","D\u00eda sin clases"],
   ["2026-11-11","2026-11-11","Veterans Day","D\u00eda de los Veteranos"],
   ["2026-11-25","2026-11-27","Thanksgiving Break","Vacaciones de Acci\u00f3n de Gracias"],
   ["2026-12-21","2027-01-01","Mid-Year Break","Vacaciones de mitad de a\u00f1o"],
@@ -110,12 +127,13 @@ const NO_CLASSES = [
 ];
 /* Dated A/B swaps for weeks where a mid-week day off shifts the pattern ("YYYY-MM-DD":"a"|"b").
    Monday-off weeks need nothing here: Tue A, Wed B, Thu A, Fri B is already the default.
-   Empty until Abir confirms the 2026-27 weeks. The school's special-schedule sheet only has
-   2025-26 tabs; its pattern rule (the remaining days alternate A, B starting Monday) gives:
-     "2026-11-09":"a", "2026-11-10":"b"   (Veterans Day week, Wed 11-11 off)
-     "2026-11-23":"a", "2026-11-24":"b"   (Thanksgiving week, Wed-Fri off)
-   Until then those days show the regular weekday schedule. */
-const SPECIAL_DAYS = {};
+   Source: "FHS Bell Schedules - Full Export.md" (Thanksgiving Week 2025 ran Mon A, Tue B,
+   Wed-Fri off, and its pattern rule: the remaining days alternate A, B starting Monday).
+   Keep these in step with SPECIAL_DAYS in api/ask.js and the Special weeks below. */
+const SPECIAL_DAYS = {
+  "2026-11-09":"a", "2026-11-10":"b",   // Veterans Day week, Wed 11-11 off
+  "2026-11-23":"a", "2026-11-24":"b"    // Thanksgiving week, Wed 11-25 to Fri 11-27 off
+};
 function noClassReason(iso){
   // Summer is June 1 to the first day, and the last day to Aug 10. Past that, the table is
   // out of date (a new school year), so the app falls back to the regular week instead of
@@ -174,10 +192,10 @@ const SPECIAL_WEEKS = [
   { id:"nonduty", name:"Non-Duty Day Week", dates:"Oct 12–16, 2026",
     days:[ OFF("Mon","Teacher Non-Duty Day"), D("Tue","A day",A), D("Wed","B day",B), D("Thu","A day",A), D("Fri","B day",B) ] },
   { id:"veterans", name:"Veterans Day Week", dates:"Nov 9–13, 2026",
-    note:"Veterans Day is a Wednesday this year. The other days follow last year's pattern, so check the morning announcements for the final A and B days.",
+    note:"Veterans Day is on Wednesday this year, so Monday is an A day and Tuesday is a B day.",
     days:[ D("Mon","A day",A), D("Tue","B day",B), OFF("Wed","Veterans Day"), D("Thu","A day",A), D("Fri","B day",B) ] },
   { id:"thanksgiving", name:"Thanksgiving Week", dates:"Nov 23–27, 2026",
-    note:"This follows last year's pattern, so check the morning announcements for the final A and B days.",
+    note:"Monday is an A day and Tuesday is a B day. There is no school Wednesday through Friday for Thanksgiving Break.",
     days:[ D("Mon","A day",A), D("Tue","B day",B), OFF("Wed","Thanksgiving Break"), OFF("Thu","Thanksgiving"), OFF("Fri","Thanksgiving Break") ] },
   { id:"finals1", name:"1st Semester Finals", dates:"mid-December",
     days:[ D("Mon","Blocks 1\u20137",MON), D("Tue","Finals: 4th & 7th",finalsFull("4th","7th")), D("Wed","Finals: 5th & 6th",finalsFull("5th","6th")), D("Thu","Finals: 1st & 3rd",finalsFull("1st","3rd")), D("Fri","Finals: 2nd (min day)",finalsMin("2nd")) ] },
@@ -256,6 +274,7 @@ function show(view, focusHeading){
   }
   if(view==="home") staggerOnce("eventList");
   if(view==="sports") loadSports();
+  if(view==="spirit") renderSpiritWear();
   if(view==="clubs") staggerOnce("clubGrid");
 }
 document.addEventListener("click", e=>{
@@ -264,8 +283,30 @@ document.addEventListener("click", e=>{
   e.preventDefault();
   show(t.getAttribute("data-nav"), true);
 });
+// Skip link: focus the open view's content in place. "#main" is not a view, so following the
+// link as a hash would send the visitor to Home (and rewrite the URL).
+function focusActiveView(){
+  const region = document.querySelector(".view.active") || document.getElementById("main");
+  if(!region) return;
+  region.setAttribute("tabindex","-1");
+  region.focus({preventScroll:true});
+  window.scrollTo({top:0, behavior:"auto"}); // each view starts right under the sticky header
+}
+document.addEventListener("click", e=>{
+  const a = e.target.closest && e.target.closest("a.skip");
+  if(!a) return;
+  e.preventDefault();
+  focusActiveView();
+});
 window.addEventListener("hashchange", ()=>{
   const ph = parseHash();
+  // A hash that isn't a view (an in-page anchor such as #main) leaves the route alone.
+  if(ph.view && !VIEWS.includes(ph.view)){
+    const cur = document.querySelector(".view.active");
+    if(cur && history.replaceState) history.replaceState(null, "", "#"+cur.id.replace(/^view-/,""));
+    focusActiveView();
+    return;
+  }
   Object.keys(DROPDOWNS).forEach(id=>ddClose(DROPDOWNS[id], false)); // e.g. Back while a list is open
   if(ph.view==="give") fillGive(ph.params);
   show(ph.view, true);
@@ -289,17 +330,10 @@ function nowPST(){ return new Date(new Date().toLocaleString("en-US",{timeZone:"
 function tickCountdown(){
   const now = nowPST();
   const future = EVENTS.filter(function(e){ return e.when > now; });
-  // Senior nights in the next 14 days count too, so "Next up" matches the first card on Home.
-  const srHorizon = new Date(now.getTime()+SENIOR_DAYS*86400000);
-  try{
-    if(typeof sportsGames!=="undefined" && sportsGames) sportsGames.forEach(function(g){
-      if(!isSeniorNight(g)) return;
-      const m = String(g.date||"").match(/^(\d{4})-(\d{2})-(\d{2})/); if(!m) return;
-      const t = sportTimeMin(g.time);
-      const when = new Date(+m[1],+m[2]-1,+m[3], t<9999?Math.floor(t/60):8, t<9999?t%60:0);
-      if(when > now && when <= srHorizon) future.push({ name:g.sport+" Senior Night", when:when });
-    });
-  }catch(e){}
+  // Every sports item the Home list shows (senior nights, pinned games, the Bell Game and the
+  // fallback home games, kept by renderEvents) counts too, at its real start time, so "Next up"
+  // names the same thing as the first card on Home.
+  (homeSportsItems||[]).forEach(function(it){ const at = it.at || it.when; if(at > now) future.push({ name:it.name, when:at }); });
   const next = future.length ? future.reduce(function(a,b){ return a.when<b.when?a:b; }) : null;
   const nameEl = document.getElementById("nextupName");
   const timeEl = document.getElementById("nextupTime");
@@ -310,6 +344,8 @@ function tickCountdown(){
   const d = Math.floor(ms/86400000), h = Math.floor(ms/3600000)%24, m = Math.floor(ms/60000)%60, s = Math.floor(ms/1000)%60;
   setText(nameEl, tr("Next up: ","Próximo: ") + next.name);
   timeEl.dateTime = next.when.toISOString();
+  // More than 2 weeks out, a date ("Jan 27") reads better than a countdown to the minute.
+  if(ms > 14*86400000){ setText(timeEl, fmtDateShort(isoOf(next.when))); return; }
   setText(timeEl, d>0 ? (d+"d "+h+"h "+m+"m") : (h+"h "+m+"m "+s+"s"));
 }
 /* Flickr photos on an event card. Shows a "View photos" button when the event has
@@ -331,6 +367,7 @@ function renderEvents(){
   const MO = tr(["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], MO_ES);
   const horizon = new Date(now.getTime()+30*86400000); // the next 30 days (5 show, the rest behind "Show more")
   let list = EVENTS.filter(function(e){ return e.end >= now && e.when <= horizon; });
+  const homeGames = [];
   // Merge sports games, same rule as the website's Upcoming Events (src/data/useEvents.js):
   // every senior night in the next 14 days, plus the soonest pinned (push=y) game per sport,
   // preferring the Varsity row on the same day.
@@ -339,11 +376,14 @@ function renderEvents(){
       const tks = todayKeyPST();
       const nextBySport = {};
       const toItem = function(g, when, m){
-        // The yearly Bell Game (the sheet's title says "Bell Game") gets its own tag and look, like the website.
+        const t = sportTimeMin(g.time); // the real start time, for "Next up"
+        // The yearly Bell Game (Football Varsity vs Homestead, see isBellGame) gets its own
+        // title, tag and look, like the website.
         const bell = isBellGame(g);
-        return { name:(bell?"Bell Game: ":"")+(g.sport+(g.level?(" "+g.level):"")+(g.opponent?(isMeetSport(g.sport)?(": "+g.opponent):(/away/i.test(g.homeAway)?tr(" at "," en "):" vs ")+g.opponent):"")),
+        return { name:bell ? bellGameName(g) : gameName(g),
           when:when, end:new Date(+m[1],+m[2]-1,+m[3],23,59), time:g.time, loc:g.location, desc:"",
-          tags:(isSeniorNight(g)?["Sports","Senior Night"]:bell?["Sports","Bell Game"]:["Sports","Featured"]), photos:"", senior:isSeniorNight(g), bell:bell };
+          tags:(isSeniorNight(g)?["Sports","Senior Night"]:bell?["Sports","Bell Game"]:["Sports","Featured"]), photos:"", senior:isSeniorNight(g), bell:bell,
+          sports:true, at:new Date(+m[1],+m[2]-1,+m[3], t<9999?Math.floor(t/60):8, t<9999?t%60:0) };
       };
       sportsGames.forEach(function(g){
         const senior = isSeniorNight(g);
@@ -359,25 +399,58 @@ function renderEvents(){
         if(!prev || g.date < prev.g.date || (g.date===prev.g.date && levelRank(g.level) < levelRank(prev.g.level))) nextBySport[g.sport] = { g:g, when:when, m:m };
       });
       Object.keys(nextBySport).forEach(function(k){ const v=nextBySport[k]; list.push(toItem(v.g, v.when, v.m)); });
+      // Nothing else coming up: show the next 2 home games, so Home never looks empty
+      // while teams are playing (a "See all sports" link goes under the list).
+      if(!list.length){
+        sportsGames.filter(function(g){ return g.home && g.date>=tks && !isResultGame(g, tks); }).sort(byDateTime).slice(0,2).forEach(function(g){
+          const m=String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(!m) return;
+          const t=sportTimeMin(g.time);
+          const it = toItem(g, new Date(+m[1],+m[2]-1,+m[3], t<9999?Math.floor(t/60):8, t<9999?t%60:0), m);
+          it.tags = it.bell ? ["Sports","Bell Game"] : ["Sports", tr("Home","Local")]; it.homeGame = true;
+          homeGames.push(it); list.push(it);
+        });
+      }
     }
   }catch(e){}
+  // Days with no classes (FUHSD calendar, NO_CLASSES) in the same window, as their own items.
+  const todayIso = isoOf(now), horizonIso = isoOf(horizon);
+  NO_CLASSES.forEach(function(r){
+    if(r[1] < todayIso || r[0] > horizonIso) return;
+    // Skip it when the Events tab already lists this break (same dates, a no-school name), so it
+    // never shows twice; the website's useEvents.js does the same.
+    const dup = list.some(function(it){
+      if(it.sports || !it.when) return false;
+      const wi = isoOf(it.when); if(wi < r[0] || wi > r[1]) return false;
+      const nm = String(it.name||"").toLowerCase();
+      return /\b(break|no school|no classes|holiday|vacation|recess|closed)\b/.test(nm) ||
+        r[2].toLowerCase().split(/[^a-z]+/).some(function(w){ return w.length>3 && w!=="week" && nm.indexOf(w)>=0; });
+    });
+    if(dup) return;
+    const a = r[0].split("-"), b = r[1].split("-"), one = r[0]===r[1];
+    list.push({ name:tr(r[2], r[3]), when:new Date(+a[0],+a[1]-1,+a[2],8,0), end:new Date(+b[0],+b[1]-1,+b[2],23,59),
+      time: one ? tr("All day","Todo el día") : tr(fmtDateShort(r[0])+" to "+fmtDateShort(r[1]), "Del "+fmtDateShort(r[0])+" al "+fmtDateShort(r[1])),
+      loc:"", desc: one ? tr("There are no classes that day.","No hay clases ese día.") : tr("There are no classes on these days.","No hay clases esos días."),
+      tags:[tr("No school","Sin clases")], photos:"", offday:true });
+  });
+  homeSportsItems = list.filter(function(it){ return it.sports; });
+  renderEventsSportsLink(homeGames.length > 0);
   // At most 5 upcoming, soonest first (same as the website); the rest of the next 30 days
   // sit behind "Show more events".
   list = list.sort(function(a,b){ return a.when-b.when; });
   const more = Math.max(0, list.length - EVENTS_MAX);
   renderEventsMore(more);
-  if(!list.length){ lastEventsHtml = ""; grid.innerHTML = '<p class="note">More events coming soon.</p>'; return; }
+  if(!list.length){ lastEventsHtml = ""; grid.innerHTML = '<p class="note">'+tr("More events are coming soon.","Pronto habrá más eventos.")+'</p>'; return; }
   const html = (eventsShowAll ? list : list.slice(0, EVENTS_MAX)).map(function(e){
     const meta = [e.time,e.loc].filter(Boolean).map(clubEsc).join(" &middot; ");
     const tags = (e.tags||[]).map(function(t){
       if(t==="Bell Game") return '<span class="tag bell">'+BELL_SVG+clubEsc(t)+'</span>';
-      return '<span class="tag'+(t==="Senior Night"?' star':'')+'">'+(t==="Senior Night"?'&#9733; ':'')+clubEsc(t)+'</span>'; }).join("");
-    return '<article class="ticket'+(e.senior?' senior':'')+(e.bell?' bell':'')+'">'+
+      return '<span class="tag'+(t==="Senior Night"?' star':(e.homeGame && t===tr("Home","Local"))?' free':'')+'">'+(t==="Senior Night"?'&#9733; ':'')+clubEsc(t)+'</span>'; }).join("");
+    return '<article class="ticket'+(e.senior?' senior':'')+(e.bell?' bell':'')+(e.offday?' offday':'')+'">'+
       '<div class="stub" aria-hidden="true"><span class="mo">'+MO[e.when.getMonth()]+'</span><span class="day">'+e.when.getDate()+'</span></div>'+
       '<div class="body"><h3>'+clubEsc(e.name)+'</h3>'+
       (meta?'<p class="meta">'+meta+'</p>':"")+
       (e.desc?'<p>'+clubEsc(e.desc)+'</p>':"")+
-      tags+eventPhotos(e,now)+'</div></article>';
+      tags+(e.offday?'':eventPhotos(e,now))+'</div></article>';
   }).join("");
   if(html === lastEventsHtml) return; // nothing changed: don't replay the card animation
   lastEventsHtml = html;
@@ -385,7 +458,21 @@ function renderEvents(){
   staggered.delete("eventList"); staggerOnce("eventList");
 }
 let lastEventsHtml = "";
+let homeSportsItems = []; // every sports item on the Home list (Next up counts them all)
 const EVENTS_MAX = 5;
+// "See all sports" under the Home list, shown when Home falls back to the next home games.
+function renderEventsSportsLink(on){
+  const grid = document.getElementById("eventList"); if(!grid) return;
+  let box = document.getElementById("eventSports");
+  if(!box){
+    box = document.createElement("div"); box.id = "eventSports"; box.className = "evmore"; box.style.cssText = "margin-top:var(--space-3); text-align:center";
+    const after = document.getElementById("eventMore") || grid;
+    after.parentNode.insertBefore(box, after.nextSibling);
+  }
+  box.hidden = !on;
+  const html = on ? '<a class="btn ghost" href="#sports" data-nav="sports">'+tr("See all sports","Ver todos los deportes")+'</a>' : "";
+  if(box.innerHTML !== html) box.innerHTML = html;
+}
 let eventsShowAll = false;
 // The "Show more events" toggle under the Home list (created here, so index.html stays as is).
 function renderEventsMore(more){
@@ -671,7 +758,34 @@ function rowsToGames(rows){
   });
   return { games:dd, label:label };
 }
-function isBellGame(g){ return /bell\s*game/i.test(String((g && g.title)||"")); }
+// The yearly Bell Game is Varsity Football vs Homestead. SportsSync rewrites the sheet's
+// title ("Football Varsity Away vs Homestead"), so match the sport, level and opponent too,
+// not only a title that says "Bell Game". Same rule as the website (src/data/useEvents.js
+// isBellGame): Flag Football and the JV, frosh and sophomore games are not the Bell Game, and a
+// Football vs Homestead row with no level yet counts.
+function isBellGame(g){
+  if(!g) return false;
+  if(/bell\s*game/i.test(String(g.title||""))) return true;
+  const sport = String(g.sport||""), level = String(g.level||"")+" "+String(g.title||"");
+  return /\bfootball\b/i.test(sport) && !/\bflag\b/i.test(sport)
+    && /homestead/i.test(String(g.opponent||""))
+    && !/\b(jv|junior\s*varsity|frosh|freshman|freshmen|f\/s|sophomore)\b/i.test(level)
+    && (/\bvarsity\b/i.test(level) || !String(g.level||"").trim());
+}
+// A game's plain card title: "Football Varsity vs Los Altos", "Football JV at Homestead",
+// "Cross Country: SCVAL #3".
+function gameName(g){
+  return g.sport+(g.level?(" "+g.level):"")+(g.opponent?(isMeetSport(g.sport)?(": "+g.opponent):(/away/i.test(g.homeAway)?tr(" at "," en "):" vs ")+g.opponent):"");
+}
+// "Bell Game: Football at Homestead" (away) or "Bell Game: Football vs Homestead" (home), like
+// the website's bellGameTitle. A row with no home/away yet reads "vs" unless its location is
+// Homestead's. A row that is the Bell Game only by its title keeps its own game title.
+function bellGameName(g){
+  if(!/homestead/i.test(String(g.opponent||""))) return "Bell Game: "+gameName(g);
+  const ha = String(g.homeAway||"").trim();
+  const away = /away/i.test(ha) || (!ha && /homestead/i.test(String(g.location||"")));
+  return "Bell Game: Football "+(away?tr("at ","en "):"vs ")+"Homestead";
+}
 const BELL_SVG = '<svg class="bell-ico" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a1.5 1.5 0 0 0-1.5 1.5v.6A6.5 6.5 0 0 0 5.5 10.5v4.2L3.6 17.4A1 1 0 0 0 4.4 19h15.2a1 1 0 0 0 .8-1.6l-1.9-2.7v-4.2a6.5 6.5 0 0 0-5-6.4v-.6A1.5 1.5 0 0 0 12 2Zm-2.5 18a2.5 2.5 0 0 0 5 0h-5Z"/></svg>';
 function isSeniorNight(g){ return !!(g && (g.senior || /senior\s*(night|day)/i.test(String(g.title||"")))); }
 const SP_MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -842,7 +956,7 @@ function renderSports(){
   updateSportsStamp();
 
   function gameCard(g, isResult){
-    const sr = isSeniorNight(g);
+    const sr = isSeniorNight(g), bell = isBellGame(g);
     const m = String(g.date||"").match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
     const mo = m?tr(SP_MO[+m[2]-1], MO_ES[+m[2]-1]):"TBA", day = m?+m[3]:"";
     const tags = [];
@@ -850,11 +964,12 @@ function renderSports(){
     if(g.league) tags.push('<span class="tag">League</span>');
     if(/scrimmage/i.test(g.kind||g.type||"")) tags.push('<span class="tag">Scrimmage</span>');
     if(g.push) tags.unshift('<span class="tag star">&#9733; Featured</span>');
+    if(bell) tags.unshift('<span class="tag bell">'+BELL_SVG+'Bell Game</span>');
     if(sr) tags.unshift('<span class="tag star">&#9733; Senior Night</span>');
     const line2 = isResult ? resultLine(g) : [g.time, g.location].filter(Boolean).map(clubEsc).join(" &middot; ");
-    const vs = g.opponent ? oppText(g.sport, g.opponent, g.homeAway) : "";
-    return '<article class="ticket'+(sr?' senior':'')+'" tabindex="-1"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
-      '<div class="body"><h4 class="tkh">'+clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")+'</h4>'+
+    const vs = bell ? clubEsc(g.level||"") : g.opponent ? oppText(g.sport, g.opponent, g.homeAway) : "";
+    return '<article class="ticket'+(sr?' senior':'')+(bell?' bell':'')+'" tabindex="-1"><div class="stub" aria-hidden="true"><span class="mo">'+mo+'</span><span class="day">'+day+'</span></div>'+
+      '<div class="body"><h4 class="tkh">'+(bell?clubEsc(bellGameName(g)):(clubEsc(g.sport||"")+(g.level?(' &middot; '+clubEsc(g.level)):"")))+'</h4>'+
       (vs?('<p class="meta">'+vs+'</p>'):"")+
       (line2?('<p>'+line2+'</p>'):"")+
       tags.join(" ")+'</div></article>';
@@ -1134,6 +1249,27 @@ function tickClock(){
 }
 
 /* =====================================================
+   Spirit Wear: open only with a backend and a current spirit day
+===================================================== */
+function spiritWearDays(){
+  const t = todayKeyPST(), lo = isoAddDays(t, -2);
+  return SPIRIT_DAYS.filter(function(d){ return d.date <= t && d.date >= lo; });
+}
+function renderSpiritWear(){
+  const card = document.getElementById("spiritFormCard"), closed = document.getElementById("spiritClosed");
+  if(!card || !closed) return;
+  const days = CONFIG.apiUrl ? spiritWearDays() : [];
+  const open = days.length > 0;
+  if(card.hidden === open) card.hidden = !open;
+  if(closed.hidden !== open) closed.hidden = open;
+  if(!open) return;
+  const sel = document.getElementById("spDay"), cur = sel.value;
+  const html = '<option value="">'+tr("Which day is this for?","¿Para qué día es esto?")+'</option>'+
+    days.map(function(d){ return '<option value="'+clubEsc(d.id)+'" data-date="'+clubEsc(d.date)+'">'+clubEsc(tr(d.en, d.es))+'</option>'; }).join("");
+  if(sel.innerHTML !== html){ sel.innerHTML = html; sel.value = cur; }
+}
+
+/* =====================================================
    Spirit form (validation + duplicate guard)
 ===================================================== */
 const submittedKeys = new Set(); // session duplicate guard: studentId + day
@@ -1176,12 +1312,14 @@ document.getElementById("spiritForm").addEventListener("submit", e=>{
   (async ()=>{
     let text;
     try{
+      const opt = day.options[day.selectedIndex];
       const res = await apiPost({ action:"spirit", name:name.value.trim(), grade:grade.value,
-        sid:sid.value.trim(), day:day.value });
-      if(res && !res.ok && /already/i.test(res.error||"")) text = "Already counted! One dress-up point per day per Firebird.";
-      else if(res && !res.ok) throw new Error(res.error);
-      else text = res ? "Sent! Spirit will verify your photo and post the point."
-                      : "Looks good! (Demo mode. ASB Tech deploys the backend to make this real.)";
+        sid:sid.value.trim(), day:day.value, date:(opt && opt.getAttribute("data-date"))||"" });
+      // No backend means nothing was saved; the form is hidden then, so this is a safety net.
+      if(!res) throw new Error("no backend");
+      if(!res.ok && /already/i.test(res.error||"")) text = "Already counted! One dress-up point per day per Firebird.";
+      else if(!res.ok) throw new Error(res.error);
+      else text = "Sent! Spirit will verify your photo and post the point.";
     }catch(err){ text = "Hmm, that didn’t send. Check your connection and try again."; submittedKeys.delete(key); }
     btn.textContent = "Send it in · +1 pt";
     msg.textContent = text;
@@ -2379,6 +2517,7 @@ renderClubs();
 try{ renderClubDates(); }catch(e){}
 initSchedule();
 renderToday();
+renderSpiritWear();
 syncScoreboard();
 syncClubs();
 renderEvents();
@@ -2542,7 +2681,10 @@ var I18N_EN_ES = {
   "Team links & full schedules":"Enlaces del equipo y calendarios completos",
   "Full schedules, rosters and live updates at fremonthsathletics.org":"Calendarios completos, plantillas y novedades en fremonthsathletics.org",
   "Saved on this device. Live listings stay in the language they were entered.":"Se guarda en este dispositivo. Las listas en vivo se quedan en el idioma en que se ingresaron.",
-  "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit submissions go only to ASB Spirit, Tech, and the advisor. They’re never shared publicly, and student IDs are used solely to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de espíritu solo llegan a Espíritu, Tecnología y el asesor de ASB. Nunca se comparten públicamente, y los IDs de estudiante solo se usan para quitar entradas duplicadas. El modo movimiento cambia las tarjetas por animaciones al desplazarte y una fila de eventos deslizable.",
+  "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de Spirit Wear se abren solo durante las semanas de espíritu. Cuando están abiertos, solo llegan a Espíritu, Tecnología y el asesor de ASB, y nunca se comparten públicamente. Los IDs de estudiante solo se usan para quitar entradas duplicadas. El modo movimiento cambia las tarjetas por animaciones al desplazarte y una fila de eventos deslizable.",
+  "Spirit Wear submissions open during spirit weeks.":"Los envíos de Spirit Wear se abren durante las semanas de espíritu.",
+  "When the next spirit week starts, its dress-up days will show here.":"Cuando empiece la próxima semana de espíritu, sus días temáticos aparecerán aquí.",
+  "Dress up on a spirit day during a spirit week":"Vístete en un día de espíritu durante una semana de espíritu",
   "Show more events":"Ver más eventos","Show fewer events":"Ver menos eventos",
   "until class":"para la clase",
   // Sports view
@@ -2572,7 +2714,7 @@ var I18N_EN_ES = {
   "Blocks 1–7":"Bloques 1–7","Career Day":"Día de Carreras",
   "Finals: 4th & 7th":"Finales: 4.º y 7.º","Finals: 5th & 6th":"Finales: 5.º y 6.º","Finals: 1st & 3rd":"Finales: 1.º y 3.º","Finals: 1st & 2nd":"Finales: 1.º y 2.º",
   "Finals: 2nd (min day)":"Finales: 2.º (día corto)","Finals: 3rd (last day)":"Finales: 3.º (último día)",
-  "Labor Day":"Día del Trabajo","Teacher Non-Duty Day":"Día sin clases para maestros","Veterans Day":"Día de los Veteranos",
+  "Labor Day":"Día del Trabajo","Teacher Non-Duty Day":"Día sin clases","Veterans Day":"Día de los Veteranos",
   "Thanksgiving Break":"Vacaciones de Acción de Gracias","Thanksgiving":"Acción de Gracias","MLK Jr. Day":"Día de MLK Jr.",
   "Non-Duty Day":"Día sin clases","Memorial Day":"Día de los Caídos","Teacher Work Day":"Día de trabajo para maestros",
   "Rally week template":"Plantilla de semana de rally","early September":"principios de septiembre","Oct 5–9, 2026":"5–9 de oct. de 2026",
@@ -2582,8 +2724,8 @@ var I18N_EN_ES = {
   "late May":"finales de mayo","early June · 9th–11th":"principios de junio · 9.º a 11.º",
   "A regular week, but Friday's Tutorial becomes the Rally (10:10–10:50).":"Una semana normal, pero la Tutoría del viernes se convierte en el Rally (10:10–10:50).",
   "Friday runs a B day with the Homecoming Rally replacing Tutorial.":"El viernes es Día B y el Rally de Homecoming reemplaza la Tutoría.",
-  "Veterans Day is a Wednesday this year. The other days follow last year's pattern, so check the morning announcements for the final A and B days.":"Este año el Día de los Veteranos cae en miércoles. Los demás días siguen el patrón del año pasado, así que revisa los anuncios de la mañana para confirmar los días A y B.",
-  "This follows last year's pattern, so check the morning announcements for the final A and B days.":"Esto sigue el patrón del año pasado, así que revisa los anuncios de la mañana para confirmar los días A y B.",
+  "Veterans Day is on Wednesday this year, so Monday is an A day and Tuesday is a B day.":"Este año el Día de los Veteranos es el miércoles, así que el lunes es Día A y el martes es Día B.",
+  "Monday is an A day and Tuesday is a B day. There is no school Wednesday through Friday for Thanksgiving Break.":"El lunes es Día A y el martes es Día B. No hay clases de miércoles a viernes por las vacaciones de Acción de Gracias.",
   "Monday is a custom all-blocks Career Day; Tue–Fri are normal A/B.":"El lunes es el Día de Carreras con todos los bloques; de martes a viernes son días A y B normales.",
   "11th graders test Tue–Thu; other grades have a delayed start, so check announcements.":"Los de 11.º grado tienen examen de martes a jueves; los demás grados empiezan más tarde, así que revisa los anuncios.",
   "Senior finals happen in class. Friday closes with the Senior Goodbye Rally.":"Los finales de seniors son en clase. El viernes cierra con el Rally de despedida de seniors.",
@@ -2667,7 +2809,6 @@ var I18N_EN_ES = {
   "Find ASB":"Encuentra a ASB","for photos, FTV, resources, and store links":"para fotos, FTV, recursos y enlaces de la tienda",
   "ASB Leadership · Fremont High School, Sunnyvale (FUHSD)":"Liderazgo de ASB · Fremont High School, Sunnyvale (FUHSD)",
   "About this app":"Acerca de esta app",
-  "Built by the ASB Tech Commission. Spirit submissions go only to ASB Spirit, Tech, and the advisor. They’re never shared publicly, and student IDs are used solely to remove duplicate entries. Questions? Drop a note in the feedback box.":"Creada por la Comisión de Tecnología de ASB. Los envíos de espíritu van solo a ASB Espíritu, Tecnología y el consejero. Nunca se comparten públicamente, y los IDs estudiantiles se usan únicamente para eliminar entradas duplicadas. ¿Preguntas? Deja una nota en la caja de comentarios.",
   "Motion mode: Off":"Modo movimiento: Apagado","Motion mode: On":"Modo movimiento: Encendido",
   "Motion mode swaps the card layout for scroll animations and a swipeable events row. Off keeps the classic look.":"El modo movimiento cambia el diseño de tarjetas por animaciones de desplazamiento y una fila de eventos deslizable. Apagado mantiene el estilo clásico.",
   "Ask Felipe":"Pregúntale a Felipe","Hi! Ask me about the bell schedule, clubs, events, or sports.":"¡Hola! Pregúntame sobre el horario de campanas, clubes, eventos o deportes.",
@@ -2690,7 +2831,8 @@ var I18N_ATTR = {
   "Filter clubs by category":"Filtrar clubes por categoría","Choose a day":"Elige un día","Team resources":"Recursos del equipo",
   "Search clubs by name…":"Busca clubes por nombre…",
   "Ask about schedule, clubs, sports…":"Pregunta sobre horario, clubes, deportes…",
-  "Your name":"Tu nombre","Student ID":"ID estudiantil"
+  "Your name":"Tu nombre","Student ID":"ID estudiantil",
+  "Close":"Cerrar","Your question":"Tu pregunta"
 };
 var fhLang = "en", fhTextSize = "normal";
 try{ fhLang = localStorage.getItem("fhLang") || "en"; }catch(e){}
@@ -2757,10 +2899,10 @@ function applyLang(){
   if(typeof renderClubs==="function" && document.getElementById("clubGrid")) { try{ renderClubs(); }catch(e){} }
   // Text the app builds itself (tr) is redrawn in the new language.
   try{
-    renderBarRace(); tickClock(); tickNowChip(); tickCountdown(); renderFTV(); updateSportsStamp(); renderClubDates();
+    renderBarRace(); tickClock(); tickNowChip(); lastEventsHtml = ""; renderEvents(); tickCountdown(); renderFTV(); updateSportsStamp(); renderClubDates();
     if(pickedDay==="auto") renderToday(); else if(SCHEDULES[pickedDay]) renderDay({rows:SCHEDULES[pickedDay].rows}); else if(pickedWeek>=0) renderWeek(SPECIAL_WEEKS[pickedWeek]);
     if(pickedWeek>=0) renderWeek(SPECIAL_WEEKS[pickedWeek]);
-    applySignedInUI(); refreshSigninDialog(); renderSchoology();
+    applySignedInUI(); refreshSigninDialog(); renderSchoology(); renderSpiritWear();
   }catch(e){}
 }
 function setLang(l){ fhLang = (l==="es"?"es":"en"); try{ localStorage.setItem("fhLang", fhLang); }catch(e){} applyLang(); }
@@ -2781,49 +2923,75 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
 })();
 
 /* =====================================================
-   Ask Firebird — chatbot UI (calls /api/ask, Gemini-backed)
+   Ask Felipe — chatbot UI (calls /api/ask, Gemini-backed)
+   A modal dialog: focus moves into it, Tab stays inside, Escape or Close returns focus to
+   the button. Replies land in a role=log live region. The last few turns go along with
+   each question (history) so a short follow-up answers Felipe's own clarifying question.
 ===================================================== */
 (function(){
   var fab=document.getElementById("askFab"), panel=document.getElementById("askPanel");
   if(!fab||!panel) return;
   var log=document.getElementById("askLog"), form=document.getElementById("askForm"), input=document.getElementById("askInput");
-  var close=document.getElementById("askClose");
+  var close=document.getElementById("askClose"), back=document.getElementById("askBack");
   var lastSend=0, busy=false;
-  var back=document.getElementById("askBack");
-  function open(){ panel.hidden=false; if(back) back.hidden=false; setTimeout(function(){ input && input.focus(); },50); }
-  function hide(){ panel.hidden=true; if(back) back.hidden=true; }
-  if(back) back.addEventListener("click", hide);
-  fab.addEventListener("click", function(){ panel.hidden ? open() : hide(); });
-  close && close.addEventListener("click", hide);
+  var hist=[]; // [{ role:"user"|"model", text }], newest last; only real answers are kept
+  var HIST_TURNS=6, HIST_CHARS=500;
+  function isOpen(){ return !panel.hidden; }
+  function open(){
+    panel.hidden=false; if(back) back.hidden=false;
+    fab.setAttribute("aria-expanded","true");
+    setTimeout(function(){ input && input.focus(); },50);
+  }
+  function hide(returnFocus){
+    if(!isOpen()) return;
+    panel.hidden=true; if(back) back.hidden=true;
+    fab.setAttribute("aria-expanded","false");
+    if(returnFocus) fab.focus();
+  }
+  fab.addEventListener("click", function(){ isOpen() ? hide(true) : open(); });
+  if(close) close.addEventListener("click", function(){ hide(true); });
+  if(back) back.addEventListener("click", function(){ hide(false); });
+  // A click anywhere outside the panel and the button closes it (focus stays where clicked).
+  document.addEventListener("click", function(e){
+    if(!isOpen() || !e.target.closest) return;
+    if(e.target.closest("#askPanel") || e.target.closest("#askFab")) return;
+    hide(false);
+  });
+  // Escape closes and returns focus to the button; Tab and Shift+Tab stay inside the panel.
+  document.addEventListener("keydown", function(e){
+    if(!isOpen()) return;
+    if(e.key==="Escape"){ e.preventDefault(); hide(true); return; }
+    if(e.key!=="Tab") return;
+    var f=[].slice.call(panel.querySelectorAll('button, input, textarea, select, a[href], [tabindex]:not([tabindex="-1"])'))
+      .filter(function(el){ return !el.disabled && el.offsetParent!==null; });
+    if(!f.length) return;
+    var first=f[0], last=f[f.length-1], a=document.activeElement;
+    if(!panel.contains(a)){ e.preventDefault(); (e.shiftKey?last:first).focus(); }
+    else if(e.shiftKey && a===first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && a===last){ e.preventDefault(); first.focus(); }
+  });
   function add(text, who){ var d=document.createElement("div"); d.className="askmsg "+who; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+  function remember(role, text){
+    hist.push({ role:role, text:String(text||"").slice(0,HIST_CHARS) });
+    if(hist.length>HIST_TURNS) hist=hist.slice(-HIST_TURNS);
+  }
   form.addEventListener("submit", function(e){
     e.preventDefault();
     var q=(input.value||"").trim(); if(!q||busy) return;
     var now=Date.now(); if(now-lastSend<1500){ return; } lastSend=now;
     add(q,"me"); input.value=""; busy=true;
-    var t=add("Felipe is thinking…","bot typing");
-    fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})})
+    var t=add(tr("Felipe is thinking…","Felipe está pensando…"),"bot typing");
+    t.setAttribute("aria-hidden","true"); // the answer is announced; "thinking" is just visual
+    var history=hist.slice(-HIST_TURNS);
+    fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q.slice(0,500), history:history})})
       .then(function(r){return r.json();})
-      .then(function(d){ t.remove(); add((d&&d.answer)||"Hmm, try asking that a different way.","bot"); })
-      .catch(function(){ t.remove(); add("Couldn't reach Felipe right now. Check the Schedule, Clubs, Sports, or More tabs.","bot"); })
+      .then(function(d){
+        t.remove();
+        var a=(d&&typeof d.answer==="string"&&d.answer.trim())||"";
+        if(a && !d.fallback){ remember("user", q); remember("model", a); }
+        add(a || tr("Hmm, try asking that a different way.","Mmm, intenta preguntarlo de otra forma."),"bot");
+      })
+      .catch(function(){ t.remove(); add(tr("Couldn't reach Felipe right now. Check the Schedule, Clubs, Sports, or More tabs.","No pudimos comunicarnos con Felipe en este momento. Revisa las pestañas Horario, Clubes, Deportes o Más."),"bot"); })
       .finally(function(){ busy=false; });
-  });
-})();
-
-/* Ask Firebird: dismiss on outside-click or Escape */
-(function(){
-  document.addEventListener("click", function(e){
-    var panel=document.getElementById("askPanel");
-    if(!panel) return;
-    // X button (delegated so it works even if the direct binding missed)
-    var back=document.getElementById("askBack");
-    if(e.target.closest && e.target.closest("#askClose")){ panel.hidden = true; if(back) back.hidden=true; return; }
-    if(panel.hidden) return;
-    // outside-click closes
-    if(e.target.closest && (e.target.closest("#askPanel") || e.target.closest("#askFab"))) return;
-    panel.hidden = true; if(back) back.hidden=true;
-  });
-  document.addEventListener("keydown", function(e){
-    if(e.key==="Escape"){ var p=document.getElementById("askPanel"); if(p && !p.hidden){ p.hidden=true; var b=document.getElementById("askBack"); if(b) b.hidden=true; } }
   });
 })();
