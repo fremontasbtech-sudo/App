@@ -28,7 +28,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EXTRA: ${{ inputs.args }}
         run: |
-          cd felipe-evals
+          cd felipe-evals && mkdir -p results
           node run.mjs --inproc --stream $EXTRA --out results/real.json > results/real.txt 2>&1 || echo "run exited with $?"
           tail -60 results/real.txt
       - uses: actions/upload-artifact@v4
