@@ -664,6 +664,19 @@ body.dd-open .askfab{visibility:hidden} /* a Sport or Level list is open: don't 
 .askmsg.bot{align-self:flex-start; background:#fff; border:1.5px solid var(--line,#e4d9c4); color:var(--ink,#271510)}
 .askmsg.me{align-self:flex-end; background:var(--gold-soft,#FFE9A8); color:var(--ink,#271510)}
 .askmsg.typing{opacity:.6; font-style:italic}
+.askmsg.local{border-left:4px solid var(--gold,#FFC91F)}
+.askmsg.crisis{border:2px solid var(--cardinal,#8F1106); max-width:100%}
+.askmsg.streaming::after{content:""; display:inline-block; width:7px; height:1em; margin-left:2px; vertical-align:-2px; background:var(--cardinal,#8F1106); animation:askcaret 1s steps(2,start) infinite}
+@keyframes askcaret{to{visibility:hidden}}
+@media (prefers-reduced-motion:reduce){ .askmsg.streaming::after{animation:none} }
+.asksrc{display:block; margin-top:6px; font-size:11.5px; font-weight:700; color:var(--ink-soft,#5F5047); white-space:normal}
+.askact{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; white-space:normal}
+.askact .btn{min-height:44px; font-size:14px; padding:8px 12px; display:inline-flex; align-items:center; text-decoration:none}
+.askchips{display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 10px}
+.askchips[hidden]{display:none}
+.askchip{font:inherit; font-size:13px; font-weight:700; min-height:44px; padding:6px 10px; background:#fff; color:var(--ink,#271510); border:1.5px solid var(--ink,#271510); border-radius:var(--r); cursor:pointer; text-align:left}
+.askchip:hover{background:var(--gold-soft,#FFE9A8)}
+.askchip:focus-visible{outline:3px solid var(--cardinal,#8F1106); outline-offset:1px}
 .askform{display:flex; gap:8px; padding:10px; border-top:1.5px solid var(--line,#e4d9c4)}
 .askform input{flex:1; font:inherit; padding:9px 12px; border:1.5px solid var(--line,#e4d9c4); border-radius:var(--r); background:#fff; color:var(--ink)}
 .askform .btn{font-size:14px; padding:8px 14px}

@@ -2336,8 +2336,8 @@ function renderSgyStep(){
       (canPaste ? '<button type="button" class="btn ghost" data-sgy="paste">'+clubEsc(tr("Paste","Pegar"))+'</button>' : '')+'</div></div>'+
     '<button type="button" class="btn primary sgygo" data-sgy="connect"'+(sgyBusy?' disabled':'')+'>'+clubEsc(sgyBusy?tr("Connecting…","Conectando…"):tr("Connect Schoology","Conectar Schoology"))+'</button>'+
     '<p class="sgymsg'+(sgyStepMsg.bad?' bad':'')+'" id="sgyMsg" role="status" aria-live="polite">'+clubEsc(sgyStepMsg.text)+'</p>'+
-    '<p class="note">'+clubEsc(tr("Your link stays on this device. Firebird Hub only uses it to read your Schoology calendar and never stores it anywhere else.",
-      "Tu enlace se queda en este dispositivo. Firebird Hub solo lo usa para leer tu calendario de Schoology y nunca lo guarda en otro lugar."))+'</p>';
+    '<p class="note">'+clubEsc(tr("Your link stays on this device. Firebird Hub only uses it to read your Schoology calendar and never stores it anywhere else. If you ask Felipe about your assignments, the matching items are sent to Google's Gemini to write the answer.",
+      "Tu enlace se queda en este dispositivo. Firebird Hub solo lo usa para leer tu calendario de Schoology y nunca lo guarda en otro lugar. Si le preguntas a Felipe por tus tareas, las tareas que coinciden se envían a Gemini de Google para escribir la respuesta."))+'</p>';
 }
 
 function sgyOpenDialog(){
@@ -2682,6 +2682,7 @@ var I18N_EN_ES = {
   "Full schedules, rosters and live updates at fremonthsathletics.org":"Calendarios completos, plantillas y novedades en fremonthsathletics.org",
   "Saved on this device. Live listings stay in the language they were entered.":"Se guarda en este dispositivo. Las listas en vivo se quedan en el idioma en que se ingresaron.",
   "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de Spirit Wear se abren solo durante las semanas de espíritu. Cuando están abiertos, solo llegan a Espíritu, Tecnología y el asesor de ASB, y nunca se comparten públicamente. Los IDs de estudiante solo se usan para quitar entradas duplicadas. El modo movimiento cambia las tarjetas por animaciones al desplazarte y una fila de eventos deslizable.",
+  "Ask Felipe answers simple questions from the app's data on your device. Other questions, your last few messages and, when you ask about your assignments, the matching Schoology items (title, due date and short description) are sent to Google's Gemini AI to write an answer. ASB doesn't save them. Please don't share private information with Felipe.":"Pregúntale a Felipe responde las preguntas sencillas con los datos de la app en tu dispositivo. Las demás preguntas, tus últimos mensajes y, cuando preguntas por tus tareas, las tareas de Schoology que coinciden (título, fecha de entrega y descripción corta) se envían a Gemini, la IA de Google, para escribir la respuesta. ASB no las guarda. Por favor, no compartas información privada con Felipe.",
   "Spirit Wear submissions open during spirit weeks.":"Los envíos de Spirit Wear se abren durante las semanas de espíritu.",
   "When the next spirit week starts, its dress-up days will show here.":"Cuando empiece la próxima semana de espíritu, sus días temáticos aparecerán aquí.",
   "Dress up on a spirit day during a spirit week":"Vístete en un día de espíritu durante una semana de espíritu",
@@ -2811,13 +2812,13 @@ var I18N_EN_ES = {
   "About this app":"Acerca de esta app",
   "Motion mode: Off":"Modo movimiento: Apagado","Motion mode: On":"Modo movimiento: Encendido",
   "Motion mode swaps the card layout for scroll animations and a swipeable events row. Off keeps the classic look.":"El modo movimiento cambia el diseño de tarjetas por animaciones de desplazamiento y una fila de eventos deslizable. Apagado mantiene el estilo clásico.",
-  "Ask Felipe":"Pregúntale a Felipe","Hi! Ask me about the bell schedule, clubs, events, or sports.":"¡Hola! Pregúntame sobre el horario de campanas, clubes, eventos o deportes.",
+  "Ask Felipe":"Pregúntale a Felipe","Hi! Ask me about your schedule, events, clubs, sports, or your classes and assignments.":"¡Hola! Pregúntame sobre tu horario, eventos, clubes, deportes, o tus clases y tareas.",
   // Fixed replies from /api/ask (api/ask.js MSG)
   "Ask Felipe isn't set up yet. For now, please check the Schedule, Clubs, Sports and More tabs.":"Pregúntale a Felipe todavía no está listo. Por ahora, revisa las pestañas Horario, Clubes, Deportes y Más.",
   "Felipe needs a short break. Please wait a minute and ask again, or check the Schedule, Clubs and Sports tabs in the meantime.":"Felipe necesita un breve descanso. Espera un minuto y vuelve a preguntar, o mientras tanto revisa las pestañas Horario, Clubes y Deportes.",
   "I couldn't answer that one. Try asking about the bell schedule, clubs, events or sports.":"No pude responder esa pregunta. Intenta preguntar sobre el horario de campanas, los clubes, los eventos o los deportes.",
   "Felipe is having a moment. Please try again in a bit, or check the Schedule, Clubs and Sports tabs.":"Felipe tiene un pequeño problema en este momento. Inténtalo de nuevo en un rato, o revisa las pestañas Horario, Clubes y Deportes.",
-  "Send":"Enviar","School questions only · answers aren't monitored live":"Solo preguntas escolares · las respuestas no se supervisan en vivo","Close":"Cerrar",
+  "Send":"Enviar","For questions about school life. Answers aren't monitored live.":"Para preguntas sobre la vida escolar. Las respuestas no se supervisan en vivo.","Close":"Cerrar",
   "Google sign-in":"Iniciar sesión con Google",
   "Sign in with your school Google account to see your name on the app. Photos and points still only go where you send them.":"Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app. Las fotos y los puntos solo van a donde tú los envías.",
   "Google sign-in isn't reachable on this network right now. Everything else in the app still works.":"El inicio de sesión con Google no está disponible en esta red por ahora. Todo lo demás en la app sigue funcionando.",
@@ -2830,7 +2831,7 @@ var I18N_ATTR = {
   "Schedule view":"Vista del horario","Class spirit standings":"Clasificación de espíritu por clase","Class spirit standings chart":"Gráfica de la clasificación de espíritu",
   "Filter clubs by category":"Filtrar clubes por categoría","Choose a day":"Elige un día","Team resources":"Recursos del equipo",
   "Search clubs by name…":"Busca clubes por nombre…",
-  "Ask about schedule, clubs, sports…":"Pregunta sobre horario, clubes, deportes…",
+  "Ask about school, clubs, homework…":"Pregunta sobre la escuela, clubes, tareas…",
   "Your name":"Tu nombre","Student ID":"ID estudiantil",
   "Close":"Cerrar","Your question":"Tu pregunta"
 };
@@ -2923,23 +2924,48 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
 })();
 
 /* =====================================================
-   Ask Felipe — chatbot UI (calls /api/ask, Gemini-backed)
+   Ask Felipe: the school-life assistant (felipe-core.js + /api/ask)
+   Every question runs FelipeCore.classify first, in about 0.02 ms and with no network:
+   - "local": answered at once from data the app already holds (bells, events, games,
+     spirit, announcements) and marked as coming from the app's data. If the app isn't sure,
+     the question goes to the server instead.
+   - "cannot" and "crisis": a short canned reply at once (crisis adds call/text buttons).
+   - "llm": POST /api/ask with stream:true; the answer is drawn word by word as it arrives.
+     If streaming fails before any text, it asks again with stream:false (plain JSON).
+   The last 6 turns go along as history. For assignment questions, the matching items from
+   the student's own Schoology list (fh_schoology_v1) go along as context.assignments;
+   they stay in this browser otherwise and the server never stores them.
    A modal dialog: focus moves into it, Tab stays inside, Escape or Close returns focus to
-   the button. Replies land in a role=log live region. The last few turns go along with
-   each question (history) so a short follow-up answers Felipe's own clarifying question.
+   the button. Replies land in a role=log live region; a streamed answer is announced once,
+   when it is complete.
 ===================================================== */
 (function(){
   var fab=document.getElementById("askFab"), panel=document.getElementById("askPanel");
   if(!fab||!panel) return;
   var log=document.getElementById("askLog"), form=document.getElementById("askForm"), input=document.getElementById("askInput");
-  var close=document.getElementById("askClose"), back=document.getElementById("askBack");
-  var lastSend=0, busy=false;
+  var close=document.getElementById("askClose"), back=document.getElementById("askBack"), chips=document.getElementById("askChips");
+  var Core = (typeof window!=="undefined" && window.FelipeCore) || null;
+  var lastSend=0, busy=false, queue=[];
   var hist=[]; // [{ role:"user"|"model", text }], newest last; only real answers are kept
-  var HIST_TURNS=6, HIST_CHARS=500;
+  var HIST_TURNS=6, HIST_CHARS=500, ASK_TIMEOUT_MS=30000, LLM_GAP_MS=1500;
+  var lastAssign=null; // the Schoology items sent with the last assignment question, for "the first one" follow-ups
+  // A random id for this browser, so the server's rate limit counts this student and not the
+  // whole school network. It identifies nothing and is never stored on the server.
+  var cid = (function(){
+    try{
+      var v = localStorage.getItem("fh_felipe_cid");
+      if(v && /^[A-Za-z0-9_-]{12,64}$/.test(v)) return v;
+      var a = new Uint8Array(16); (window.crypto||window.msCrypto).getRandomValues(a);
+      v = Array.prototype.map.call(a, function(b){ return ("0"+b.toString(16)).slice(-2); }).join("");
+      localStorage.setItem("fh_felipe_cid", v); return v;
+    }catch(e){ return ""; }
+  })();
+
   function isOpen(){ return !panel.hidden; }
   function open(){
     panel.hidden=false; if(back) back.hidden=false;
     fab.setAttribute("aria-expanded","true");
+    renderChips();
     setTimeout(function(){ input && input.focus(); },50);
   }
   function hide(returnFocus){
@@ -2970,28 +2996,226 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     else if(e.shiftKey && a===first){ e.preventDefault(); last.focus(); }
     else if(!e.shiftKey && a===last){ e.preventDefault(); first.focus(); }
   });
-  function add(text, who){ var d=document.createElement("div"); d.className="askmsg "+who; d.textContent=text; log.appendChild(d); log.scrollTop=log.scrollHeight; return d; }
+
+  /* ---------- starter questions (shown until the first question) ---------- */
+  function sgyOn(){ return typeof sgyConnected==="function" && sgyConnected() && sgy && Array.isArray(sgy.items) && sgy.items.length>0; }
+  function renderChips(){
+    if(!chips) return;
+    if(hist.length || log.querySelector(".askmsg.me")){ chips.hidden=true; return; }
+    var list=[ tr("What period is it?","¿Qué periodo es ahora?"), tr("When is the next home game?","¿Cuándo es el próximo partido en casa?") ];
+    list.push(sgyOn() ? tr("What's due this week?","¿Qué tengo pendiente esta semana?") : tr("Help me plan my week","Ayúdame a planear mi semana"));
+    chips.innerHTML="";
+    list.forEach(function(q){
+      var b=document.createElement("button"); b.type="button"; b.className="askchip"; b.textContent=q;
+      b.addEventListener("click", function(){ input.value=q; ask(); if(input) input.focus(); });
+      chips.appendChild(b);
+    });
+    chips.hidden=false;
+  }
+
+  /* ---------- the log ---------- */
+  function nearBottom(){ return log.scrollHeight - log.scrollTop - log.clientHeight < 60; }
+  function toBottom(){ log.scrollTop=log.scrollHeight; }
+  function add(text, who){ var d=document.createElement("div"); d.className="askmsg "+who; d.textContent=text; log.appendChild(d); toBottom(); return d; }
+  function srcTag(d){
+    var s=document.createElement("span"); s.className="asksrc";
+    s.textContent=tr("From the app's data","Con datos de la app");
+    d.appendChild(s);
+  }
+  function crisisActions(d, lang, reason){
+    var es = lang==="es";
+    var row=document.createElement("div"); row.className="askact";
+    var list = [["tel:988", es ? "Llamar al 988" : "Call 988"],
+      es ? ["sms:988?&body=AYUDA", "Enviar AYUDA al 988"] : ["sms:988", "Text 988"],
+      ["sms:741741?&body=HOME", es ? "Enviar HOME al 741741" : "Text HOME to 741741"]];
+    if(reason==="abuse") list.unshift(["tel:18004224453", es ? "Llamar a Childhelp" : "Call Childhelp"]);
+    list.forEach(function(x){ var a=document.createElement("a"); a.href=x[0]; a.className="btn gold"; a.textContent=x[1]; row.appendChild(a); });
+    d.appendChild(row);
+  }
   function remember(role, text){
     hist.push({ role:role, text:String(text||"").slice(0,HIST_CHARS) });
     if(hist.length>HIST_TURNS) hist=hist.slice(-HIST_TURNS);
   }
-  form.addEventListener("submit", function(e){
-    e.preventDefault();
-    var q=(input.value||"").trim(); if(!q||busy) return;
-    var now=Date.now(); if(now-lastSend<1500){ return; } lastSend=now;
-    add(q,"me"); input.value=""; busy=true;
-    var t=add(tr("Felipe is thinking…","Felipe está pensando…"),"bot typing");
-    t.setAttribute("aria-hidden","true"); // the answer is announced; "thinking" is just visual
+  // Gemini is asked for plain text with "- " bullets; tidy the odd bit of markdown anyway.
+  function plain(s){
+    return String(s||"").replace(/\*\*([^*\n]+)\*\*/g,"$1").replace(/__([^_\n]+)__/g,"$1")
+      .replace(/^[ \t]*[*•][ \t]+/gm,"- ").replace(/^#{1,6}[ \t]+/gm,"").replace(/\s*\u2014\s*/g,", ");
+  }
+
+  /* ---------- the app's own data, for instant answers ---------- */
+  function appData(){
+    return { now: nowPST(), schedules: SCHEDULES, specialDays: SPECIAL_DAYS, noClasses: NO_CLASSES, schoolYear: SCHOOL_YEAR,
+      events: EVENTS, games: sportsGames || [], spirit: spiritStandings || [], announcements: annAll || FTV_FEED, clubs: CLUBS };
+  }
+
+  /* ---------- the server: streamed, with a plain JSON fallback ---------- */
+  function post(body, signal){
+    return fetch("/api/ask",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body), signal:signal });
+  }
+  function withTimeout(ms){
+    var c = typeof AbortController!=="undefined" ? new AbortController() : null;
+    var t = c ? setTimeout(function(){ c.abort(); }, ms) : null;
+    return { signal: c ? c.signal : undefined, done: function(){ if(t) clearTimeout(t); } };
+  }
+  var TRY_AGAIN = function(){ return tr("Hmm, try asking that a different way.","Mmm, intenta preguntarlo de otra forma."); };
+  var BUSY = function(){ return tr("Felipe is answering a lot of questions right now. Please try again in a minute.","Felipe está respondiendo muchas preguntas ahora mismo. Inténtalo de nuevo en un minuto."); };
+  function busyText(text, wait){
+    var w = Math.max(0, Math.round(+wait||0));
+    if(!w) return text;
+    return text+" "+(w<=90 ? tr("You can ask again in about "+w+" seconds.","Puedes volver a preguntar en unos "+w+" segundos.")
+      : tr("You can ask again in about "+Math.ceil(w/60)+" minutes.","Puedes volver a preguntar en unos "+Math.ceil(w/60)+" minutos."));
+  }
+  // Resolves { text, fallback?, partial? }. onText(textSoFar) runs as words arrive.
+  // Rejects with e.noServer=true only when the request never got a streamed reply (network
+  // failure or an old server answering JSON without text), so only then is plain JSON tried.
+  // A stream that arrived but carried no text never triggers a second Gemini call.
+  async function askStream(body, onText){
+    var to = withTimeout(ASK_TIMEOUT_MS), text = "", res;
+    try{
+      try{ res = await post(Object.assign({}, body, { stream:true }), to.signal); }
+      catch(e){ var ne = new Error("fetch failed"); ne.noServer = !(to.signal && to.signal.aborted); throw ne; }
+      var ct = (res.headers.get("content-type")||"").toLowerCase();
+      if(ct.indexOf("text/event-stream")<0 || !res.body || !res.body.getReader || typeof TextDecoder==="undefined"){
+        var d = null; try{ d = await res.json(); }catch(e){}
+        if(d && typeof d.answer==="string" && d.answer.trim()) return { text: d.retryAfter ? busyText(d.answer, d.retryAfter) : d.answer, fallback:!!d.fallback };
+        if(res.status===429) return { text:BUSY(), fallback:true };
+        var je = new Error("no stream"); je.noServer = res.status>=500 || res.status===404; throw je;
+      }
+      var reader = res.body.getReader(), dec = new TextDecoder(), buf = "", err = "", done = false, partial = false;
+      var handle = function(line){
+        if(line.indexOf("data:")!==0) return;
+        var ev; try{ ev = JSON.parse(line.slice(5).trim()); }catch(e){ return; }
+        if(!ev) return;
+        if(ev.t==="delta" && typeof ev.text==="string"){ text += ev.text; onText(text); }
+        else if(ev.t==="error"){ err = typeof ev.text==="string" ? busyText(ev.text, ev.wait) : ""; }
+        else if(ev.t==="done"){ done = true; partial = !!ev.partial; }
+      };
+      while(!done){
+        var r = await reader.read();
+        if(r.done) break;
+        buf += dec.decode(r.value, { stream:true }).replace(/\r/g,"");
+        var i;
+        while(!done && (i = buf.indexOf("\n\n"))>=0){ buf.slice(0,i).split("\n").forEach(handle); buf = buf.slice(i+2); }
+      }
+      if(!done && buf) buf.split("\n").forEach(handle);
+      if(text) return { text:text, partial: partial || !done };
+      if(err) return { text:err, fallback:true };
+      return { text:TRY_AGAIN(), fallback:true };
+    }catch(e){
+      if(text) return { text:text, partial:true };   // keep what already arrived
+      if(res && !e.noServer) return { text:TRY_AGAIN(), fallback:true };
+      throw e;
+    }finally{ to.done(); }
+  }
+  async function askJson(body){
+    var to = withTimeout(ASK_TIMEOUT_MS);
+    try{
+      var res = await post(Object.assign({}, body, { stream:false }), to.signal);
+      if(res.status===429) return { text:BUSY(), fallback:true };
+      var d = await res.json();
+      var a = (d && typeof d.answer==="string" && d.answer.trim()) || "";
+      return a ? { text: d.retryAfter ? busyText(a, d.retryAfter) : a, fallback:!!d.fallback } : { text:TRY_AGAIN(), fallback:true };
+    }finally{ to.done(); }
+  }
+
+  /* ---------- one question ---------- */
+  // App-data, canned and crisis answers are instant and never wait. Questions for the server
+  // go one at a time, at least 1.5 s apart; one sent while Felipe is still answering waits
+  // its turn instead of being dropped.
+  function ask(){
+    var q=(input.value||"").trim(); if(!q) return;
+    q=q.slice(0,500);
+    add(q,"me"); input.value="";
+    if(chips) chips.hidden=true;
     var history=hist.slice(-HIST_TURNS);
-    fetch("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q.slice(0,500), history:history})})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        t.remove();
-        var a=(d&&typeof d.answer==="string"&&d.answer.trim())||"";
-        if(a && !d.fallback){ remember("user", q); remember("model", a); }
-        add(a || tr("Hmm, try asking that a different way.","Mmm, intenta preguntarlo de otra forma."),"bot");
+    var c = null;
+    if(Core){ try{ c = Core.classify(q, { history:history, lang:fhLang }); }catch(e){ c = null; } }
+    var lang = (c && c.lang) || fhLang;
+
+    if(c && c.route==="crisis"){
+      var cd=add(Core.crisisReply(lang, c.reason),"bot crisis"); crisisActions(cd, lang, c.reason);
+      // Typed in one language with the app in the other: show the app's language too.
+      if(lang!==fhLang){ var cd2=add(Core.crisisReply(fhLang, c.reason),"bot crisis"); crisisActions(cd2, fhLang, c.reason); }
+      toBottom(); return;
+    }
+    if(c && c.route==="cannot"){ add(Core.cannotReply(c.reason, lang),"bot"); return; }
+    if(c && c.route==="local"){
+      var loc = null;
+      try{ loc = Core.answerLocal(c.intent, c.resolved || q, appData(), lang); }catch(e){ loc = null; }
+      if(loc && loc.text){
+        var ld=add(loc.text,"bot local");
+        if(!/^(?:greeting|thanks|capabilities)$/.test(c.intent)) srcTag(ld);
+        toBottom();
+        remember("user", q); remember("model", loc.text);
+        return;
+      }
+    }
+    queue.push({ q:q, c:c, lang:lang });
+    pump();
+  }
+  function pump(){
+    if(busy || !queue.length) return;
+    var gap = LLM_GAP_MS - (Date.now()-lastSend);
+    if(gap > 0){ busy=true; setTimeout(function(){ busy=false; pump(); }, gap); return; }
+    var job = queue.shift();
+    lastSend = Date.now();
+    sendLlm(job.q, job.c, job.lang);
+  }
+
+  // The server (Gemini).
+  function sendLlm(q, c, lang){
+    busy=true;
+    var history=hist.slice(-HIST_TURNS);
+    var body={ question:q, history:history, lang:lang };
+    if(cid) body.client = cid;
+    if(c && c.needsAssignments && sgyOn()){
+      var items = Core.pickAssignments(c.resolved || q, sgy.items);
+      if(items.length){ body.context = { assignments: items }; lastAssign = items; }
+    }else if(lastAssign && sgyOn() && history.length && /\b(?:it|that|this|the (?:first|second|third|last|other) one|one|them|those|esa|eso|esta|la primera|la segunda)\b/i.test(q)){
+      // A follow-up about the items sent last time ("summarize the first one") gets them again.
+      body.context = { assignments: lastAssign };
+    }else lastAssign = null;
+    var typing=add(tr("Felipe is thinking…","Felipe está pensando…"),"bot typing");
+    typing.setAttribute("aria-hidden","true"); // the answer is announced; "thinking" is just visual
+    log.setAttribute("aria-busy","true");     // screen readers wait for the finished answer
+    var bub=null, node=null, pending=null, raf=0;
+    function paint(){
+      raf=0; if(pending==null) return;
+      var stick = nearBottom();
+      if(!bub){
+        typing.remove();
+        bub=document.createElement("div"); bub.className="askmsg bot streaming";
+        node=document.createTextNode(""); bub.appendChild(node); log.appendChild(bub);
+      }
+      node.nodeValue = plain(pending); pending=null;
+      if(stick) toBottom();
+    }
+    function onText(t){
+      pending=t;
+      if(!raf) raf = (typeof requestAnimationFrame==="function") ? requestAnimationFrame(paint) : setTimeout(paint,16);
+    }
+    function finish(r){
+      if(raf){ if(typeof cancelAnimationFrame==="function") cancelAnimationFrame(raf); clearTimeout(raf); raf=0; }
+      typing.remove();
+      var text = plain(r.text).trim();
+      if(bub){
+        bub.classList.remove("streaming");
+        var fresh=document.createTextNode(text); bub.replaceChild(fresh, node); node=fresh;
+      }else{
+        bub = add(text || TRY_AGAIN(),"bot");
+      }
+      if(r.partial){ var n=document.createElement("span"); n.className="asksrc"; n.textContent=tr("This answer was cut short. Please ask again.","Esta respuesta quedó incompleta. Vuelve a preguntar, por favor."); bub.appendChild(n); }
+      log.removeAttribute("aria-busy");
+      if(text && !r.fallback && !r.partial){ remember("user", q); remember("model", text); }
+      toBottom();
+    }
+    askStream(body, onText)
+      .catch(function(e){ if(e && e.noServer) return askJson(body); throw e; })
+      .then(finish)
+      .catch(function(){
+        finish({ text:tr("Couldn't reach Felipe right now. Check the Schedule, Clubs, Sports, or More tabs.","No pudimos comunicarnos con Felipe en este momento. Revisa las pestañas Horario, Clubes, Deportes o Más."), fallback:true });
       })
-      .catch(function(){ t.remove(); add(tr("Couldn't reach Felipe right now. Check the Schedule, Clubs, Sports, or More tabs.","No pudimos comunicarnos con Felipe en este momento. Revisa las pestañas Horario, Clubes, Deportes o Más."),"bot"); })
-      .finally(function(){ busy=false; });
-  });
+      .then(function(){ busy=false; pump(); });
+  }
+  form.addEventListener("submit", function(e){ e.preventDefault(); ask(); });
 })();
