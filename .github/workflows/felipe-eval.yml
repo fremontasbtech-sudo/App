@@ -1,7 +1,9 @@
 # Runs Ask Felipe's eval set against REAL Gemini from a GitHub runner (the ASB Mac is behind
-# Securly, which blocks or stalls Gemini calls). Manual only. Needs the GEMINI_API_KEY secret.
+# Securly, which blocks or stalls Gemini calls). Runs on pushes to felipe-v2, or manually. Needs the GEMINI_API_KEY secret.
 name: Felipe eval (real Gemini)
 on:
+  push:
+    branches: [felipe-v2]
   workflow_dispatch:
     inputs:
       args:
