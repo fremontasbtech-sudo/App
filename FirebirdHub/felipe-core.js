@@ -542,7 +542,8 @@
       return res("crisis", "crisis", { reason: selfEn || selfEs ? "crisis" : "abuse" });
     }
 
-    // 2. Requests Felipe must refuse.
+    // 2. Requests Felipe must refuse. A feature that is turned off gets a plain "not available".
+    if (/\b(?:fire ?bucks?|bird ?bucks?|firebird card|firebird bucks)\b/.test(t)) return res("cannot", "unavailable", { reason: "unavailable" });
     if (MANIP.test(t) || MANIP2.test(t)) return res("cannot", "manipulation", { reason: "manipulation" });
     for (var u = 0; u < UNSAFE.length; u++) if (UNSAFE[u].test(t)) return res("cannot", "unsafe", { reason: "unsafe" });
     if (CHEAT.test(t)) return res("cannot", "cheat", { reason: "cheat" });
@@ -653,6 +654,7 @@
       rude: "I'm here whenever you need help with your schedule, events, clubs, sports or classes.",
       weather: "I can't check the weather, so a weather app is your best bet. I can help with schedules, events and anything else about school.",
       empty: "Ask me anything about school, like your schedule, events, clubs, sports or your assignments.",
+      unavailable: "That isn't part of Firebird Hub right now. I can help with events, sports, clubs, the bell schedule or spirit points.",
       default: "I can't help with that one, but I'm happy to help with anything about school life at Fremont."
     },
     es: {
@@ -666,6 +668,7 @@
       rude: "Aquí estoy cuando necesites ayuda con tu horario, eventos, clubes, deportes o clases.",
       weather: "No puedo revisar el clima, así que una app del clima es tu mejor opción. Puedo ayudarte con horarios, eventos y cualquier otra cosa de la escuela.",
       empty: "Pregúntame lo que quieras sobre la escuela, como tu horario, eventos, clubes, deportes o tus tareas.",
+      unavailable: "Eso no forma parte de Firebird Hub por ahora. Puedo ayudarte con eventos, deportes, clubes, el horario o los puntos de espíritu.",
       default: "No puedo ayudarte con eso, pero con gusto te ayudo con cualquier cosa de la vida escolar en Fremont."
     }
   };

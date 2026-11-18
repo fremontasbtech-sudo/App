@@ -87,6 +87,7 @@ export function todayLines(now, withYear){
   lines.push("TODAY: "+WD_LONG[now.wd]+", "+today+", "+now.time+" Pacific time. " + (d.off
     ? "There are NO classes today: "+d.off+"."
     : "Classes today: "+schedText(d)+(d.unknown?"":" Times are in BELL SCHEDULE.")));
+  if(!d.off && !d.unknown) lines.push(rightNow(d.sched, now.min));
   lines.push("TOMORROW: "+dayName(tomorrow)+": "+dayText(tomorrow));
   if(d.off || dayInfo(tomorrow).off){
     let n = tomorrow; for(let i=0;i<120 && dayInfo(n).off;i++) n = addDays(n,1);
@@ -108,4 +109,29 @@ export function todayLines(now, withYear){
 export function noClassBetween(from, to){
   return NO_CLASSES.filter(n=> n[1]>=from && n[0]<=to)
     .map(n=> (n[0]===n[1] ? (WD_SHORT[weekday(n[0])]+" "+n[0]) : (WD_SHORT[weekday(n[0])]+" "+n[0]+" to "+WD_SHORT[weekday(n[1])]+" "+n[1]))+": no classes, "+n[2]);
+}
+
+// The block running right now, worked out here so the model never does time math.
+const toMin = t=>{ const [h,m] = t.split(":").map(Number); return (h<7 ? h+12 : h)*60 + (m||0); };
+const fmt = m=>{ const h = Math.floor(m/60), mm = m%60; return ((h+11)%12+1)+":"+String(mm).padStart(2,"0")+(h>=12?" PM":" AM"); };
+function blocksFor(sched){
+  const key = /^monday/i.test(sched) ? "- Monday" : /^a day/i.test(sched) ? "- A day" : /^b day/i.test(sched) ? "- B day" : "";
+  const line = key && BELL_SCHEDULE.split("\n").find(l=> l.startsWith(key));
+  if(!line) return [];
+  const body = line.slice(line.indexOf(":")+1);
+  return [...body.matchAll(/(P\d|Tutorial|Brunch|Lunch)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/g)]
+    .map(m=> ({ name: m[1].replace(/^P(\d)$/, "Period $1"), a: toMin(m[2]), b: toMin(m[3]) }));
+}
+export function rightNow(sched, min){
+  const bl = blocksFor(sched);
+  if(!bl.length || typeof min !== "number" || isNaN(min)) return "";
+  const pre = "RIGHT NOW (worked out from the bell schedule; use this, do not recompute): ";
+  if(min < bl[0].a) return pre+"school has not started yet. "+bl[0].name+" starts at "+fmt(bl[0].a)+".";
+  if(min >= bl[bl.length-1].b) return pre+"school is over for today (it ended at "+fmt(bl[bl.length-1].b)+").";
+  for(let i=0;i<bl.length;i++){
+    const x = bl[i], nx = bl[i+1];
+    if(min >= x.a && min < x.b) return pre+x.name+", "+fmt(x.a)+" to "+fmt(x.b)+"."+(nx ? " Next: "+nx.name+" at "+fmt(nx.a)+"." : " That is the last block of the day.");
+    if(nx && min >= x.b && min < nx.a) return pre+"passing time after "+x.name+". Next: "+nx.name+" at "+fmt(nx.a)+".";
+  }
+  return "";
 }

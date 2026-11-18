@@ -27,6 +27,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           EXTRA: ${{ inputs.args }}
+          FELIPE_EVAL_GAP_MS: "6500"
         run: |
           cd felipe-evals && mkdir -p results
           node run.mjs --inproc --stream $EXTRA --out results/real.json > results/real.txt 2>&1 || echo "run exited with $?"

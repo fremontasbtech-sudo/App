@@ -194,6 +194,10 @@ async function runServer(){
     const now = Date.now(); while(starts.length && now - starts[0] > 60000) starts.shift();
     if(starts.length >= 36){ await sleep(60000 - (now - starts[0]) + 50); }
     starts.push(Date.now());
+    // FELIPE_EVAL_GAP_MS spaces questions out for a free-tier Gemini key (about 10 a minute), so
+    // a quota 429 from Google is not counted as a Felipe failure. Canned and crisis routes need no gap.
+    const gap = Number(process.env.FELIPE_EVAL_GAP_MS || 0);
+    if(gap && n > 0 && !["cannot","crisis"].includes(c.expected_route)) await sleep(gap);
     const body = flag("--legacy-body") ? { question: c.question, history: c.history || [] }
       : { question: c.question, history: c.history || [], lang: c.lang || "en", stream: flag("--stream"), ...(c.context ? { context: contextFor(c) } : {}) };
     const headers = { "content-type": "application/json", "x-eval-id": label + "-" + c.id + "-" + Date.now(),
