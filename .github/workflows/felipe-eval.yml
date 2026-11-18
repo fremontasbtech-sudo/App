@@ -32,6 +32,16 @@ jobs:
           cd felipe-evals && mkdir -p results
           node run.mjs --inproc --stream $EXTRA --out results/real.json > results/real.txt 2>&1 || echo "run exited with $?"
           tail -60 results/real.txt
+      - name: Same representative questions on the OLD Felipe (main before v2), for a real before/after
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FELIPE_EVAL_GAP_MS: "6500"
+        run: |
+          cd felipe-evals && mkdir -p results
+          node run.mjs --inproc --legacy-body --representative --handler ./baseline-ask.js --out results/baseline-real.json > results/baseline-real.txt 2>&1 || echo "baseline run exited with $?"
+          tail -30 results/baseline-real.txt
+          node run.mjs --inproc --stream --representative --out results/new-real-rep.json > results/new-real-rep.txt 2>&1 || echo "new rep run exited with $?"
+          tail -30 results/new-real-rep.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
