@@ -1,0 +1,36 @@
+# Runs Ask Felipe's eval set against REAL Gemini from a GitHub runner (the ASB Mac is behind
+# Securly, which blocks or stalls Gemini calls). Manual only. Needs the GEMINI_API_KEY secret.
+name: Felipe eval (real Gemini)
+on:
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "Extra run.mjs arguments (for example --representative)"
+        required: false
+        default: ""
+permissions:
+  contents: read
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Unit tests
+        run: node felipe-evals/core.test.mjs
+      - name: Eval against real Gemini and live fremontasb.org data
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          EXTRA: ${{ inputs.args }}
+        run: |
+          cd felipe-evals
+          node run.mjs --inproc --stream $EXTRA --out results/real.json > results/real.txt 2>&1 || echo "run exited with $?"
+          tail -60 results/real.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: felipe-real-results
+          path: felipe-evals/results/

@@ -92,6 +92,12 @@ export function todayLines(now, withYear){
     let n = tomorrow; for(let i=0;i<120 && dayInfo(n).off;i++) n = addDays(n,1);
     if(n!==tomorrow && !dayInfo(n).off) lines.push("NEXT SCHOOL DAY: "+dayName(n)+": "+dayText(n));
   }
+  // The next 9 days by name, so "what schedule is Monday" uses the real date (a Thanksgiving-week
+  // Monday runs an A day, not the usual Monday schedule).
+  const week = [];
+  for(let i=2;i<=9;i++){ const iso = addDays(today,i), w = weekday(iso); if(w===0 || w===6) continue;
+    const x = dayInfo(iso); week.push(WD_SHORT[w]+" "+iso+": "+(x.off ? "no classes ("+x.off+")" : x.sched+(x.why?" ("+x.why+")":""))); }
+  if(week.length) lines.push("COMING SCHOOL DAYS (a weekday name means the next one of these): "+week.join("; ")+".");
   if(withYear){
     const left = NO_CLASSES.filter(n=> n[1]>=today).map(n=> (n[0]===n[1] ? (WD_SHORT[weekday(n[0])]+" "+n[0]) : (n[0]+" to "+n[1]))+" "+n[2]);
     if(left.length) lines.push("NO-CLASS DAYS LEFT IN 2026-27 (FUHSD calendar): "+left.join("; ")+". The last day of school is "+dayName(LAST_DAY)+".");
