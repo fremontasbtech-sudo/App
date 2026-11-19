@@ -438,6 +438,14 @@ const UNAVAILABLE = {
 
 /* Build the live-data text for one question.
    sections: Set from pickSections. Returns { text, used:[...], waitedMs }. */
+// For answers made without AI: a source the question needs that hadn't loaded yet (a cold
+// instance) gets more time, so the answer never says "not on the calendar" just because the
+// sheet was still loading.
+export async function fillMissing(data, sections, waitMs){
+  const miss = KEYS.filter(k=> sections.has(k) && data && !data[k]);
+  await Promise.all(miss.map(async k=>{ data[k] = await getSource(k, waitMs); }));
+  return data;
+}
 export async function buildLive(sections, now, text){
   const need = KEYS.filter(k=> sections.has(k));
   const t0 = Date.now();

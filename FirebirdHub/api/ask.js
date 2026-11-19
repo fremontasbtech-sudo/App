@@ -52,7 +52,7 @@
  */
 import { classify, cannotReply, crisisReply, intentSections, normText } from "./_felipe/core.js";
 import { nowPT, todayLines } from "./_felipe/calendar.js";
-import { buildLive, pickSections, prewarm, trimLive } from "./_felipe/context.js";
+import { buildLive, pickSections, prewarm, trimLive, fillMissing } from "./_felipe/context.js";
 import { noEmDash, dashFilter } from "./_felipe/gemini.js";
 import { askAI, providerList, allOutNow } from "./_felipe/providers.js";
 import { dataAnswer, BACK_SOON } from "./_felipe/dataanswer.js";
@@ -276,7 +276,8 @@ export default async function handler(req, res){
 
     // Answers made without AI (every provider out of quota or failing, or the day's budget used).
     const fromData = ()=> dataAnswer({ intent:cls.intent, text:topicText, lang, sections, data:live.data, now, assignments, note: !v2 });
-    const replyData = why=>{
+    const replyData = async why=>{
+      if(!wellbeing) await fillMissing(live.data, sections, 5000);
       dbg("x-felipe-prompt-chars", "0");
       if(wellbeing){ dbg("x-felipe-answered-by", "canned"); if(stream){ sendSSE({ t:"delta", text:msg.support }); sendSSE({ t:"done", route:"llm" }); res.end(); } else sendJson(res, 200, { answer:msg.support, route:"llm" }); return; }
       const d = fromData();
@@ -318,18 +319,18 @@ export default async function handler(req, res){
     }
     // 5. Guards for questions that cost an AI call.
     if(!joined){
-      if(!providerList().length){ replyData("none"); return; }
+      if(!providerList().length){ await replyData("none"); return; }
       // Every model is already out of quota: answer from the data at once. No AI is called,
       // so the per-minute limits (and the day's budget) aren't used up by these answers.
-      if(await allOutNow({ only })){ replyData("exhausted"); return; }
+      if(await allOutNow({ only })){ await replyData("exhausted"); return; }
       const wait = wellbeing ? 0 : rateLimited(ip, cid);
       if(wait > 0){
         res.setHeader("Retry-After", String(wait)); dbg("x-felipe-prompt-chars", "0"); dbg("x-felipe-answered-by", "fallback");
         replyNow(res, stream, msg.busy, { fallback:true, status: stream ? 200 : 429, wait }); return;
       }
-      if(wait < 0){ replyData("busy"); return; }
-      if(await overBudget()){ replyData("budget"); return; }
-      if(await overPersonLimit(ip, cid)){ replyData("limit"); return; }
+      if(wait < 0){ await replyData("busy"); return; }
+      if(await overBudget()){ await replyData("budget"); return; }
+      if(await overPersonLimit(ip, cid)){ await replyData("limit"); return; }
     }
     const runAI = (signal, emit)=>{
       const df = dashFilter();
@@ -370,7 +371,7 @@ export default async function handler(req, res){
     dbg("x-felipe-provider", out.id || "none");
     if(!full){
       // Nothing reached the student: answer from the data instead of a dead end.
-      replyData(out.allExhausted ? "exhausted" : out.blocked ? "blocked" : "failed"); return;
+      await replyData(out.allExhausted ? "exhausted" : out.blocked ? "blocked" : "failed"); return;
     }
     dbg("x-felipe-answered-by", "llm"); dbg("x-felipe-prompt-chars", String(promptChars));
     if(!stream){ sendJson(res, 200, { answer:noEmDash(full), route:"llm" }); return; }
