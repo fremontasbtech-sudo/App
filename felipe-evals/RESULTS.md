@@ -101,3 +101,27 @@ node compare.mjs --before results/baseline-fixtures.json --after results/repair-
 ```
 
 With a key in `App/.env` (gitignored): `node dev-server.mjs 4461` then `node run.mjs --url http://127.0.0.1:4461 --stream --representative`, each run on its own port.
+
+## Scaling to about 1,000 students (2026-11-18, mocks only)
+
+The production key ran out of free quota, so the server now has a shared answer cache, a quota-aware provider router and answers made from the data when no AI is available (`FirebirdHub/api/_felipe/store.js`, `providers.js`, `dataanswer.js`). No AI key was used: Gemini, Groq, Cerebras and OpenRouter were the eval mocks, and Vercel Runtime Cache was a shim. `node scale.mjs` reproduces all of this (results in `results/scale-2026-11-18.json`, gitignored).
+
+- **Cache:** 12 common questions asked twice. First ask: whole answer p50 1,265 ms (mock AI). Second ask: p50 1.5 ms, 11 of 12 from the cache (the 12th is a writing question, which is never cached). After wiping the instance's memory (a new instance), 11 of 12 still came from the shared layer, p50 5.5 ms.
+- **50 students asking the same new question at once:** 1 AI call, 50 identical answers, first words p50 886 ms for everyone. A second instance asking while the first was still answering waited for it and made 0 calls.
+- **Router under mock quotas** (gemini-3.6-flash 10, gemini-3.1-flash-lite 10, gemini-flash-lite-latest 5, Groq 10, Cerebras 5, OpenRouter 5; cache off; 50 questions): every model was used up in order, each out-of-quota model was hit by exactly one 429 (7 in all), falling through a 429 cost no extra time (first words p50 757 ms vs 861 ms), and the last 5 questions got 3 data answers and 2 "can't write that right now" replies. A new instance afterwards made 0 AI calls (it read the out-of-quota marks from the shared layer) and answered in p50 2 ms.
+- **Quota kinds:** a per-minute 429 skipped the model for about 30 s (its Retry-After); a daily one until 12:00 AM PT, when Google resets free quotas.
+- **FELIPE_DAILY_CAP=5:** 5 AI calls, then data answers.
+- **Shared cache down** (hanging or throwing) or missing: answers kept coming; repeat questions came from memory in about 2 ms. A hanging shared layer cost the first question about 750 ms of timeouts before it switched itself off for a minute.
+- **Gemini outage** (every call 503): the first question tried each model twice (2.2 s) and got a data answer; each model was then skipped for 30 s, so the next 39 questions got data answers in about 10 ms.
+- **Small models:** llama-3.1-8b-instant (6,000 tokens a minute) gets the compact rules and the question's own data, about 5,000 characters instead of 9,200 to 12,400.
+- **Answers without AI, on the eval suite** (every model out of quota): 71 of 104 questions got a data answer and all 71 passed their must-include checks; 13 generative requests got the polite "try again later" reply; the 20 canned and crisis replies were unchanged. On 25 extra questions not in the suite, the answers were right or sensibly said what isn't listed, with two weak spots: "when are finals" (not in the data, so it says it doesn't have that) and "what announcements were there about tutoring" (lists the latest headlines).
+- **Regression:** `core.test.mjs` 303 of 303; `run.mjs --inproc` 104 of 104 with `--stream`, with `--legacy-body` and with plain JSON.
+
+## Repair pass for scale (2026-11-18 evening, mocks only)
+
+A review and a one-day load test found problems in the scale work; they were fixed and everything was re-run. Details, load-test numbers, cost math and env vars are in `SCALE.md`.
+
+- A short new question is no longer merged with the previous one (only real follow-ups are), and a self-contained question is answered from the shared cache even when the chat has history (it is sent to the AI without the history). Stable topics are cached up to 6 hours.
+- Runtime Cache keys are SHA-256 (the package's default is a 32-bit hash) and every value carries its own key; out-of-quota flags are per key fingerprint; a question with Schoology items or chat history goes to Gemini only; per-student and per-IP daily limits protect `FELIPE_DAILY_CAP`; a truncated or backup-model answer is not cached for long.
+- Answers without AI: month windows ("this month", "December", "diciembre"), more results wordings ("resultados", "cómo le fue", "what happened at the last game"), "I can't answer that one" instead of "I can't write that" for plain questions, senior nights on the server, "Related:" when only part of a question matches, Spanish UI labels.
+- **Regression:** `core.test.mjs` 305 of 305; `run.mjs --inproc` 117 of 117 with `--stream` and with `--legacy-body` (13 new cases, 11 of them `no_ai` data-answer cases, all passing their text checks); `run.mjs --core` 117 of 117 routes; `scale.mjs` 13 scenarios (5 new: history, keychange, outage, person, collide) all as expected.

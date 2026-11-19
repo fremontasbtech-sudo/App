@@ -16,6 +16,9 @@
  *   - "x-eval-id: <id>" on a request collects its timings, Gemini payload size and source fetches.
  *     GET /__felipe/metrics?id=<id> returns that record; GET /__felipe/global returns fetches made
  *     outside any request (background refreshes); GET /__felipe/health says mock/fixtures/key.
+ *   - Mock quotas and providers: FELIPE_MOCK_QUOTA, FELIPE_MOCK_QUOTA_KIND, FELIPE_MOCK_PROVIDERS and
+ *     the Runtime Cache shim (lib/instrument.mjs). GET /__felipe/quota shows calls used per limit;
+ *     POST /__felipe/quota?spec=gemini=0,groq=5 sets new limits (and clears the counts).
  *   - "x-felipe-now: <ISO time>" makes new Date() inside the handler return that moment
  *     (per request; Date.now() stays real so rate limits and cache TTLs still work).
  * Each server process is one "warm instance": restart it to measure a cold start.
@@ -24,7 +27,7 @@ import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { install, als, newRecord, getRecord, globalLog, clockOffsetFor, MOCK, USE_FIXTURES, MOCK_CFG, APP_DIR } from "./lib/instrument.mjs";
+import { install, als, newRecord, getRecord, globalLog, clockOffsetFor, MOCK, USE_FIXTURES, MOCK_CFG, APP_DIR, mockQuotaState, setMockQuota } from "./lib/instrument.mjs";
 import { loadGeminiKey } from "./lib/env.mjs";
 import { adaptNode } from "./lib/vercel.mjs";
 
@@ -76,7 +79,14 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if(url.pathname === "/__felipe/health"){
     res.setHeader("Content-Type", "application/json");
-    res.end(JSON.stringify({ ok: true, mock: MOCK, fixtures: USE_FIXTURES, geminiKey: hasKey, mockCfg: MOCK ? MOCK_CFG : null, root: ROOT, overrides, loaded: [...handlers].map(([k, v]) => ({ name: k, file: v.file, importMs: v.importMs })) }));
+    res.end(JSON.stringify({ ok: true, mock: MOCK, fixtures: USE_FIXTURES, geminiKey: hasKey, mockCfg: MOCK ? MOCK_CFG : null, mockQuota: MOCK ? mockQuotaState() : null, root: ROOT, overrides, loaded: [...handlers].map(([k, v]) => ({ name: k, file: v.file, importMs: v.importMs })) }));
+    return;
+  }
+  if(url.pathname === "/__felipe/quota"){
+    if(req.method === "POST") setMockQuota(url.searchParams.get("spec") || "");
+    res.setHeader("Content-Type", "application/json");
+    const shim = globalThis.__felipeSharedCache;
+    res.end(JSON.stringify({ quota: mockQuotaState(), sharedCache: shim && shim.stats ? { ...shim.stats, keys: shim.size() } : null }));
     return;
   }
   if(url.pathname === "/__felipe/metrics"){

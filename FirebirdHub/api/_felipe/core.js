@@ -32,6 +32,11 @@ export function classify(question, ctx){
 export function intentSections(intent){
   try{ const m = Core.INTENT_SECTIONS && Core.INTENT_SECTIONS[intent]; return Array.isArray(m) ? m.map(String) : []; }catch(e){ return []; }
 }
+// FelipeCore.norm (lowercase, accents and punctuation off, common typos fixed), for cache keys.
+export function normText(s){
+  try{ if(typeof Core.norm === "function") return String(Core.norm(s) || "").trim(); }catch(e){}
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9: ]+/g, " ").replace(/\s+/g, " ").trim();
+}
 const textOf = r=> typeof r === "string" ? r : (r && typeof r.text === "string" ? r.text : "");
 export function cannotReply(reason, lang){
   try{ const s = textOf(Core.cannotReply(reason, lang)).trim(); if(s) return s; }catch(e){}

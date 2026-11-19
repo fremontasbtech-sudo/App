@@ -447,20 +447,49 @@ export async function buildLive(sections, now, text){
   const data = {};
   await Promise.all(KEYS.map(async k=>{ data[k] = await getSource(k, need.includes(k) ? COLD_WAIT_MS : DIGEST.includes(k) ? DIGEST_WAIT_MS : 0); }));
   const waitedMs = Date.now()-t0;
-  const parts = [digest(data, now)];
+  // named: [name, text]; the digest is first in the prompt, the question's own sections after it.
+  const named = [["digest", digest(data, now)]];
   for(const k of need){
-    if(!data[k]){ parts.push(UNAVAILABLE[k]); continue; }
-    if(k==="events") parts.push(eventsSection(data.events, now.iso, text));
-    if(k==="sports") parts.push(sportsSection(data.sports, now, text));
-    if(k==="spirit") parts.push(spiritSection(data.spirit));
-    if(k==="clubs") parts.push(clubsSection(data.clubs, text));
-    if(k==="announcements") parts.push(announcementsSection(data.announcements, now));
-    if(k==="arts") parts.push(artsSection(data.arts, now.iso, text));
+    if(!data[k]){ named.push([k, UNAVAILABLE[k]]); continue; }
+    if(k==="events") named.push([k, eventsSection(data.events, now.iso, text)]);
+    if(k==="sports") named.push([k, sportsSection(data.sports, now, text)]);
+    if(k==="spirit") named.push([k, spiritSection(data.spirit)]);
+    if(k==="clubs") named.push([k, clubsSection(data.clubs, text)]);
+    if(k==="announcements") named.push([k, announcementsSection(data.announcements, now)]);
+    if(k==="arts") named.push([k, artsSection(data.arts, now.iso, text)]);
   }
   // A question about something only the morning announcements mention gets those items in full.
   if(!need.includes("announcements") && data.announcements){
     const m = matchingAnnouncements(data.announcements, now, text);
-    if(m.length) parts.push("MORNING ANNOUNCEMENTS THAT MATCH THIS QUESTION (full text, last 7 days):\n"+m.join("\n"));
+    if(m.length) named.push(["announcements-match", "MORNING ANNOUNCEMENTS THAT MATCH THIS QUESTION (full text, last 7 days):\n"+m.join("\n")]);
   }
-  return { text: parts.join("\n\n"), used: need, waitedMs };
+  // data: the parsed sources (for answers made without AI, dataanswer.js).
+  return { text: named.map(x=> x[1]).join("\n\n"), used: need, waitedMs, parts: named, data };
 }
+/* The same live text cut to at most maxChars for models with a small token limit: the
+   question's own sections first, then the digest, whole sections only (a section that does
+   not fit is cut at a line break). */
+export function trimLive(parts, maxChars){
+  const order = parts.filter(p=> p[0] !== "digest").concat(parts.filter(p=> p[0] === "digest"));
+  const out = []; let len = 0;
+  for(const [, t] of order){
+    if(len + t.length + 2 <= maxChars){ out.push(t); len += t.length + 2; continue; }
+    const room = maxChars - len - 2;
+    if(room > 300){ const cut = t.slice(0, room); out.push(cut.slice(0, Math.max(cut.lastIndexOf("\n"), 0)) || cut); }
+    break;
+  }
+  return out.join("\n\n");
+}
+
+/* Helpers shared with dataanswer.js (answers made from the data without AI). */
+export const helpers = { sportFilter, isPlayed, byWhen, team, matchup, words, EV_STOP, STOP, revealed, evWhen,
+  scoreClubs: (clubs, text)=>{
+    const q = words(text).filter(w=> !STOP.has(w)), lowText = String(text||"").toLowerCase();
+    return clubs.map(c=>{
+      const nameW = new Set(words(c.name)), purW = new Set(words(c.purpose));
+      let s = 0;
+      if(c.name.length >= 3 && lowText.includes(c.name.toLowerCase())) s += 10;
+      for(const w of q){ if(nameW.has(w)) s += 3; else if([...nameW].some(n=> n.length>=4 && (n.startsWith(w) || w.startsWith(n)))) s += 2; if(purW.has(w)) s += 1; }
+      return { c, s };
+    }).filter(x=> x.s >= 2).sort((a,b)=> b.s-a.s);
+  } };

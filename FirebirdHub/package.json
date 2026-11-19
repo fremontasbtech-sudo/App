@@ -1,0 +1,11 @@
+{
+  "name": "firebird-hub",
+  "private": true,
+  "description": "Firebird Hub serverless functions. No build step: Vercel serves this folder as is and installs these for api/.",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@vercel/functions": "^3.11.3"
+  }
+}

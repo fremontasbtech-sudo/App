@@ -2682,7 +2682,7 @@ var I18N_EN_ES = {
   "Full schedules, rosters and live updates at fremonthsathletics.org":"Calendarios completos, plantillas y novedades en fremonthsathletics.org",
   "Saved on this device. Live listings stay in the language they were entered.":"Se guarda en este dispositivo. Las listas en vivo se quedan en el idioma en que se ingresaron.",
   "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de Spirit Wear se abren solo durante las semanas de espíritu. Cuando están abiertos, solo llegan a Espíritu, Tecnología y el asesor de ASB, y nunca se comparten públicamente. Los IDs de estudiante solo se usan para quitar entradas duplicadas. El modo movimiento cambia las tarjetas por animaciones al desplazarte y una fila de eventos deslizable.",
-  "Ask Felipe answers simple questions from the app's data on your device. Other questions, your last few messages and, when you ask about your assignments, the matching Schoology items (title, due date and short description) are sent to Google's Gemini AI to write an answer. ASB doesn't save them. Please don't share private information with Felipe.":"Pregúntale a Felipe responde las preguntas sencillas con los datos de la app en tu dispositivo. Las demás preguntas, tus últimos mensajes y, cuando preguntas por tus tareas, las tareas de Schoology que coinciden (título, fecha de entrega y descripción corta) se envían a Gemini, la IA de Google, para escribir la respuesta. ASB no las guarda. Por favor, no compartas información privada con Felipe.",
+  "Ask Felipe answers simple questions from the app's data on your device. Other questions, your last few messages and, when you ask about your assignments, the matching Schoology items (title, due date and short description) are sent to Google's Gemini AI to write an answer. Answers to general questions, like when the fall play is, are kept for up to 6 hours so other students get them faster, without your messages or assignments. ASB doesn't save your questions, and no one at ASB reads them. Please don't share private information with Felipe.":"Pregúntale a Felipe responde las preguntas sencillas con los datos de la app en tu dispositivo. Las demás preguntas, tus últimos mensajes y, cuando preguntas por tus tareas, las tareas de Schoology que coinciden (título, fecha de entrega y descripción corta) se envían a Gemini, la IA de Google, para escribir la respuesta. Las respuestas a preguntas generales, como cuándo es la obra de otoño, se guardan hasta 6 horas para que otros estudiantes las reciban más rápido, sin tus mensajes ni tus tareas. ASB no guarda tus preguntas y nadie en ASB las lee. Por favor, no compartas información privada con Felipe.",
   "Spirit Wear submissions open during spirit weeks.":"Los envíos de Spirit Wear se abren durante las semanas de espíritu.",
   "When the next spirit week starts, its dress-up days will show here.":"Cuando empiece la próxima semana de espíritu, sus días temáticos aparecerán aquí.",
   "Dress up on a spirit day during a spirit week":"Vístete en un día de espíritu durante una semana de espíritu",
@@ -2947,6 +2947,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   var Core = (typeof window!=="undefined" && window.FelipeCore) || null;
   var lastSend=0, busy=false, queue=[];
   var hist=[]; // [{ role:"user"|"model", text }], newest last; only real answers are kept
+  var dataNoteShown=false; // the "fuller answers are back soon" note, once per visit
   var HIST_TURNS=6, HIST_CHARS=500, ASK_TIMEOUT_MS=30000, LLM_GAP_MS=1500;
   var lastAssign=null; // the Schoology items sent with the last assignment question, for "the first one" follow-ups
   // A random id for this browser, so the server's rate limit counts this student and not the
@@ -3077,18 +3078,18 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
       var ct = (res.headers.get("content-type")||"").toLowerCase();
       if(ct.indexOf("text/event-stream")<0 || !res.body || !res.body.getReader || typeof TextDecoder==="undefined"){
         var d = null; try{ d = await res.json(); }catch(e){}
-        if(d && typeof d.answer==="string" && d.answer.trim()) return { text: d.retryAfter ? busyText(d.answer, d.retryAfter) : d.answer, fallback:!!d.fallback };
+        if(d && typeof d.answer==="string" && d.answer.trim()) return { text: d.retryAfter ? busyText(d.answer, d.retryAfter) : d.answer, fallback:!!d.fallback, source:d.source||"", note:typeof d.note==="string" ? d.note : "" };
         if(res.status===429) return { text:BUSY(), fallback:true };
         var je = new Error("no stream"); je.noServer = res.status>=500 || res.status===404; throw je;
       }
-      var reader = res.body.getReader(), dec = new TextDecoder(), buf = "", err = "", done = false, partial = false;
+      var reader = res.body.getReader(), dec = new TextDecoder(), buf = "", err = "", done = false, partial = false, src = "", note = "";
       var handle = function(line){
         if(line.indexOf("data:")!==0) return;
         var ev; try{ ev = JSON.parse(line.slice(5).trim()); }catch(e){ return; }
         if(!ev) return;
         if(ev.t==="delta" && typeof ev.text==="string"){ text += ev.text; onText(text); }
         else if(ev.t==="error"){ err = typeof ev.text==="string" ? busyText(ev.text, ev.wait) : ""; }
-        else if(ev.t==="done"){ done = true; partial = !!ev.partial; }
+        else if(ev.t==="done"){ done = true; partial = !!ev.partial; src = ev.source || ""; note = typeof ev.note==="string" ? ev.note : ""; }
       };
       while(!done){
         var r = await reader.read();
@@ -3098,7 +3099,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
         while(!done && (i = buf.indexOf("\n\n"))>=0){ buf.slice(0,i).split("\n").forEach(handle); buf = buf.slice(i+2); }
       }
       if(!done && buf) buf.split("\n").forEach(handle);
-      if(text) return { text:text, partial: partial || !done };
+      if(text) return { text:text, partial: partial || !done, source:src, note:note };
       if(err) return { text:err, fallback:true };
       return { text:TRY_AGAIN(), fallback:true };
     }catch(e){
@@ -3114,7 +3115,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
       if(res.status===429) return { text:BUSY(), fallback:true };
       var d = await res.json();
       var a = (d && typeof d.answer==="string" && d.answer.trim()) || "";
-      return a ? { text: d.retryAfter ? busyText(a, d.retryAfter) : a, fallback:!!d.fallback } : { text:TRY_AGAIN(), fallback:true };
+      return a ? { text: d.retryAfter ? busyText(a, d.retryAfter) : a, fallback:!!d.fallback, source:d.source||"", note:typeof d.note==="string" ? d.note : "" } : { text:TRY_AGAIN(), fallback:true };
     }finally{ to.done(); }
   }
 
@@ -3166,7 +3167,8 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   function sendLlm(q, c, lang){
     busy=true;
     var history=hist.slice(-HIST_TURNS);
-    var body={ question:q, history:history, lang:lang };
+    // v:2 = this app shows the "fuller answers are back soon" note itself (once per visit).
+    var body={ question:q, history:history, lang:lang, v:2 };
     if(cid) body.client = cid;
     if(c && c.needsAssignments && sgyOn()){
       var items = Core.pickAssignments(c.resolved || q, sgy.items);
@@ -3205,6 +3207,15 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
         bub = add(text || TRY_AGAIN(),"bot");
       }
       if(r.partial){ var n=document.createElement("span"); n.className="asksrc"; n.textContent=tr("This answer was cut short. Please ask again.","Esta respuesta quedó incompleta. Vuelve a preguntar, por favor."); bub.appendChild(n); }
+      else if(r.source==="data"){
+        // Answered from the school's data while the AI is busy: tagged like on-device answers,
+        // with the "back soon" note only the first time in a visit.
+        var ds=document.createElement("span"); ds.className="asksrc";
+        ds.textContent = (r.note && !dataNoteShown) ? tr("From the school's data. Fuller answers will be back soon.","Con datos de la escuela. Las respuestas completas volverán pronto.")
+          : tr("From the school's data","Con datos de la escuela");
+        if(r.note) dataNoteShown = true;
+        bub.appendChild(ds);
+      }
       log.removeAttribute("aria-busy");
       if(text && !r.fallback && !r.partial){ remember("user", q); remember("model", text); }
       toBottom();

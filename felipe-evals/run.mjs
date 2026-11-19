@@ -18,6 +18,8 @@
  *
  * In mock mode the answer text is fake, so must_include/must_not_include are only checked on
  * replies that did not come from Gemini (canned "cannot"/"crisis" replies, local answers).
+ * Cases with "no_ai": true run with no AI key in --inproc mode, so they check the answers made
+ * from the data when every AI provider is out (with --url they are answered like any other).
  */
 process.env.TZ = "America/Los_Angeles";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -135,10 +137,16 @@ async function callInproc(c, body, headers){
   const rec = newRecord(id);
   const { req, res, out, done } = fakePair({ method: "POST", headers, body });
   const t0 = performance.now();
-  await als.run({ rec, clockOffset: headers["x-felipe-now"] ? Date.parse(headers["x-felipe-now"]) - Date.now() : 0 }, async () => {
-    try{ await handlerFn(req, res); }catch(e){ if(!res.writableEnded) res.status(500).json({ error: "handler threw: " + (e && e.message) }); }
-  });
-  await done;
+  // no_ai: the case runs with no AI key set and the answer cache off, so the answer is made
+  // from the data (dataanswer.js).
+  const KEYS = ["GEMINI_API_KEY", "GROQ_API_KEY", "CEREBRAS_API_KEY", "OPENROUTER_API_KEY", "FELIPE_CACHE"], saved = {};
+  if(c.no_ai){ for(const k of KEYS){ saved[k] = process.env[k]; delete process.env[k]; } process.env.FELIPE_CACHE = "0"; }
+  try{
+    await als.run({ rec, clockOffset: headers["x-felipe-now"] ? Date.parse(headers["x-felipe-now"]) - Date.now() : 0 }, async () => {
+      try{ await handlerFn(req, res); }catch(e){ if(!res.writableEnded) res.status(500).json({ error: "handler threw: " + (e && e.message) }); }
+    });
+    await done;
+  }finally{ if(c.no_ai) for(const k of KEYS){ if(saved[k] !== undefined) process.env[k] = saved[k]; else delete process.env[k]; } }
   const metrics = getRecord(id);
   if(metrics){ metrics.endMs = Math.round(out.endMs); metrics.firstWriteMs = out.firstByteMs == null ? null : Math.round(out.firstByteMs); metrics.status = out.status; }
   return { status: out.status, headers: out.headers, chunks: out.chunks.map(ch => ({ ms: ch.ms, s: ch.s })), ttfbMs: out.firstByteMs, totalMs: performance.now() - t0, metrics };
@@ -244,8 +252,14 @@ async function runServer(){
     else if(c.expected_route === "local") row.routeOk = routeTaken === "llm" || routeTaken === "local" || want.includes(routeTaken);
     else row.routeOk = want.includes(routeTaken) || (routeTaken === "llm");
     if(canned && !want.some(r => r === "cannot" || r === "crisis")) row.routeOk = false;
-    const fromMock = mock && gem.some(g => g.mock) && !canned;
-    if(fromMock || (!mock && row.fallback)) row.textFails = null;
+    // answered-by: llm | cache | data | canned | fallback. Cached and mock answers are fake text
+    // in mock mode; data answers (made without AI) are real text and are checked.
+    const answeredBy = resp.headers["x-felipe-answered-by"] || null;
+    row.answeredBy = answeredBy;
+    row.providers = gem.map(g => (g.provider || "gemini") + ":" + g.model + "=" + (g.status ?? "?"));
+    const fromMock = mock && !canned && (answeredBy ? ["llm", "cache"].includes(answeredBy) : gem.some(g => g.mock));
+    // Old clients (--legacy-body) never send Schoology items, so a case built on them can't be judged there.
+    if(fromMock || (!mock && row.fallback) || answeredBy === "fallback" || (flag("--legacy-body") && c.context)) row.textFails = null;
     else row.textFails = checkText(c, rep.answer);
     if(row.fallback && !mock) row.note = "fallback reply (Gemini unavailable or no key)";
     row.pass = !!row.routeOk && (!row.textFails || !row.textFails.length);
@@ -259,6 +273,8 @@ async function runServer(){
     cases: rows.length, pass: rows.filter(r => r.pass).length, routeOk: rows.filter(r => r.routeOk).length,
     textChecked: ok.filter(r => r.textChecked).length, textPass: ok.filter(r => r.textChecked && !r.textFails.length).length,
     routes: ok.reduce((o, r) => { o[r.routeTaken] = (o[r.routeTaken] || 0) + 1; return o; }, {}),
+    answeredBy: ok.reduce((o, r) => { const k = r.answeredBy || "?"; o[k] = (o[k] || 0) + 1; return o; }, {}),
+    dataAnswers: (() => { const d = ok.filter(r => r.answeredBy === "data"); return { n: d.length, textChecked: d.filter(r => r.textChecked).length, textPass: d.filter(r => r.textChecked && !r.textFails.length).length, fails: d.filter(r => r.textChecked && r.textFails.length).map(r => r.id) }; })(),
     geminiCallsTotal: ok.reduce((s, r) => s + r.geminiCalls, 0),
     cannotOrCrisisSentToGemini: ok.filter(r => ["cannot", "crisis"].includes(r.expected_route) && r.geminiCalls > 0).map(r => r.id),
     firstVisibleMs: stats(ok.map(r => r.firstVisibleMs)), totalMs: stats(ok.map(r => r.totalMs)), ttfbMs: stats(ok.map(r => r.ttfbMs)),

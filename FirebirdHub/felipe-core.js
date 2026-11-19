@@ -424,6 +424,8 @@
     ["events", 1, /\bevents?\b|\beventos?\b|\btickets?\b|\bboletos?\b/],
     ["spirit", 2, /\bspirit\b|\bdress ?up\b|\bspirit (?:week|wear|days?)\b|\bclass colors?\b|\bespiritu\b/],
     ["schedule", 2, /\b(?:bell schedule|finals|final exams|finals week|caaspp|minimum day|min day|late start|early release|special schedule|rally schedule|horario|finales)\b/],
+    // "When are final exams?" / "¿Cuándo son los exámenes finales?" is the finals schedule, not homework.
+    ["schedule", 2, /\b(?:final exams?|finals week|examen(?:es)? finales?|semana de finales)\b/],
     ["schedule", 1, /\b(?:schedule|periods?|tutorial)\b/],
     ["announcements", 2, /\bannouncements?\b|\banuncios?\b/],
     ["app_help", 3, /\b(?:this app|the app|firebird hub|sign in|signin|log in|login|sign out|connect schoology|schoology link|ical|install|home screen|notifications?|dark mode|language|spanish mode|settings|report a bug|bug|contact form|aplicacion|configuracion|idioma|iniciar sesion)\b/],
@@ -761,11 +763,15 @@
     ") (\\d{1,2})(?:st|nd|rd|th)?|(\\d{1,2}) de (" + Object.keys(MONTHS).join("|") + ")|the (\\d{1,2})(?:st|nd|rd|th))\\b", "g");
   var WEEK_RE = /\b(this week|next week|esta semana|(?:la )?proxima semana|(?:la )?semana que viene|this weekend|next weekend|weekend|fin de semana)\b/g;
   var SHORT_WD = { tues: 2, thurs: 4, fri: 5 };
+  // A month and day with no year: the first one from 60 days ago on, so "May 28" asked in
+  // November means next May, while "Nov 10" asked on Nov 18 is still last week.
   function pickYear(mo, dd, today) {
-    var y = +today.slice(0, 4), iso = y + "-" + pad(mo) + "-" + pad(dd), diff = daysBetween(today, iso);
-    if (diff < -180) iso = (y + 1) + "-" + pad(mo) + "-" + pad(dd);
-    else if (diff > 180) iso = (y - 1) + "-" + pad(mo) + "-" + pad(dd);
-    return iso;
+    var y = +today.slice(0, 4), best = null;
+    for (var k = -1; k <= 1; k++) {
+      var c = (y + k) + "-" + pad(mo) + "-" + pad(dd);
+      if (daysBetween(today, c) >= -60) { best = c; break; }
+    }
+    return best || ((y + 1) + "-" + pad(mo) + "-" + pad(dd));
   }
   // The LAST day or week the text mentions (so a follow-up's "what about Friday" wins).
   // -> { iso } | { week: [fromIso, toIso], label } | null

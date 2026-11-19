@@ -10,6 +10,10 @@
  *  - Streaming adds one rule: once any text has reached the student, never retry (the
  *    student would see the answer twice); a broken stream keeps the text it already sent.
  * The key is sent only in the x-goog-api-key header and is never logged.
+ *
+ * Since 2026-11-18 ask.js goes through providers.js (the quota-aware router), which calls
+ * callGemini() below once per model and decides itself what to try next. askGemini() is kept
+ * for older callers and tests.
  */
 export const MODEL = "gemini-3.6-flash";
 export const FALLBACK_MODEL = "gemini-flash-lite-latest";
@@ -52,8 +56,23 @@ const partsText = data=>{
 /* One call. Returns { text, ok, status, retry, emitted }.
    retry: Gemini answered (200 or 400), so a different config may help.
    With onDelta, the call streams and hands each new piece of text to onDelta. */
-async function callOnce({ key, model, system, contents, useThinking, temperature, onDelta, signal }){
-  const generationConfig = { temperature, maxOutputTokens:2048 };
+/* What a 429 says about the quota (the body is read for this and never logged):
+   daily: a per-day limit (Google resets those at midnight Pacific); retryS: seconds to wait
+   when the response says (Retry-After header, or Gemini's RetryInfo retryDelay). */
+export function quotaInfo(bodyText, headers){
+  const b = String(bodyText || "").slice(0, 20000);
+  let ra = 0;
+  try{ ra = Number(headers && headers.get && headers.get("retry-after")) || 0; }catch(e){}
+  const d = b.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+  const retryS = ra > 0 ? ra : d ? Math.ceil(Number(d[1])) : 0;
+  const perDay = /per ?day|PerDay|\bRPD\b|\bTPD\b|daily|per_day|free-models-per-day/i.test(b);
+  const perMin = /per ?minute|PerMinute|\bRPM\b|\bTPM\b|per_minute|per ?hour|PerHour/i.test(b);
+  const quotaWords = /exceeded your current quota|quota exceeded|insufficient_quota|credits|billing/i.test(b);
+  return { daily: perDay || (!perMin && quotaWords && !(retryS > 0 && retryS <= 120)), retryS, fromHeader: ra > 0 };
+}
+
+async function callOnce({ key, model, system, contents, useThinking, temperature, onDelta, signal, maxTokens }){
+  const generationConfig = { temperature, maxOutputTokens: maxTokens || 2048 };
   if(useThinking) generationConfig.thinkingConfig = { thinkingLevel:"low" };
   const body = JSON.stringify({ systemInstruction:{ parts:[{ text:system }] }, contents, generationConfig, safetySettings:SAFETY });
   const url = BASE + model + (onDelta ? ":streamGenerateContent?alt=sse" : ":generateContent");
@@ -67,21 +86,27 @@ async function callOnce({ key, model, system, contents, useThinking, temperature
   try{
     const r = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json", "x-goog-api-key":key }, body, signal:ctrl.signal });
     if(!r.ok){
-      await r.text().catch(()=>"");   // drain; the body can echo the request, so it is never logged
-      return { text:"", ok:false, status:r.status, retry:r.status===400, emitted:false };
+      // Read only to tell a daily quota from a per-minute one; never logged.
+      const errBody = await r.text().catch(()=>"");
+      // A bad or revoked key comes back as 400 API_KEY_INVALID: report it like a 401 so the
+      // router skips this key for a while instead of retrying it on every question.
+      const badKey = r.status === 400 && /API_KEY_INVALID|API key not valid|API_KEY_EXPIRED/i.test(errBody);
+      return { text:"", ok:false, status: badKey ? 401 : r.status, retry: r.status===400 && !badKey, emitted:false, quota: r.status===429 ? quotaInfo(errBody, r.headers) : null };
     }
     if(!onDelta){
       const data = await r.json().catch(()=> ({}));
-      return { text:partsText(data).trim(), ok:true, status:200, retry:true, emitted:false };
+      let finish = ""; try{ finish = String(data.candidates[0].finishReason || ""); }catch(e){}
+      return { text:partsText(data).trim(), ok:true, status:200, retry:true, emitted:false, finish };
     }
     // Server-sent events: "data: {GenerateContentResponse}" blocks separated by blank lines.
     const reader = r.body.getReader(), dec = new TextDecoder();
-    let buf = "", status = 200;
+    let buf = "", status = 200, quota = null, finish = "";
     const handle = block=>{
       const json = block.split(/\r?\n/).filter(l=> l.startsWith("data:")).map(l=> l.slice(5).trim()).join("");
       if(!json || json === "[DONE]") return;
       let data; try{ data = JSON.parse(json); }catch(e){ return; }
-      if(data.error){ status = Number(data.error.code) || 500; return; }
+      if(data.error){ status = Number(data.error.code) || 500; quota = status === 429 ? quotaInfo(JSON.stringify(data.error), null) : null; return; }
+      try{ if(data.candidates[0].finishReason) finish = String(data.candidates[0].finishReason); }catch(e){}
       const piece = partsText(data);
       if(piece){ text += piece; emitted = true; onDelta(piece); }
     };
@@ -98,12 +123,19 @@ async function callOnce({ key, model, system, contents, useThinking, temperature
     }
     buf += dec.decode();
     if(buf.trim()) handle(buf);
-    if(status !== 200 && !text) return { text:"", ok:false, status, retry:false, emitted:false };
-    return { text:text.trim(), ok:true, status:200, retry:true, emitted };
+    if(status !== 200 && !text) return { text:"", ok:false, status, retry:false, emitted:false, quota };
+    return { text:text.trim(), ok:true, status:200, retry:true, emitted, finish };
   }catch(e){
     // Timeout or network failure. Text already streamed is kept (status 0 = transient).
     return { text:text.trim(), ok:false, status:0, retry:false, emitted, aborted:ctrl.signal.aborted };
   }finally{ clearTimeout(timer); if(total) clearTimeout(total); if(signal) signal.removeEventListener("abort", stop); }
+}
+
+/* One Gemini call for the router (providers.js). Gemini 3 models get thinkingLevel "low";
+   other models (2.5, the "-latest" aliases) get no thinkingConfig, as the old fallback did. */
+export const thinksLow = model=> /^gemini-3/i.test(String(model||""));
+export function callGemini({ key, model, system, contents, temperature, onDelta, signal, thinking, maxTokens }){
+  return callOnce({ key, model, system, contents, useThinking: thinking === undefined ? thinksLow(model) : !!thinking, temperature, onDelta, signal, maxTokens });
 }
 
 const sleep = ms=> new Promise(r=> setTimeout(r, ms));

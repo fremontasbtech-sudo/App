@@ -616,6 +616,20 @@ test("assignment due dates carry the weekday; Spanish alias matches", () => {
   assert.equal(a.length, 1); assert.equal(a[0].due, "Tue 2099-01-06 8:30 AM");
 });
 
+test("a month and day with no year means the next one (from 60 days back)", () => {
+  const t = F.answerLocal("school_on", "is there school on may 28", data(at(2026, 11, 18)), "en").text;
+  assert.ok(/Friday, May 28/.test(t) && !/Thursday/.test(t), t);
+  const j = F.answerLocal("school_on", "is there school on june 10", data(at(2026, 11, 18)), "en").text;
+  assert.ok(/Thursday, Jun(e)? 10/.test(j) && !/Aug 17/.test(j), j);
+  const past = F.answerLocal("school_on", "was there school on november 10", data(at(2026, 11, 18)), "en").text;
+  assert.ok(/Tuesday, Nov(ember)? 10/.test(past), past);
+});
+test("final exams are the schedule, not homework", () => {
+  assert.equal(F.classify("¿Cuándo son los exámenes finales?", {}).intent, "schedule");
+  assert.equal(F.classify("When are final exams?", {}).intent, "schedule");
+  assert.equal(F.classify("when is my history test", {}).intent, "assignments");
+});
+
 /* ---------- report ---------- */
 const routes = CASES.reduce((m, c) => (m[c[1]] = (m[c[1]] || 0) + 1, m), {});
 console.log(`felipe-core ${F.version}: ${pass} passed, ${fail} failed (${CASES.length} routing cases: ${JSON.stringify(routes)})`);

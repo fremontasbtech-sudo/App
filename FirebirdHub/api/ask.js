@@ -2,17 +2,21 @@
  * Ask Felipe: the school-life assistant in Firebird Hub (Vercel serverless function).
  *
  * POST JSON { question, history:[{role:"user"|"model", text}], lang:"en"|"es", stream:true|false,
- *             context?: { assignments?: [{ title, type, due, desc, url }] } }
+ *             context?: { assignments?: [{ title, type, due, desc, url }] }, client?, v? }
  *  - stream:true  -> text/event-stream: "data: {"t":"delta","text":"..."}" lines, then
  *                    "data: {"t":"done","route":"..."}". When no answer could be made, a
  *                    "data: {"t":"error","text":"<friendly message>"}" comes before done.
  *  - stream:false (or an old client sending only {question, history}) -> JSON { answer }, or
  *                    { answer, fallback:true } for the friendly fallback messages.
+ *  - An answer made from the data without AI carries source:"data" (in done, or in the JSON).
+ *    Clients that send v:2 (the app since 2026-11-18) also get note:"<fuller answers are back
+ *    soon>" there and show it themselves; older clients get that line at the end of the answer.
  * Debug headers, only when the FELIPE_DEBUG_HEADERS=1 env var is set (the eval dev server sets
  * it; production does not): x-felipe-route (what the classifier said: local|llm|cannot|crisis;
  * "llm" whenever Gemini was called), x-felipe-answered-by (llm|canned|fallback),
  * x-felipe-intent, x-felipe-prompt-chars (system prompt plus contents, 0 when Gemini is not
- * called) and x-felipe-sections (the data sections sent).
+ * called) and x-felipe-sections (the data sections sent). Since 2026-11-18 answered-by can also
+ * be "cache" or "data", with x-felipe-data-why (none|budget|busy|exhausted|blocked|failed).
  *
  * How it stays fast:
  *  - FelipeCore.classify (felipe-core.js, shared with the app) runs first. "cannot" and
@@ -23,15 +27,36 @@
  *  - Only the data sections the question needs are sent, plus a short "next 3 weeks" digest.
  *  - Gemini streams (streamGenerateContent, SSE), so the first words show quickly.
  *
+ * How it lasts for 1,000 students on free or cheap quotas (2026-11-18):
+ *  - Shared answer cache (_felipe/store.js): self-contained general questions (not a follow-up,
+ *    no Schoology items, nothing personal) are answered without the chat history, once, and
+ *    reused: up to 6 hours for stable topics (clubs, results, app help), 2 hours for events,
+ *    30 minutes otherwise, 5 to 10 minutes when time-sensitive. The key is the normalized
+ *    question, intent, language, date and a hash of the live data, so a sheet edit makes a new
+ *    key. An answer from a backup provider (not Gemini) is kept 5 minutes. Identical questions asked at the
+ *    same moment share one call.
+ *  - Provider router (_felipe/providers.js): Gemini models in order, then Groq, Cerebras and
+ *    OpenRouter when their keys are set. A model that answers 429 is skipped by every instance
+ *    until its quota resets.
+ *  - Never dead (_felipe/dataanswer.js): with every provider out, or past FELIPE_DAILY_CAP AI
+ *    questions in a day, or past one person's daily limit, questions about events, games,
+ *    clubs, announcements, spirit and the schedule are answered straight from the data. When
+ *    every model is already known to be out, data answers skip the per-minute limits.
+ *
  * The GEMINI_API_KEY lives only here (a server-side Vercel env var on the app project) and
  * is sent only in the x-goog-api-key header. Questions, history and assignments are never
- * logged or stored. Assignments are the student's own Schoology items for one question;
- * they are validated and fenced as untrusted data (_felipe/input.js).
+ * logged. Only answers to self-contained general questions are kept, in the shared cache
+ * above, under a hash (the question text itself is not stored). Assignments are the student's
+ * own Schoology items for one question; they are validated and fenced as untrusted data
+ * (_felipe/input.js), and a question with Schoology items or chat history goes to Gemini only.
  */
-import { classify, cannotReply, crisisReply, intentSections } from "./_felipe/core.js";
+import { classify, cannotReply, crisisReply, intentSections, normText } from "./_felipe/core.js";
 import { nowPT, todayLines } from "./_felipe/calendar.js";
-import { buildLive, pickSections, prewarm } from "./_felipe/context.js";
-import { askGemini, noEmDash, dashFilter } from "./_felipe/gemini.js";
+import { buildLive, pickSections, prewarm, trimLive } from "./_felipe/context.js";
+import { noEmDash, dashFilter } from "./_felipe/gemini.js";
+import { askAI, providerList, allOutNow } from "./_felipe/providers.js";
+import { dataAnswer, BACK_SOON } from "./_felipe/dataanswer.js";
+import { hash, getAnswer, putAnswer, joinFlight, startFlight, ride, markPending, clearPending, pendingElsewhere, waitForAnswer, countCall, callsToday, personCount, personAdd } from "./_felipe/store.js";
 import { buildSystem } from "./_felipe/prompt.js";
 import { cleanQuestion, cleanLang, cleanTurns, cleanHistory, cleanAssignments, fenceAssignments, cleanClientId } from "./_felipe/input.js";
 
@@ -49,10 +74,18 @@ const ALLOWED_ORIGINS = ["https://firebirdhub.vercel.app", "https://app-sigma-wo
 //    10 Gemini questions a minute and 80 an hour;
 //  - per IP, looser, because a whole school network or a phone carrier can share one IP:
 //    40 a minute and 400 an hour;
-//  - 60 Gemini questions a minute in total;
+//  - 60 new AI calls a minute in total (past that, answers come from the data; students
+//    joining an identical question already being answered don't count);
 //  - every request, canned replies included: 60 a minute per IP.
-// Wellbeing questions are never limited: a student who is struggling always gets an answer.
+// Shared by every instance (Runtime Cache), per Pacific day: 40 AI questions per student id
+// and 400 per IP (FELIPE_PERSON_DAILY, FELIPE_IP_DAILY), so one script can't use up the whole
+// school's FELIPE_DAILY_CAP. Past it, questions are answered from the data. If the shared cache
+// is down these counts, like FELIPE_DAILY_CAP, are per instance only (they fail open).
+// Wellbeing questions skip the per-minute limits; past the daily limit they get the kind
+// support message instead of AI, never a refusal.
 const LIMIT = { userPerMin: 10, userPerHour: 80, ipPerMin: 40, ipPerHour: 400, globalPerMin: 60, anyPerMin: 60 };
+const PERSON_DAILY = ()=> Number(process.env.FELIPE_PERSON_DAILY) || 40;
+const IP_DAILY = ()=> Number(process.env.FELIPE_IP_DAILY) || 400;
 const DEBUG_HEADERS = process.env.FELIPE_DEBUG_HEADERS === "1";
 
 // Same wording as the app's I18N_EN_ES entries, so old clients (no lang) still get Spanish there.
@@ -114,14 +147,16 @@ function requestLimited(ip){
   if(!w) anyHits.add(ip);
   return w;
 }
-// Gemini questions. Returns 0 when the question may go ahead (and counts it), else seconds to wait.
+// AI questions. Returns 0 when the question may go ahead (and counts it), else seconds to wait.
+// globalFull() says the instance-wide cap is the reason (then the student gets a data answer,
+// since it isn't their fault), as opposed to their own or their network's limit.
 function rateLimited(ip, cid){
   const now = Date.now();
   allHits = allHits.filter(t=> now-t < 60000);
   const user = cid ? "c:"+cid : "i:"+ip;
-  let wait = Math.max(userHits.check(user, LIMIT.userPerMin, LIMIT.userPerHour), ipHits.check(ip, LIMIT.ipPerMin, LIMIT.ipPerHour));
-  if(allHits.length >= LIMIT.globalPerMin) wait = Math.max(wait, Math.ceil((allHits[0]+60000-now)/1000));
+  const wait = Math.max(userHits.check(user, LIMIT.userPerMin, LIMIT.userPerHour), ipHits.check(ip, LIMIT.ipPerMin, LIMIT.ipPerHour));
   if(wait > 0) return wait;
+  if(allHits.length >= LIMIT.globalPerMin) return -1;
   userHits.add(user); ipHits.add(ip); allHits.push(now);
   return 0;
 }
@@ -163,7 +198,7 @@ export default async function handler(req, res){
     res.setHeader("Access-Control-Allow-Origin", req.headers.origin);
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    if(DEBUG_HEADERS) res.setHeader("Access-Control-Expose-Headers", "x-felipe-route, x-felipe-answered-by, x-felipe-intent, x-felipe-prompt-chars, x-felipe-sections");
+    if(DEBUG_HEADERS) res.setHeader("Access-Control-Expose-Headers", "x-felipe-route, x-felipe-answered-by, x-felipe-intent, x-felipe-prompt-chars, x-felipe-sections, x-felipe-provider, x-felipe-data-why");
   }
   if(req.method === "OPTIONS"){ res.statusCode = 204; res.end(); return; }
   if(req.method !== "POST"){ sendJson(res, 405, { error:"POST only" }); return; }
@@ -180,6 +215,7 @@ export default async function handler(req, res){
   const stream = body.stream === true;
   let lang = cleanLang(body.lang);
   const cid = cleanClientId(body.client);
+  const v2 = Number(body.v) >= 2;   // the client shows the "back soon" note itself
   const turns = cleanTurns(body.history);
   const ctxIn = body.context && typeof body.context === "object" && !Array.isArray(body.context) ? body.context : {};
   const assignments = cleanAssignments(ctxIn.assignments);
@@ -196,64 +232,229 @@ export default async function handler(req, res){
   if(cls.route === "cannot"){ dbg("x-felipe-prompt-chars", "0"); dbg("x-felipe-answered-by", "canned"); replyNow(res, stream, cannotReply(cls.reason, lang), { route:"cannot" }); return; }
   // Struggling students always get an answer, even when Gemini can't give one.
   const wellbeing = cls.intent === "wellbeing";
-  const failText = ok=> wellbeing ? msg.support : (ok ? msg.empty : msg.error);
-
-  // 2. Guards for questions that cost a Gemini call.
-  const wait = wellbeing ? 0 : rateLimited(ip, cid);
-  if(wait){
-    res.setHeader("Retry-After", String(wait)); dbg("x-felipe-prompt-chars", "0"); dbg("x-felipe-answered-by", "fallback");
-    replyNow(res, stream, msg.busy, { fallback:true, status: stream ? 200 : 429, wait }); return;
-  }
-  const key = process.env.GEMINI_API_KEY;
-  if(!key){ dbg("x-felipe-prompt-chars", "0"); dbg("x-felipe-answered-by", "fallback"); replyNow(res, stream, wellbeing ? msg.support : msg.noKey, { fallback:!wellbeing, route: wellbeing ? "llm" : undefined }); return; }
 
   let send = null;
+  // The stream opens with the first text, so the debug headers can say who answered.
+  const sendSSE = obj=>{ if(!send) send = openStream(res); send(obj); };
   try{
-    // 3. Only the data this question needs.
+    // 2. Only the data this question needs.
     const now = nowPT();
     const prevUser = (turns.filter(t=> t.role==="user").pop() || {}).text || "";
-    const short = q.split(/\s+/).length <= 6;
-    const sections = pickSections(cls.intent, q, prevUser, intentSections(cls.intent));
+    // A follow-up borrows the last question's topic: FelipeCore's merged follow-ups ("next
+    // soccer game? Girls") and short questions that point back ("where is it?", "and JV?").
+    // A new question that happens to be short ("When are color guard auditions?") stands alone.
+    const pointsBack = !!prevUser && isPointingBack(q);
+    const followUp = !!(cls.followUp || cls.resolved) || pointsBack;
+    const sections = pickSections(cls.intent, q, followUp ? prevUser : "", intentSections(cls.intent));
     if(assignments.length) sections.add("assignments");
-    // FelipeCore merges a short follow-up with the last question ("next soccer game? Girls").
-    const topicText = cls.resolved || (short && prevUser ? prevUser+" "+q : q);
+    const topicText = cls.resolved || (pointsBack ? prevUser+" "+q : q);
     const live = await buildLive(sections, now, topicText);
     if(gone.signal.aborted){ if(!res.writableEnded) res.end(); return; }
     const fence = fenceAssignments(assignments);
-    const system = buildSystem({ sections, live:live.text, today:todayLines(now, sections.has("year")), lang, marker:fence.marker });
+    const today = todayLines(now, sections.has("year"));
+    const system = buildSystem({ sections, live:live.text, today, lang, marker:fence.marker });
     const userParts = fence.text ? [{ text:fence.text }, { text:"Student's question: "+q }] : [{ text:q }];
-    const contents = turns.map(t=> ({ role:t.role, parts:[{ text:t.text }] })).concat([{ role:"user", parts:userParts }]);
+    // 3a. The shared answer cache: self-contained general questions only. Those are answered
+    //     without the chat history, so the kept answer fits every student who asks it.
+    const key = cacheKey({ cls, q, lang, now, sections, liveText:live.text, followUp, assignments, hasHistory: turns.length > 0 });
+    const sendTurns = key.key ? [] : turns;
+    const contents = sendTurns.map(t=> ({ role:t.role, parts:[{ text:t.text }] })).concat([{ role:"user", parts:userParts }]);
+    // A student's own Schoology items, and anything from earlier in the chat (which can hold
+    // them or personal details), go only to Gemini (what the Privacy page describes).
+    const only = (assignments.length || sendTurns.length || NO_CACHE_INTENTS.has(cls.intent) || PERSONAL_RE.test(q)) ? ["gemini"] : null;
     const promptChars = system.length + contents.reduce((n,c)=> n + c.parts.reduce((m,p)=> m + p.text.length, 0), 0);
     dbg("x-felipe-route", "llm");
-    dbg("x-felipe-prompt-chars", String(promptChars));
     dbg("x-felipe-sections", [...sections].join(",") || "none");
     const dataQ = ["sports","events","spirit","clubs","announcements","schedule"].some(k=> sections.has(k));
     const temperature = dataQ ? 0.3 : 0.6;
+    // Small-limit models get the compact rules, the question's own data first and the last 2 turns.
+    const shrink = maxChars=>{
+      const base = buildSystem({ sections, live:"", today, lang, marker:fence.marker, compact:true });
+      const liveText = trimLive(live.parts, Math.max(800, maxChars - base.length - 120));
+      return { system: buildSystem({ sections, live:liveText, today, lang, marker:fence.marker, compact:true }), contents: contents.slice(-3) };
+    };
 
-    // 4. Gemini.
-    if(!stream){
-      const out = await askGemini({ key, system, contents, temperature, signal:gone.signal });
-      dbg("x-felipe-answered-by", out.text ? "llm" : "fallback");
-      sendJson(res, 200, out.text ? { answer:noEmDash(out.text), route:"llm" } : { answer: failText(out.ok), fallback:!wellbeing });
-      return;
+    // Answers made without AI (every provider out of quota or failing, or the day's budget used).
+    const fromData = ()=> dataAnswer({ intent:cls.intent, text:topicText, lang, sections, data:live.data, now, assignments, note: !v2 });
+    const replyData = why=>{
+      dbg("x-felipe-prompt-chars", "0");
+      if(wellbeing){ dbg("x-felipe-answered-by", "canned"); if(stream){ sendSSE({ t:"delta", text:msg.support }); sendSSE({ t:"done", route:"llm" }); res.end(); } else sendJson(res, 200, { answer:msg.support, route:"llm" }); return; }
+      const d = fromData();
+      if(d && d.kind === "data"){
+        dbg("x-felipe-answered-by", "data"); dbg("x-felipe-data-why", why);
+        const extra = { source:"data", ...(v2 ? { note: BACK_SOON[lang] } : {}) };
+        if(stream){ sendSSE({ t:"delta", text:d.text }); sendSSE({ t:"done", route:"llm", ...extra }); res.end(); }
+        else sendJson(res, 200, { answer:d.text, route:"llm", ...extra });
+        return;
+      }
+      // No AI set up at all: the old "not set up yet" note; otherwise "please try again later".
+      // A blocked answer gets the plain "couldn't answer that one", never "try again later".
+      const text = why === "none" ? msg.noKey : why === "blocked" ? msg.empty : (d ? d.text : msg.error);
+      dbg("x-felipe-answered-by", "fallback");
+      if(stream){ sendSSE({ t:"error", text }); sendSSE({ t:"done" }); res.end(); }
+      else sendJson(res, 200, { answer:text, fallback:true });
+    };
+
+    // 3b. A kept answer.
+    const replyCached = hit=>{
+      dbg("x-felipe-prompt-chars", "0"); dbg("x-felipe-answered-by", "cache");
+      if(stream){ sendSSE({ t:"delta", text:hit.text }); sendSSE({ t:"done", route:"llm" }); res.end(); }
+      else sendJson(res, 200, { answer:hit.text, route:"llm" });
+    };
+    if(key.key){
+      const hit = await getAnswer(key.key);
+      if(hit){ replyCached(hit); return; }
     }
-    dbg("x-felipe-answered-by", "llm");
-    send = openStream(res);
-    const df = dashFilter();
-    const out = await askGemini({ key, system, contents, temperature, signal:gone.signal, onDelta: piece=>{ const s = df.push(piece); if(s) send({ t:"delta", text:s }); } });
-    const tail = df.end();
-    if(tail) send({ t:"delta", text:tail });
-    if(!out.emitted){
-      // A wellbeing question that Gemini blocked or couldn't answer still gets a kind reply.
-      if(wellbeing) send({ t:"delta", text:msg.support });
-      else send({ t:"error", text: failText(out.ok) });
+
+    // 4. Identical general questions asked at the same moment share one call: in this instance
+    //    they join it, and another instance that is already answering it is waited for (up to
+    //    8 s) instead of paying twice. Joining costs nothing, so it isn't rate limited.
+    let joined = key.key ? joinFlight(key.key) : null;
+    if(key.key && !joined && await pendingElsewhere(key.key)){
+      const other = await waitForAnswer(key.key, 8000, gone.signal);
+      if(gone.signal.aborted){ if(!res.writableEnded) res.end(); return; }
+      if(other){ replyCached(other); return; }
+      joined = joinFlight(key.key);
     }
+    // 5. Guards for questions that cost an AI call.
+    if(!joined){
+      if(!providerList().length){ replyData("none"); return; }
+      // Every model is already out of quota: answer from the data at once. No AI is called,
+      // so the per-minute limits (and the day's budget) aren't used up by these answers.
+      if(await allOutNow({ only })){ replyData("exhausted"); return; }
+      const wait = wellbeing ? 0 : rateLimited(ip, cid);
+      if(wait > 0){
+        res.setHeader("Retry-After", String(wait)); dbg("x-felipe-prompt-chars", "0"); dbg("x-felipe-answered-by", "fallback");
+        replyNow(res, stream, msg.busy, { fallback:true, status: stream ? 200 : 429, wait }); return;
+      }
+      if(wait < 0){ replyData("busy"); return; }
+      if(await overBudget()){ replyData("budget"); return; }
+      if(await overPersonLimit(ip, cid)){ replyData("limit"); return; }
+    }
+    const runAI = (signal, emit)=>{
+      const df = dashFilter();
+      return askAI({ system, contents, temperature, signal, shrink, only, onDelta: piece=>{ const s = df.push(piece); if(s) emit(s); } })
+        .then(out=>{
+          // The day's budget counts questions that reached a provider (not ones skipped because
+          // every model was already out).
+          if(out.attempts && out.attempts.length) countToday();
+          const tail = df.end(); if(tail) emit(tail); return out;
+        });
+    };
+    let out, full = "";
+    const onPiece = piece=>{ full += piece; if(stream){ if(!res.headersSent){ dbg("x-felipe-answered-by", "llm"); dbg("x-felipe-prompt-chars", String(promptChars)); } sendSSE({ t:"delta", text:piece }); } };
+    // 6. The AI, through the quota-aware router.
+    if(key.key){
+      const f = joined || joinFlight(key.key) || startFlight(key.key, async fl=>{
+        markPending(key.key).catch(()=>{});
+        try{
+          const o = await runAI(fl.ctrl.signal, fl.emit);
+          const text = fl.chunks.join("").trim();
+          // Only complete answers are kept: never fallbacks, errors, a stream that broke or an
+          // answer cut off by the length limit or a safety stop. An answer from a backup provider
+          // (Groq, Cerebras, OpenRouter: other models, often a shorter prompt) is kept only 5
+          // minutes, so Gemini's answer replaces it soon. Every Gemini model gets the full prompt.
+          if(o.ok && text && /^stop$/i.test(String(o.finish || "")))
+            await putAnswer(key.key, text, o.provider === "gemini" ? key.ttl : Math.min(key.ttl, BACKUP_TTL_S), o.id).catch(()=>{});
+          return o;
+        }catch(e){ return { text:"", ok:false, emitted:fl.chunks.length > 0 }; }
+        finally{ clearPending(key.key).catch(()=>{}); }
+      });
+      const r = ride(f, onPiece);
+      gone.signal.addEventListener("abort", r.leave, { once:true });
+      out = await r.done;
+    } else {
+      out = await runAI(gone.signal, onPiece);
+    }
+    if(gone.signal.aborted && !full){ if(!res.writableEnded) res.end(); return; }
+    dbg("x-felipe-provider", out.id || "none");
+    if(!full){
+      // Nothing reached the student: answer from the data instead of a dead end.
+      replyData(out.allExhausted ? "exhausted" : out.blocked ? "blocked" : "failed"); return;
+    }
+    dbg("x-felipe-answered-by", "llm"); dbg("x-felipe-prompt-chars", String(promptChars));
+    if(!stream){ sendJson(res, 200, { answer:noEmDash(full), route:"llm" }); return; }
     // A stream that broke after some text keeps that text; partial tells the app it was cut.
-    send({ t:"done", route:"llm", ...(out.emitted && !out.ok ? { partial:true } : {}) });
+    // The debug "prov" field stands in for x-felipe-provider, which a stream can't send late.
+    sendSSE({ t:"done", route:"llm", ...(!out.ok ? { partial:true } : {}), ...(DEBUG_HEADERS ? { prov: out.id || "none" } : {}) });
     res.end();
   }catch(e){
     if(send){ send(wellbeing ? { t:"delta", text:msg.support } : { t:"error", text:msg.error }); send({ t:"done" }); res.end(); }
-    else if(!res.headersSent) sendJson(res, 200, { answer: wellbeing ? msg.support : msg.error, fallback:!wellbeing });
+    else if(!res.headersSent){
+      if(stream){ sendSSE(wellbeing ? { t:"delta", text:msg.support } : { t:"error", text:msg.error }); sendSSE({ t:"done" }); res.end(); }
+      else sendJson(res, 200, { answer: wellbeing ? msg.support : msg.error, fallback:!wellbeing });
+    }
     else if(!res.writableEnded) res.end();
   }
+}
+
+/* ---------- follow-ups ---------- */
+// A short question that points back at the chat ("where is it?", "and JV?", "what about
+// tomorrow", "y el viernes?"). FelipeCore's classify() flags the fragment follow-ups it can
+// merge (cls.followUp); this catches the rest, so they keep the chat history and are never cached.
+// ("there" and "this" are left out: "is there school", "this week" stand on their own.)
+const POINT_RE = /\b(it|its|that|those|these|them|they|he|she|him|her|one|ones|same|else|more|again|instead|then|ese|esa|eso|esos|esas|ello|ellos|ellas|alli|ahi|mismo|otra vez)\b/;
+const LEAD_RE = /^(and|also|what about|how about|or|but|so|then|y|o|pero|que tal|tambien)\b/;
+function isPointingBack(q){
+  const n = normText(q), k = n.split(" ").filter(Boolean).length;
+  if(!k) return false;
+  return LEAD_RE.test(n) || (k <= 8 && POINT_RE.test(n)) || k <= 2;
+}
+
+/* ---------- the answer cache key ---------- */
+// Questions that may carry personal details, and follow-ups, are never cached.
+const NO_CACHE_INTENTS = new Set(["wellbeing", "writing", "assignments", "planning"]);
+const PERSONAL_RE = /@|\d{3}[-. )]*\d{3}[-. ]*\d{4}|\b(my name|i am|i'm|im|me llamo|soy|my (mom|dad|mother|father|parents?|friend|teacher|counselor|boyfriend|girlfriend|brother|sister|grade|grades))\b/i;
+// Time-sensitive questions: right-now ones change every few minutes, today ones every hour.
+// "What's next period" and "how long until lunch" count as right-now ones.
+const NOW_INTENTS = new Set(["period_now", "time_left", "next_event", "next_game", "bell_time"]);
+const TODAY_INTENTS = new Set(["day_type", "school_on", "schedule", "announcements_today"]);
+const NOW_RE = /\b(right now|now|currently|this period|next period|until|left|how long|how much longer|soon|ahora|ahorita|falta|faltan|cuanto falta|siguiente periodo|proximo periodo)\b/i;
+const TODAY_RE = /\b(today|tonight|this morning|this afternoon|this evening|later|hoy|esta noche|esta tarde|mas tarde)\b/i;
+// Topics whose answers only change when the data does (and the live-data hash is in the key):
+// kept up to 6 hours. Events get 2 hours (an event later today can pass). Never past midnight,
+// since the date is in the key too.
+const LONG_INTENTS = new Set(["clubs", "sports", "spirit", "spirit_standings", "app_help", "capabilities", "guidance"]);
+const EVENT_INTENTS = new Set(["events", "announcements"]);
+const NEXT_RE = /\b(next|upcoming|coming up|this week|weekend|tomorrow|proximo|proxima|siguiente|esta semana|fin de semana|manana)\b/i;
+const CACHE_TTL_S = 30*60, TODAY_TTL_S = 10*60, NOW_TTL_S = 5*60, BACKUP_TTL_S = 5*60;
+const longTtl = ()=> Math.max(0, Number(process.env.FELIPE_CACHE_HOURS === undefined ? 6 : process.env.FELIPE_CACHE_HOURS) || 0) * 3600;
+function cacheKey({ cls, q, lang, now, sections, liveText, followUp, assignments, hasHistory }){
+  if(process.env.FELIPE_CACHE === "0") return { key:"" };
+  // Any earlier turn in the chat means the question may lean on it ("who is the advisor?" after a
+  // club question), so it is answered with the history and never shared.
+  if(hasHistory || followUp || assignments.length || NO_CACHE_INTENTS.has(cls.intent) || PERSONAL_RE.test(q)) return { key:"" };
+  const text = normText(q);
+  if(!text || text.length > 200) return { key:"" };
+  let bucket = "", ttl = CACHE_TTL_S;
+  if(NOW_INTENTS.has(cls.intent) || NOW_RE.test(text)){ bucket = "m"+Math.floor(now.min/5); ttl = NOW_TTL_S; }
+  else if(TODAY_INTENTS.has(cls.intent) || TODAY_RE.test(text)){ bucket = "h"+Math.floor(now.min/60); ttl = TODAY_TTL_S; }
+  else if(!NEXT_RE.test(text) && LONG_INTENTS.has(cls.intent)) ttl = Math.max(CACHE_TTL_S, longTtl());
+  else if(!NEXT_RE.test(text) && EVENT_INTENTS.has(cls.intent)) ttl = Math.max(CACHE_TTL_S, Math.min(2*3600, longTtl()));
+  // Never past midnight Pacific (the key's date changes then anyway).
+  ttl = Math.max(60, Math.min(ttl, (24*60 - now.min)*60));
+  return { key: hash([text, cls.intent || "", lang, now.iso, bucket, [...sections].sort().join(","), hash(liveText, 12)].join("|")), ttl };
+}
+
+/* ---------- the day's budget (FELIPE_DAILY_CAP) and each person's daily limit ---------- */
+// The real date, not a test clock: the budget is about real spending.
+const realDay = ()=> nowPT(new Date(Date.now())).iso;
+// Over the per-student or per-IP daily limit? If not, counts this question for both.
+// Ids are SHA-256 hashes, never the address or the client id itself.
+async function overPersonLimit(ip, cid){
+  const day = realDay();
+  const ids = [["i"+hash("ip:"+ip, 20), IP_DAILY()]];
+  if(cid) ids.push(["c"+hash("cid:"+cid, 20), PERSON_DAILY()]);
+  try{
+    const counts = await Promise.all(ids.map(([id])=> personCount(day, id)));
+    if(counts.some((n, i)=> n >= ids[i][1])) return true;
+    await Promise.all(ids.map(([id])=> personAdd(day, id)));
+  }catch(e){}
+  return false;
+}
+function countToday(){ if(Number(process.env.FELIPE_DAILY_CAP) > 0) countCall(realDay()).catch(()=>{}); }
+async function overBudget(){
+  const cap = Number(process.env.FELIPE_DAILY_CAP) || 0;
+  if(cap <= 0) return false;
+  try{ return (await callsToday(realDay())) >= cap; }catch(e){ return false; }
 }
