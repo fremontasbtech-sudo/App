@@ -60,7 +60,7 @@
 })(typeof self !== "undefined" ? self : this, function () {
   "use strict";
 
-  var VERSION = "2";
+  var VERSION = "3";
   var clock = (typeof performance !== "undefined" && performance && typeof performance.now === "function")
     ? function () { return performance.now(); } : function () { return Date.now(); };
 
@@ -807,11 +807,17 @@
       if (/weekend|fin de semana/.test(k)) {
         var sat = addDays(mon, 5 + (/next/.test(k) ? 7 : 0));
         best = { week: [sat, addDays(sat, 1)], weekend: true, at: m.index };
-      } else if (/next|proxima|que viene/.test(k)) best = { week: [addDays(mon, 7), addDays(mon, 11)], at: m.index };
-      else best = { week: [today > addDays(mon, 4) ? addDays(mon, 7) : today, today > addDays(mon, 4) ? addDays(mon, 11) : addDays(mon, 4)], at: m.index };
+      } else if (/next|proxima|que viene/.test(k)) best = { week: [addDays(mon, 7), addDays(mon, 11)], cal: [addDays(mon, 7), addDays(mon, 13)], at: m.index };
+      else best = { week: [today > addDays(mon, 4) ? addDays(mon, 7) : today, today > addDays(mon, 4) ? addDays(mon, 11) : addDays(mon, 4)],
+        cal: [today, today > addDays(mon, 4) ? addDays(mon, 13) : addDays(mon, 6)], at: m.index };
     }
     return best;
   }
+
+  // The dates a "when" covers for games, events and assignments. "This week" runs through
+  // Sunday here (week[] is the school week, Mon to Fri, which the bell-schedule answers use),
+  // so on a Friday a Saturday game still counts as this week.
+  function whenSpan(w) { return w.iso ? [w.iso, w.iso] : (w.cal || w.week); }
 
   /* =====================================================================
      5. The school day from the app's own tables
@@ -1224,7 +1230,7 @@
     if (fun) up = up.filter(function (e) { return !/\b(?:due|deadline|check ?-?in|application|apply)\b/i.test(e.name); });
     var pool = up, scope = "", thisWk = false;
     if (when) {
-      var from = when.iso || when.week[0], to = when.iso || when.week[1];
+      var from = whenSpan(when)[0], to = whenSpan(when)[1];
       pool = up.filter(function (e) { return isoOf(e.when) <= to && isoOf(e.end) >= from; });
       thisWk = !when.iso && from <= addDays(today, 6) && to >= today && !/next|proxima|que viene/.test(n);
       scope = when.iso ? onDay(when.iso, today, lang)
@@ -1249,7 +1255,7 @@
       if (!top.some(function (x) { return x.strong; }) && top.length > 1) return null;   // only generic words matched
       pool = top.map(function (x) { return x.e; });
     }
-    var games = when && !words.length ? gamesBetween(D, when.iso || when.week[0], when.iso || when.week[1], now) : [];
+    var games = when && !words.length ? gamesBetween(D, whenSpan(when)[0], whenSpan(when)[1], now) : [];
     var gamesTxt = games.length
       ? (lang === "es" ? " Partidos " + scope + ": " : " Games " + scope + ": ") + listJoin(games.slice(0, 4).map(function (g) { return gameShort(g, lang); }), lang) +
         (games.length > 4 ? (lang === "es" ? " y " + (games.length - 4) + " más" : ", and " + (games.length - 4) + " more") : "") + "."
@@ -1391,13 +1397,13 @@
       if (awayOnly && !/away/i.test(g.homeAway || "")) return false;
       if (senior && !isSenior(g)) return false;
       if (bell && !isBellGame(g)) return false;
-      if (when) { var from = when.iso || when.week[0], to = when.iso || when.week[1]; if (g.date < from || g.date > to) return false; }
+      if (when) { var from = whenSpan(when)[0], to = whenSpan(when)[1]; if (g.date < from || g.date > to) return false; }
       return true;
     });
     var gName = (gender && sp && !/^(?:Football|Flag Football|Cross Country|Field Hockey|Wrestling)$/.test(sp[2]) ? (gender === "girls" ? "Girls " : "Boys ") : "") + (sp ? sp[2] : "");
     var label = (senior ? (lang === "es" ? "Senior Night " : "senior night ") : "") + (gName || (lang === "es" ? "" : "")).trim();
     if (!pool.length) {
-      var thisWk = when && !when.iso && when.week[0] <= addDays(today, 6) && !/next|proxima|que viene/.test(n);
+      var thisWk = when && !when.iso && whenSpan(when)[0] <= addDays(today, 6) && !/next|proxima|que viene/.test(n);
       var scope = when ? (when.iso ? " " + onDay(when.iso, today, lang)
         : (lang === "es" ? (thisWk ? " esta semana" : " esa semana") : (thisWk ? " this week" : " that week"))) : "";
       var unit = unitWord(sp && sp[2], lang, true);
@@ -1410,7 +1416,7 @@
         if (homeOnly && !(g.home || /home/i.test(g.homeAway || ""))) return false;
         if (awayOnly && !/away/i.test(g.homeAway || "")) return false;
         if (senior && !isSenior(g)) return false;
-        if (when) { var to2 = when.iso || when.week[1]; if (g.date <= to2) return false; }
+        if (when) { var to2 = whenSpan(when)[1]; if (g.date <= to2) return false; }
         return true;
       })[0] : null;
       var where = homeOnly ? (lang === "es" ? " en casa" : " at home") : "";
@@ -1562,7 +1568,7 @@
     if (!chosen.length) {
       var when = parseWhen(n, today);
       if (when) {
-        var from = when.iso || when.week[0], to = when.iso || when.week[1];
+        var from = whenSpan(when)[0], to = whenSpan(when)[1];
         chosen = upcoming.filter(function (e) { var d = isoNorm(e.date); return d >= from && d <= to; });
       }
     }
