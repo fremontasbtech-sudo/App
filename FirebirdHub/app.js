@@ -2937,7 +2937,7 @@ var I18N_EN_ES = {
   "Felipe needs a short break. Please wait a minute and ask again, or check the Schedule, Clubs and Sports tabs in the meantime.":"Felipe necesita un breve descanso. Espera un minuto y vuelve a preguntar, o mientras tanto revisa las pestañas Horario, Clubes y Deportes.",
   "I couldn't answer that one. Try asking about the bell schedule, clubs, events or sports.":"No pude responder esa pregunta. Intenta preguntar sobre el horario de campanas, los clubes, los eventos o los deportes.",
   "Felipe is having a moment. Please try again in a bit, or check the Schedule, Clubs and Sports tabs.":"Felipe tiene un pequeño problema en este momento. Inténtalo de nuevo en un rato, o revisa las pestañas Horario, Clubes y Deportes.",
-  "Send":"Enviar","For questions about school life. Answers aren't monitored live.":"Para preguntas sobre la vida escolar. Las respuestas no se supervisan en vivo.","Close":"Cerrar",
+  "Send":"Enviar","Felipe is an AI and can make mistakes. Answers aren't monitored live.":"Felipe es una IA y puede equivocarse. Las respuestas no se supervisan en vivo.","Close":"Cerrar",
   "Google sign-in":"Iniciar sesión con Google",
   "Sign in with your school Google account to see your name on the app. Photos and points still only go where you send them.":"Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app. Las fotos y los puntos solo van a donde tú los envías.",
   "Google sign-in isn't reachable on this network right now. Everything else in the app still works.":"El inicio de sesión con Google no está disponible en esta red por ahora. Todo lo demás en la app sigue funcionando.",
@@ -3045,18 +3045,19 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
 /* =====================================================
    Ask Felipe: the school-life assistant (felipe-core.js + /api/ask)
    Every question runs FelipeCore.classify first, in about 0.02 ms and with no network:
-   - "local": answered at once from data the app already holds (bells, events, games,
-     spirit, announcements) and marked as coming from the app's data. If the app isn't sure,
-     the question goes to the server instead.
-   - "cannot" and "crisis": a short canned reply at once (crisis adds call/text buttons).
+   - "local": answered from data the app already holds (bells, events, games, spirit,
+     announcements), with a gold edge. If the app isn't sure, the question goes to the server.
+   - "cannot": a short canned reply. "crisis": shown at once, with call/text buttons.
    - "llm": POST /api/ask with stream:true; the answer is drawn word by word as it arrives.
+   Every reply but crisis gets the same short "thinking" pause and quick reveal (see pacing
+   below), so cached and on-phone answers don't look instant.
      If streaming fails before any text, it asks again with stream:false (plain JSON).
    The last 6 turns go along as history. For assignment questions, the matching items from
    the student's own Schoology list (fh_schoology_v1) go along as context.assignments;
    they stay in this browser otherwise and the server never stores them.
    A modal dialog: focus moves into it, Tab stays inside, Escape or Close returns focus to
-   the button. Replies land in a role=log live region; a streamed answer is announced once,
-   when it is complete.
+   the button. Replies land in a role=log; #askSay announces "thinking" and then each
+   finished answer once.
 ===================================================== */
 (function(){
   var fab=document.getElementById("askFab"), panel=document.getElementById("askPanel");
@@ -3120,16 +3121,10 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   function sgyOn(){ return typeof sgyConnected==="function" && sgyConnected() && sgy && Array.isArray(sgy.items) && sgy.items.length>0; }
   function renderChips(){
     if(!chips) return;
-    if(hist.length || log.querySelector(".askmsg.me")){ chips.hidden=true; return; }
+    if(hist.length || log.querySelector(".askmsg.me")) return; // past the first question: follow-ups own the row
     var list=[ tr("What period is it?","¿Qué periodo es ahora?"), tr("When is the next home game?","¿Cuándo es el próximo partido en casa?") ];
     list.push(sgyOn() ? tr("What's due this week?","¿Qué tengo pendiente esta semana?") : tr("Help me plan my week","Ayúdame a planear mi semana"));
-    chips.innerHTML="";
-    list.forEach(function(q){
-      var b=document.createElement("button"); b.type="button"; b.className="askchip"; b.textContent=q;
-      b.addEventListener("click", function(){ input.value=q; ask(); if(input) input.focus(); });
-      chips.appendChild(b);
-    });
-    chips.hidden=false;
+    showChips(list);
   }
 
   /* ---------- the log ---------- */
@@ -3235,52 +3230,209 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     }finally{ to.done(); }
   }
 
+  /* ---------- pacing (felipe-evals/PACING-RESEARCH.md) ----------
+     Every answer, even one the phone or the shared cache already has, gets a short "thinking"
+     pause and then a quick word-by-word reveal, so Felipe never looks instant or canned:
+     - the dots show READ_MS after the question (as if Felipe read it first), with a short line
+       saying what Felipe is checking (the bell schedule, the sports schedule...);
+     - the pause is BASE_MS + Q_MS per question character + A_MS per answer character, give or
+       take JITTER, kept between MIN_MS and MAX_MS (about SHORT_MS for a one-line reply), and REPEAT times
+       that from a student's 4th answer on (experienced users find delays slower). Time already
+       spent waiting on the network counts toward it, so a slow answer is never held back;
+     - past STILL_MS the line says Felipe is still checking;
+     - the answer fades in and its words appear at REVEAL_CPS characters a second, faster for a
+       long answer so a whole reveal takes about REVEAL_MAX_MS at most. A tap shows it all.
+     With reduced motion the pause stays, the dots stand still and the answer appears whole.
+     Crisis replies never wait. Screen readers hear "Felipe is thinking", then the whole
+     answer once (#askSay); the log itself is not a live region. */
+  var PACE = { READ_MS:300, BASE_MS:700, Q_MS:8, A_MS:3, JITTER:0.1, MIN_MS:700, SHORT_MS:500, MAX_MS:2500, REPEAT:0.7,
+    STILL_MS:4500, REVEAL_CPS:180, REVEAL_MAX_MS:900 };
+  var answered=0;
+  var RM = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+  function still(){ return !!(RM && RM.matches); }
+  function raf(fn){ return typeof requestAnimationFrame==="function" ? requestAnimationFrame(fn) : setTimeout(fn,16); }
+  // whole: a is the full answer (not just the first streamed words), so a one-liner can be quicker.
+  function thinkMs(q, a, whole){
+    var al = String(a||"").length;
+    var t = (PACE.BASE_MS + PACE.Q_MS*String(q||"").length + PACE.A_MS*al) * (1 + PACE.JITTER*(2*Math.random()-1));
+    if(answered>=3) t *= PACE.REPEAT;
+    if(whole && al<40) return Math.round(Math.min(PACE.SHORT_MS + 100*Math.random(), t));
+    return Math.round(Math.min(PACE.MAX_MS, Math.max(PACE.MIN_MS, t)));
+  }
+  var sayEl = document.getElementById("askSay");
+  function say(text){
+    if(!sayEl) return;
+    sayEl.textContent = "";
+    setTimeout(function(){ sayEl.textContent = text; }, 60);
+  }
+  // Keeps a growing bubble in view: follows it down, but never scrolls its first line away.
+  function follow(el){
+    var top = el.getBoundingClientRect().top - log.getBoundingClientRect().top + log.scrollTop - 8;
+    log.scrollTop = Math.min(top, log.scrollHeight - log.clientHeight);
+  }
+  function workLabel(c){
+    var i = c && c.intent;
+    if(c && c.needsAssignments && sgyOn()) return tr("Looking at your assignments","Revisando tus tareas");
+    if(/^(?:period_now|time_left|bell_time|day_type|school_on|schedule)$/.test(i)) return tr("Checking the bell schedule","Revisando el horario");
+    if(/^(?:next_game|sports)$/.test(i)) return tr("Checking the sports schedule","Revisando los partidos");
+    if(/^(?:next_event|events)$/.test(i)) return tr("Checking the events calendar","Revisando los eventos");
+    if(/^spirit/.test(i)) return tr("Checking spirit points","Revisando los puntos de espíritu");
+    if(/^announcements/.test(i)) return tr("Reading the announcements","Leyendo los anuncios");
+    if(i==="clubs") return tr("Looking through the clubs","Revisando los clubes");
+    return "";
+  }
+  function thinking(c){
+    var d=document.createElement("div"); d.className="askmsg bot asktyping"; d.setAttribute("aria-hidden","true"); d.hidden=true;
+    d.innerHTML='<span class="askdots"><i></i><i></i><i></i></span>';
+    var w=document.createElement("span"); w.className="askwork"; w.textContent=workLabel(c); d.appendChild(w);
+    var stick=nearBottom();
+    log.appendChild(d);
+    var t1=setTimeout(function(){ d.hidden=false; if(stick) toBottom(); }, PACE.READ_MS);
+    var t2=setTimeout(function(){ w.textContent=tr("Still checking…","Sigo revisando…"); }, PACE.STILL_MS);
+    return { remove:function(){ clearTimeout(t1); clearTimeout(t2); d.remove(); } };
+  }
+  // A bot bubble whose words appear quickly; set() can be called again as more text streams in.
+  function reveal(cls){
+    var bub=document.createElement("div"); bub.className="askmsg bot askin"+(cls?" "+cls:"");
+    var node=document.createTextNode(""); bub.appendChild(node);
+    var stick=nearBottom(); log.appendChild(bub);
+    var target="", shown=0, last=0, ticking=false, tick=0, ended=false, cb=null, fin=false;
+    function cut(n){
+      if(n>=target.length) return target.length;
+      return Math.max(0, target.lastIndexOf(" ", n), target.lastIndexOf("\n", n));
+    }
+    function draw(){ node.nodeValue=target.slice(0, cut(Math.floor(shown))); if(stick) follow(bub); }
+    function done(){
+      if(fin) return; fin=true;
+      var fresh=document.createTextNode(target); bub.replaceChild(fresh, node); node=fresh;
+      if(stick) follow(bub);
+      if(cb) cb(bub);
+    }
+    function frame(){
+      ticking=false;
+      var ts=Date.now(), dt = last ? Math.min(100, ts-last) : 16; last=ts;
+      var cps = Math.max(PACE.REVEAL_CPS, target.length*1000/PACE.REVEAL_MAX_MS, (target.length-shown)*1000/600);
+      shown = Math.min(target.length, shown + cps*dt/1000);
+      draw();
+      if(shown<target.length) kick(); else { last=0; if(ended) done(); }
+    }
+    // A frame, or a timer when the browser pauses frames (a tab in the background).
+    function kick(){
+      if(ticking) return; ticking=true;
+      var my=++tick, go=function(){ if(my===tick && ticking) frame(); };
+      raf(go); setTimeout(go, 80);
+    }
+    bub.addEventListener("click", function(){ if(ended && !fin){ shown=target.length; draw(); done(); } });
+    return {
+      set:function(t){ target=plain(t); if(still()){ shown=target.length; draw(); } else kick(); },
+      end:function(fn){ ended=true; cb=fn; if(shown>=target.length) done(); else kick(); }
+    };
+  }
+
+  /* ---------- suggested next questions ---------- */
+  // Two short ones that fit the answer just given; one the student passed over isn't offered again.
+  var shownChips=[], passed={};
+  function nextQs(c){
+    var i = c && c.intent;
+    if(/^(?:period_now|time_left|bell_time|day_type|school_on|schedule)$/.test(i)) return [tr("When is lunch today?","¿A qué hora es el almuerzo hoy?"), tr("What's tomorrow's schedule?","¿Cuál es el horario de mañana?"), tr("When does school end today?","¿A qué hora termina la escuela hoy?")];
+    if(/^(?:next_game|sports)$/.test(i)) return [tr("When is the next home game?","¿Cuándo es el próximo partido en casa?"), tr("What games are coming up?","¿Qué partidos vienen?")];
+    if(/^(?:next_event|events)$/.test(i)) return [tr("What's happening this week?","¿Qué hay esta semana?"), tr("When is the next home game?","¿Cuándo es el próximo partido en casa?")];
+    if(/^spirit/.test(i)) return [tr("Which class is winning?","¿Qué clase va ganando?"), tr("How do spirit points work?","¿Cómo funcionan los puntos de espíritu?")];
+    if(/^announcements/.test(i)) return [tr("What's happening this week?","¿Qué hay esta semana?"), tr("What period is it?","¿Qué periodo es ahora?")];
+    if(i==="clubs") return [tr("How do I join a club?","¿Cómo me uno a un club?"), tr("What's happening this week?","¿Qué hay esta semana?")];
+    if(/^(?:assignments|planning|study|writing)$/.test(i) && sgyOn()) return [tr("What's due tomorrow?","¿Qué tengo para mañana?"), tr("Help me plan my week","Ayúdame a planear mi semana")];
+    return [];
+  }
+  function showChips(list){
+    chips.innerHTML=""; shownChips=list.slice();
+    list.forEach(function(q){
+      var b=document.createElement("button"); b.type="button"; b.className="askchip askin"; b.textContent=q;
+      b.addEventListener("click", function(){
+        shownChips=[]; input.value=q; ask();
+        // On a phone, focusing the box would pop the keyboard over the answer.
+        if(input && !(window.matchMedia && matchMedia("(pointer: coarse)").matches)) input.focus();
+      });
+      chips.appendChild(b);
+    });
+    chips.hidden=!list.length;
+  }
+  function followUps(c, q){
+    if(!chips || queue.length) return;
+    var ql=String(q||"").trim().toLowerCase();
+    var list=nextQs(c).filter(function(x){ return x.toLowerCase()!==ql && !passed[x]; }).slice(0,2);
+    var stick=nearBottom();
+    showChips(list);
+    if(stick) toBottom();
+  }
+
   /* ---------- one question ---------- */
-  // App-data, canned and crisis answers are instant and never wait. Questions for the server
-  // go one at a time, at least 1.5 s apart; one sent while Felipe is still answering waits
-  // its turn instead of being dropped.
+  // Crisis replies show at once. Everything else goes one at a time, in order, with the pacing
+  // above; questions for the server are also at least 1.5 s apart. A question sent while
+  // Felipe is still answering waits its turn instead of being dropped.
   function ask(){
     var q=(input.value||"").trim(); if(!q) return;
     q=q.slice(0,500);
-    add(q,"me"); input.value="";
+    shownChips.forEach(function(x){ if(x!==q) passed[x]=true; }); shownChips=[];
+    add(q,"me").classList.add("askin"); input.value="";
     if(chips) chips.hidden=true;
-    var history=hist.slice(-HIST_TURNS);
-    var c = null;
-    if(Core){ try{ c = Core.classify(q, { history:history, lang:fhLang }); }catch(e){ c = null; } }
-    var lang = (c && c.lang) || fhLang;
-
+    var c=null;
+    if(Core){ try{ c = Core.classify(q, { history:hist.slice(-HIST_TURNS), lang:fhLang }); }catch(e){ c = null; } }
     if(c && c.route==="crisis"){
+      var lang=c.lang||fhLang;
       var cd=add(Core.crisisReply(lang, c.reason),"bot crisis"); crisisActions(cd, lang, c.reason);
+      var said=cd.textContent;
       // Typed in one language with the app in the other: show the app's language too.
-      if(lang!==fhLang){ var cd2=add(Core.crisisReply(fhLang, c.reason),"bot crisis"); crisisActions(cd2, fhLang, c.reason); }
-      toBottom(); return;
+      if(lang!==fhLang){ var cd2=add(Core.crisisReply(fhLang, c.reason),"bot crisis"); crisisActions(cd2, fhLang, c.reason); said+=" "+cd2.textContent; }
+      say(said); toBottom(); return;
     }
-    if(c && c.route==="cannot"){ add(Core.cannotReply(c.reason, lang),"bot"); return; }
-    if(c && c.route==="local"){
-      var loc = null;
-      try{ loc = Core.answerLocal(c.intent, c.resolved || q, appData(), lang); }catch(e){ loc = null; }
-      if(loc && loc.text){
-        var ld=add(loc.text,"bot local");
-        toBottom();
-        remember("user", q); remember("model", loc.text);
-        return;
-      }
-    }
-    queue.push({ q:q, c:c, lang:lang });
+    queue.push({ q:q });
     pump();
   }
   function pump(){
     if(busy || !queue.length) return;
+    run(queue.shift());
+  }
+  function done(c, q, ok){
+    answered++;
+    log.removeAttribute("aria-busy");
+    busy=false;
+    if(ok) followUps(c, q);
+    pump();
+  }
+  // Classified when its turn comes, so a follow-up sees the answer before it.
+  function run(job){
+    busy=true;
+    var q=job.q, t0=Date.now(), c=null;
+    if(Core){ try{ c = Core.classify(q, { history:hist.slice(-HIST_TURNS), lang:fhLang }); }catch(e){ c = null; } }
+    var lang = (c && c.lang) || fhLang;
+    log.setAttribute("aria-busy","true");
+    say(tr("Felipe is thinking","Felipe está pensando"));
+    var th=thinking(c);
+    var text=null, cls="";
+    if(c && c.route==="cannot") text=Core.cannotReply(c.reason, lang);
+    else if(c && c.route==="local"){
+      var loc=null;
+      try{ loc = Core.answerLocal(c.intent, c.resolved || q, appData(), lang); }catch(e){ loc = null; }
+      if(loc && loc.text){ text=loc.text; cls="local"; }
+    }
+    if(text!=null){
+      setTimeout(function(){
+        th.remove();
+        var rv=reveal(cls); rv.set(text);
+        rv.end(function(b){
+          say(b.textContent);
+          if(cls){ remember("user", q); remember("model", text); }
+          done(c, q, true);
+        });
+      }, Math.max(0, thinkMs(q, text, true) - (Date.now()-t0)));
+      return;
+    }
     var gap = LLM_GAP_MS - (Date.now()-lastSend);
-    if(gap > 0){ busy=true; setTimeout(function(){ busy=false; pump(); }, gap); return; }
-    var job = queue.shift();
-    lastSend = Date.now();
-    sendLlm(job.q, job.c, job.lang);
+    setTimeout(function(){ lastSend=Date.now(); sendLlm(q, c, lang, th, t0); }, Math.max(0, gap));
   }
 
-  // The server (Gemini).
-  function sendLlm(q, c, lang){
-    busy=true;
+  // The server (Gemini, the shared cache, or an answer made from the data).
+  function sendLlm(q, c, lang, th, t0){
     var history=hist.slice(-HIST_TURNS);
     // v:2 = this app shows the "fuller answers are back soon" note itself (once per visit).
     var body={ question:q, history:history, lang:lang, v:2 };
@@ -3292,47 +3444,42 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
       // A follow-up about the items sent last time ("summarize the first one") gets them again.
       body.context = { assignments: lastAssign };
     }else lastAssign = null;
-    var typing=add(tr("Felipe is thinking…","Felipe está pensando…"),"bot typing");
-    typing.setAttribute("aria-hidden","true"); // the answer is announced; "thinking" is just visual
-    log.setAttribute("aria-busy","true");     // screen readers wait for the finished answer
-    var bub=null, node=null, pending=null, raf=0;
-    function paint(){
-      raf=0; if(pending==null) return;
-      var stick = nearBottom();
-      if(!bub){
-        typing.remove();
-        bub=document.createElement("div"); bub.className="askmsg bot streaming";
-        node=document.createTextNode(""); bub.appendChild(node); log.appendChild(bub);
-      }
-      node.nodeValue = plain(pending); pending=null;
-      if(stick) toBottom();
+    var rv=null, latest="", timer=0, started=false, final=null;
+    // The pause counts from the question; the first words decide how long it is.
+    function schedule(t, whole){ if(!timer && !started) timer=setTimeout(begin, Math.max(0, thinkMs(q, t, whole) - (Date.now()-t0))); }
+    function begin(){
+      if(started) return; started=true; clearTimeout(timer);
+      th.remove(); rv=reveal(""); rv.set(latest);
+      if(final) close();
     }
-    function onText(t){
-      pending=t;
-      if(!raf) raf = (typeof requestAnimationFrame==="function") ? requestAnimationFrame(paint) : setTimeout(paint,16);
-    }
+    function onText(t){ latest=t; if(started) rv.set(t); else schedule(t); }
     function finish(r){
-      if(raf){ if(typeof cancelAnimationFrame==="function") cancelAnimationFrame(raf); clearTimeout(raf); raf=0; }
-      typing.remove();
-      var text = plain(r.text).trim();
-      if(bub){
-        bub.classList.remove("streaming");
-        var fresh=document.createTextNode(text); bub.replaceChild(fresh, node); node=fresh;
-      }else{
-        bub = add(text || TRY_AGAIN(),"bot");
-      }
-      if(r.partial){ var n=document.createElement("span"); n.className="asksrc"; n.textContent=tr("This answer was cut short. Please ask again.","Esta respuesta quedó incompleta. Vuelve a preguntar, por favor."); bub.appendChild(n); }
-      log.removeAttribute("aria-busy");
-      if(text && !r.fallback && !r.partial){ remember("user", q); remember("model", text); }
-      toBottom();
+      final=r; latest=plain(r.text).trim() || TRY_AGAIN();
+      if(started) close(); else schedule(latest, true);
+    }
+    function close(){
+      var r=final, text=latest;
+      rv.set(text);
+      rv.end(function(b){
+        if(r.partial){ var n=document.createElement("span"); n.className="asksrc"; n.textContent=tr("This answer was cut short. Please ask again.","Esta respuesta quedó incompleta. Vuelve a preguntar, por favor."); b.appendChild(n); }
+        if(r.retry){
+          var row=document.createElement("div"); row.className="askact";
+          var again=document.createElement("button"); again.type="button"; again.className="btn"; again.textContent=tr("Try again","Intentar de nuevo");
+          again.addEventListener("click", function(){ row.remove(); input.value=q; ask(); });
+          row.appendChild(again); b.appendChild(row);
+        }
+        say(b.textContent);
+        var ok = text && !r.fallback && !r.partial;
+        if(ok){ remember("user", q); remember("model", text); }
+        done(c, q, ok);
+      });
     }
     askStream(body, onText)
       .catch(function(e){ if(e && e.noServer) return askJson(body); throw e; })
       .then(finish)
       .catch(function(){
-        finish({ text:tr("Couldn't reach Felipe right now. Check the Schedule, Clubs, Sports, or More tabs.","No pudimos comunicarnos con Felipe en este momento. Revisa las pestañas Horario, Clubes, Deportes o Más."), fallback:true });
-      })
-      .then(function(){ busy=false; pump(); });
+        finish({ text:tr("Couldn't reach Felipe right now. Check your connection and try again, or look at the Schedule, Clubs and Sports tabs.","No pudimos comunicarnos con Felipe. Revisa tu conexión e inténtalo de nuevo, o mira las pestañas Horario, Clubes y Deportes."), fallback:true, retry:true });
+      });
   }
   form.addEventListener("submit", function(e){ e.preventDefault(); ask(); });
 })();

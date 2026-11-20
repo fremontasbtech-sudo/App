@@ -663,12 +663,8 @@ body.dd-open .askfab{visibility:hidden} /* a Sport or Level list is open: don't 
 .askmsg{max-width:85%; padding:9px 12px; border-radius:var(--r); font-size:14px; line-height:1.4; white-space:pre-wrap}
 .askmsg.bot{align-self:flex-start; background:#fff; border:1.5px solid var(--line,#e4d9c4); color:var(--ink,#271510)}
 .askmsg.me{align-self:flex-end; background:var(--gold-soft,#FFE9A8); color:var(--ink,#271510)}
-.askmsg.typing{opacity:.6; font-style:italic}
 .askmsg.local{border-left:4px solid var(--gold,#FFC91F)}
 .askmsg.crisis{border:2px solid var(--cardinal,#8F1106); max-width:100%}
-.askmsg.streaming::after{content:""; display:inline-block; width:7px; height:1em; margin-left:2px; vertical-align:-2px; background:var(--cardinal,#8F1106); animation:askcaret 1s steps(2,start) infinite}
-@keyframes askcaret{to{visibility:hidden}}
-@media (prefers-reduced-motion:reduce){ .askmsg.streaming::after{animation:none} }
 .asksrc{display:block; margin-top:6px; font-size:11.5px; font-weight:700; color:var(--ink-soft,#5F5047); white-space:normal}
 .askact{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; white-space:normal}
 .askact .btn{min-height:44px; font-size:14px; padding:8px 12px; display:inline-flex; align-items:center; text-decoration:none}
@@ -1284,3 +1280,20 @@ dialog.quiz{padding:16px 18px 18px; max-height:calc(100dvh - 32px); overflow:aut
 .clubsearch{flex:1 1 0}
 @media (max-width:360px){ .matchbtn{font-size:14px; padding:8px 10px} }
 .clubsearch input[type=text]:placeholder-shown{padding-right:10px}
+
+/* v52: Ask Felipe pacing (felipe-evals/PACING-RESEARCH.md): thinking dots, then a quick fade-in */
+.asktyping{display:inline-flex; align-items:center; gap:10px; padding:11px 14px; min-height:38px}
+.asktyping[hidden]{display:none}
+.askdots{display:inline-flex; align-items:center; gap:4px}
+.askdots i{width:7px; height:7px; border-radius:50%; background:var(--cardinal,#8F1106); opacity:.3; animation:askdot 1.2s cubic-bezier(.4,0,.6,1) infinite}
+.askdots i:nth-child(2){animation-delay:.16s}
+.askdots i:nth-child(3){animation-delay:.32s}
+@keyframes askdot{0%,60%,100%{opacity:.3; transform:translateY(0)} 30%{opacity:1; transform:translateY(-3px)}}
+.askwork{font-size:12.5px; font-weight:600; color:var(--ink-soft,#5F5047); white-space:normal}
+.askwork:empty{display:none}
+.askin{animation:askin .22s cubic-bezier(.05,.7,.1,1) both}
+.askmsg.me.askin{animation-duration:.16s}
+@keyframes askin{from{opacity:0; transform:translateY(8px)}}
+.askact button.btn{cursor:pointer; background:#fff; color:var(--ink,#271510)}
+.askact button.btn:hover{background:var(--gold-soft,#FFE9A8)}
+@media (prefers-reduced-motion:reduce){ .askdots i{animation:none; opacity:.55} .askin{animation:none} }

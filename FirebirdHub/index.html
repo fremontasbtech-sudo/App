@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=51">
+<link rel="stylesheet" href="styles.css?v=52">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -534,13 +534,14 @@
 <div id="askBack" class="askback" hidden></div>
 <div id="askPanel" class="askpanel" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
   <div class="askhead"><b id="askTitle">Ask Felipe</b><button id="askClose" class="askx" type="button" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
-  <div id="askLog" class="asklog" role="log" aria-live="polite" aria-relevant="additions"><div class="askmsg bot">Hi! Ask me about your schedule, events, clubs, sports, or your classes and assignments.</div></div>
+  <div id="askLog" class="asklog" role="log" aria-live="off"><div class="askmsg bot">Hi! Ask me about your schedule, events, clubs, sports, or your classes and assignments.</div></div>
   <div id="askChips" class="askchips" hidden></div>
+  <div id="askSay" class="sr" role="status" aria-live="polite" aria-atomic="true"></div>
   <form id="askForm" class="askform" autocomplete="off">
     <input id="askInput" type="text" maxlength="500" placeholder="Ask about school, clubs, homework…" aria-label="Your question">
     <button class="btn primary" type="submit">Send</button>
   </form>
-  <p class="askdis">For questions about school life. Answers aren't monitored live.</p>
+  <p class="askdis">Felipe is an AI and can make mistakes. Answers aren't monitored live.</p>
 </div>
 
 <dialog id="qrDialog" aria-labelledby="qrTitle">
@@ -606,6 +607,6 @@
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
 <script src="felipe-core.js?v=6"></script>
-<script src="app.js?v=62"></script>
+<script src="app.js?v=63"></script>
 </body>
 </html>
