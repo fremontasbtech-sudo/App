@@ -1277,3 +1277,10 @@ dialog.quiz{padding:16px 18px 18px; max-height:calc(100dvh - 32px); overflow:aut
 :focus-visible{border-radius:0}
 .wxhl{white-space:nowrap}
 .spiritclosed > h3{margin-bottom:0}
+
+/* v51 (2026-11-20): narrow phones (320 to 375 px). Nothing may be wider than its box:
+   the club search used to keep a 200 px minimum and slid under "Find your club". */
+.clubtools input[type=text], .clubsearch input[type=text]{min-width:0}
+.clubsearch{flex:1 1 0}
+@media (max-width:360px){ .matchbtn{font-size:14px; padding:8px 10px} }
+.clubsearch input[type=text]:placeholder-shown{padding-right:10px}
