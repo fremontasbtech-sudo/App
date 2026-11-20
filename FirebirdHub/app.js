@@ -616,10 +616,13 @@ const SEASON_OF = {};
 ].forEach(function(pair){ pair[1].forEach(function(s){ SEASON_OF[s]=pair[0]; }); });
 function currentSeason(){ const m=nowPST().getMonth()+1; if(m>=8&&m<=10) return "fall"; if(m>=11||m<=2) return "winter"; return "spring"; }
 function sportSeason(s){ return SEASON_OF[s]||"other"; }
+// In-season sports, plus an off-season sport only while it still has a game or meet coming up
+// in the next 3 weeks (playoffs). A finished season leaves the day after its last event
+// (Abir 2026-11-20: Cross Country was still shown a week after CCS Finals).
 function activeSports(){
-  const today = todayKeyPST(), lo = isoAddDays(today,-7), hi = isoAddDays(today,21), season = currentSeason();
+  const today = todayKeyPST(), hi = isoAddDays(today,21), season = currentSeason();
   const set = {};
-  sportsGames.forEach(function(g){ if(sportSeason(g.sport)===season || (g.date>=lo && g.date<=hi)) set[g.sport]=1; });
+  sportsGames.forEach(function(g){ if(sportSeason(g.sport)===season || (g.date>=today && g.date<=hi && !isResultGame(g,today))) set[g.sport]=1; });
   return Object.keys(set).sort(function(a,b){ return sportRank(a)-sportRank(b) || a.localeCompare(b); });
 }
 const SPORT_SLUG = {"Football":"football","Cross Country":"cross-country","Field Hockey":"field-hockey","Flag Football":"flag-football","Girls Tennis":"girls-tennis","Girls Volleyball":"girls-volleyball","Boys Water Polo":"boys-water-polo","Girls Water Polo":"girlswaterpolo","Boys Basketball":"boys-basketball","Girls Basketball":"girls-basketball","Boys Soccer":"boys-soccer","Girls Soccer":"girls-soccer","Wrestling":"wrestling","Badminton":"badminton","Baseball":"baseball","Softball":"softball","Golf":"golf","Swimming & Diving":"swimming-and-diving","Boys Tennis":"boys-tennis","Track & Field":"track-and-field","Boys Volleyball":"boys-volleyball"};
