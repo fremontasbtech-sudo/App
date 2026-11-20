@@ -1150,3 +1150,129 @@ dialog, .announce-modal, dialog.quiz{border-radius:0}
 .clubsearch{min-width:0; flex:1 1 auto}
 .matchbtn{flex:none; margin-left:0; font-size:15px; padding:8px 12px; white-space:nowrap; box-shadow:var(--hard)}
 .quizprog{border-radius:0}
+
+/* =====================================================================
+   v49 (2026-11-20): review-copy fixes, applied app-wide.
+===================================================================== */
+/* A view gets focus after a tab change (for screen readers); it is not a control, so no ring. */
+.view:focus{outline:none}
+#quizTitle:focus, #heroHello:focus{outline:none}
+
+/* Page end: no empty band between the last card and the footer. The footer itself clears
+   the bottom nav, so main only needs a normal gap. */
+main{padding-bottom:var(--space-4)}
+@media (min-width:880px){ main{padding-bottom:var(--space-5) !important} }
+
+/* Footer: same text, much shorter. On phones the text sits left so the round Ask Felipe
+   button has its own corner and never covers a word. */
+footer{
+  display:flex; flex-direction:column; gap:2px; text-align:left; font-size:12.5px; line-height:1.4;
+  padding:12px 96px calc(84px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+footer b{font-size:14px; letter-spacing:.07em}
+footer .fsmall{font-size:12px; opacity:.8}
+@media (min-width:880px){
+  footer{align-items:center; text-align:center; padding:14px 24px}
+}
+
+/* Ask Felipe: a small round button that stays visible but takes little room. */
+.askfab{
+  width:64px; height:64px; padding:0; border-radius:50%;
+  flex-direction:column; align-items:center; justify-content:center; gap:0;
+  font-family:var(--font-display); text-transform:uppercase; font-weight:700; font-size:14px; letter-spacing:.04em; line-height:1;
+  border:2px solid var(--gold); box-shadow:3px 3px 0 var(--ink);
+  bottom:calc(84px + env(safe-area-inset-bottom, 0px));
+  transition:transform .12s ease, box-shadow .12s ease;
+}
+.askfab span{display:block}
+.askfab span + span{font-size:13px; margin-top:2px; color:var(--gold-soft)}
+.askfab:hover{transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--ink)}
+.askfab:active{transform:translate(2px,2px); box-shadow:1px 1px 0 var(--ink)}
+.askfab:focus-visible{outline:3px solid var(--ink); outline-offset:3px; border-radius:50%}
+.askfab[aria-expanded="true"]{background:var(--ink)}
+.askpanel{bottom:calc(160px + env(safe-area-inset-bottom, 0px))}
+@media (max-width:560px){
+  .askfab{bottom:calc(80px + env(safe-area-inset-bottom, 0px))}
+  .askpanel{bottom:calc(154px + env(safe-area-inset-bottom, 0px))}
+}
+@media (min-width:880px){ .askfab{bottom:24px} .askpanel{bottom:100px} }
+/* Felipe's panel opens with the same motion as every dialog. */
+.askpanel:not([hidden]){animation:viewin .2s ease-out}
+
+/* Dropdown lists (Sport, Level): one line per option, counts in one right-hand column.
+   The list may be wider than its field; the right-hand field's list opens toward the left. */
+.dd-list{min-width:100%; width:max-content; max-width:min(380px, calc(100vw - 32px))}
+.sportfilters .selwrap + .selwrap .dd-list{left:auto; right:0}
+.dd-opt{display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:14px}
+.dd-name{min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.dd-count{min-width:96px; text-align:center; font-variant-numeric:tabular-nums}
+
+/* Event and game tickets: a little bigger now the footer gives back the room. */
+.ticket .stub{width:66px; padding:10px 4px}
+.ticket .stub .mo{font-size:13.5px}
+.ticket .stub .day{font-size:31px}
+.ticket .body{padding:12px 14px}
+.ticket h3, .ticket .tkh{font-size:19px}
+.ticket .meta{font-size:14px; margin:2px 0 4px}
+.ticket p{font-size:14.5px}
+.nextup{padding:12px 14px}
+.nextup b{font-size:19px}
+
+/* Home hero: smaller, a greeting, and the weather line. */
+.hero .copy{padding:12px 14px 14px}
+.hero h1{font-size:clamp(25px,6.4vw,44px)}
+.hero .kicker, .hero h1{margin-right:76px}
+.hero .art{width:64px; top:10px; right:10px}
+.hero .btnrow{margin-top:10px}
+.hero .btnrow .btn{font-size:15px; padding:8px 12px}
+.wx{display:flex; align-items:center; gap:10px; margin:10px 0 0; color:var(--ink); font-size:15px; line-height:1.35}
+.hero .copy p.wx{margin-top:10px; color:var(--ink); font-size:15px}
+.wxico{flex:none; width:36px; height:36px; display:grid; place-items:center; background:var(--gold); color:var(--ink); border:2px solid var(--ink)}
+.wxtxt b{font-family:var(--font-display); font-size:20px; letter-spacing:.02em; margin-right:2px}
+.wxhl{color:var(--ink-soft)}
+@media (min-width:760px){
+  .hero .kicker, .hero h1{margin-right:0}
+  .hero .art{width:auto; padding:16px}
+  .hero .art img{width:min(70%,280px)}
+}
+
+/* More: settings, the feedback form and links, each full width and readable on a phone. */
+.moretop{grid-template-columns:1fr; gap:14px}
+.setpanel, .quickpanel, .moretop .fbpanel{padding:14px; margin:0}
+.setpanel .subhead, .quickpanel .subhead, .moretop .fbpanel .subhead{font-size:18px; margin-bottom:10px}
+.setpanel .setrow{flex-direction:row; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1.5px solid var(--line)}
+.setpanel .setrow:last-of-type{border-bottom:0}
+.setpanel .setlabel{font-size:15px; text-transform:none; letter-spacing:0; color:var(--ink)}
+.setpanel .segbtns{flex:none; width:min(210px, 56%)}
+.segbtn{font-size:15px; padding:9px 6px}
+.setpanel .hint{font-size:13px; margin-top:8px}
+.quickpanel .linkrow{font-size:16px; gap:12px; min-height:50px}
+.moretop .fbpanel > .hint{font-size:14px; margin:0 0 12px}
+.moretop .fbpanel .btn.primary{width:100%; justify-content:center}
+@media (max-width:520px){ #fbForm .fieldrow{grid-template-columns:1fr; gap:0} }
+@media (min-width:760px){
+  .moretop{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr); grid-template-areas:"set fb" "links fb"}
+  .moretop .setpanel{grid-area:set} .moretop .quickpanel{grid-area:links} .moretop .fbpanel{grid-area:fb}
+}
+@media (max-width:340px){ .setpanel .setrow{flex-direction:column; align-items:stretch} .setpanel .segbtns{width:100%} }
+
+/* Find your club: same step for every question, slide in from the side you came from,
+   Back and Next in one row, a progress bar that slides between steps. */
+dialog.quiz{padding:16px 18px 18px; max-height:calc(100dvh - 32px); overflow:auto}
+.quizhead{margin-bottom:8px}
+.quizprog span{transition:width .3s ease}
+.quizstepn{text-align:left; margin:0 0 4px; font-size:12.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase}
+.quizopt{border-radius:0; transition:background .15s ease, transform .12s ease, box-shadow .12s ease; box-shadow:2px 2px 0 rgba(39,21,16,.2)}
+.quizopt.on{background:var(--gold); box-shadow:3px 3px 0 var(--ink)}
+.quiznav{display:flex; gap:10px; margin-top:6px}
+.quiznav .btn{flex:1; justify-content:center; font-size:15px}
+.quiznav .btn[disabled]{opacity:.45; cursor:not-allowed; transform:none; box-shadow:none}
+.matchcard{border-radius:0}
+.quizpane.from-next.in{animation:quizfromr .24s ease-out}
+.quizpane.from-back.in{animation:quizfroml .24s ease-out}
+@keyframes quizfromr{from{opacity:0; transform:translateX(22px)} to{opacity:1; transform:none}}
+@keyframes quizfroml{from{opacity:0; transform:translateX(-22px)} to{opacity:1; transform:none}}
+@media (prefers-reduced-motion:reduce){ .quizpane.in{animation:none} .quizprog span{transition:none} }
+/* Square focus rings everywhere, to match the square layout. */
+:focus-visible{border-radius:0}
+.wxhl{white-space:nowrap}

@@ -1552,9 +1552,9 @@ document.getElementById("giveForm").addEventListener("submit", async e=>{
    of the Events sheet. A failure keeps the typed message and asks to try again. */
 const CONTACT_API = "https://www.fremontasb.org/api/contact";
 var fbOpenedAt = Date.now(); // the API drops forms sent within 2 s of opening (bots)
-/* More: the feedback form and About open in place from the quick links, one at a time. */
+/* More: the feedback form is always on the page; About opens in place from the links. */
 (function(){
-  var pairs = [["fbOpen","fbPanel"],["aboutOpen","aboutPanel"]];
+  var pairs = [["aboutOpen","aboutPanel"]];
   pairs.forEach(function(p){
     var btn = document.getElementById(p[0]); if(!btn) return;
     btn.addEventListener("click", function(){
@@ -1563,7 +1563,6 @@ var fbOpenedAt = Date.now(); // the API drops forms sent within 2 s of opening (
       if(open){
         var panel = document.getElementById(p[1]);
         panel.scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block:"nearest"});
-        if(p[1]==="fbPanel"){ var f=document.getElementById("fbName"); if(f) setTimeout(function(){ f.focus({preventScroll:true}); }, 250); }
       }
     });
   });
@@ -1930,29 +1929,53 @@ const MATCH_QS = [
     {t:"Just have fun", cats:["Sports & Games","Special Interest"]}
   ]}
 ];
-let quizStep=0, quizPrefs={}, quizSel=[];
-function openMatch(){ quizStep=0; quizPrefs={}; renderQuizStep(); const d=document.getElementById("matchDialog"); if(d && !d.open) d.showModal(); }
-function addCats(cats){ (cats||[]).forEach(function(c){ quizPrefs[c]=(quizPrefs[c]||0)+1; }); }
-function advance(){ quizStep++; if(quizStep>=MATCH_QS.length) renderQuizResults(); else renderQuizStep(); }
-function renderQuizStep(){
+/* Every question works the same way: tap answers (they turn gold), then Next. Back returns to
+   the last question with its answers kept. The header (progress + close) stays put, so the
+   progress bar slides, and each question slides in from the side it came from. */
+let quizStep=0, quizPrefs={}, quizAns=[];
+function quizDialog(){ return document.getElementById("matchDialog"); }
+function closeQuiz(){ const d=quizDialog(); if(d && d.open) d.close(); }
+function openMatch(){
+  quizStep=0; quizAns=[]; quizPrefs={};
   const body=document.getElementById("quizBody"); if(!body) return;
-  const Q=MATCH_QS[quizStep]; quizSel=[];
-  const pct=Math.round(quizStep/MATCH_QS.length*100);
-  body.innerHTML='<div class="quizhead"><span class="quizprog"><span style="width:'+pct+'%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div>'+
+  body.innerHTML='<div class="quizhead"><span class="quizprog" aria-hidden="true"><span style="width:0%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="'+tr("Close","Cerrar")+'">&times;</button></div><div class="quizpane" id="quizPane"></div>';
+  body.querySelector("#quizClose").onclick=closeQuiz;
+  renderQuizStep(0);
+  const d=quizDialog(); if(d && !d.open) d.showModal();
+}
+function quizProgress(pct){ const bar=document.querySelector("#quizBody .quizprog span"); if(bar) requestAnimationFrame(function(){ bar.style.width=pct+"%"; }); }
+function quizSwap(html, dir){
+  const pane=document.getElementById("quizPane"); if(!pane) return null;
+  pane.className="quizpane"+(dir? " from-"+dir : "");
+  pane.innerHTML=html;
+  void pane.offsetWidth; // restart the slide animation on every step
+  pane.classList.add("in");
+  return pane;
+}
+function quizFocusTitle(){ const h=document.getElementById("quizTitle"); if(h){ h.setAttribute("tabindex","-1"); h.focus({preventScroll:true}); } }
+function renderQuizStep(dir){
+  const Q=MATCH_QS[quizStep], sel=quizAns[quizStep]||(quizAns[quizStep]=[]), last=quizStep===MATCH_QS.length-1;
+  quizProgress(Math.round(quizStep/MATCH_QS.length*100));
+  const pane=quizSwap(
+    '<p class="quizstepn">'+tr('Question '+(quizStep+1)+' of '+MATCH_QS.length,'Pregunta '+(quizStep+1)+' de '+MATCH_QS.length)+'</p>'+
     '<h2 id="quizTitle" class="quizq">'+clubEsc(Q.q)+'</h2>'+
-    (Q.multi?'<p class="quizhint">Pick any that fit</p>':"")+
-    '<div class="quizopts">'+Q.opts.map(function(o,i){ return '<button type="button" class="quizopt" data-i="'+i+'">'+clubEsc(o.t)+'</button>'; }).join("")+'</div>'+
-    (Q.multi?'<button type="button" class="btn primary quiznext" id="quizNext">Next</button>':"")+
-    '<p class="quizstepn">'+tr('Question '+(quizStep+1)+' of '+MATCH_QS.length,'Pregunta '+(quizStep+1)+' de '+MATCH_QS.length)+'</p>';
-  body.querySelector("#quizClose").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
-  body.querySelectorAll(".quizopt").forEach(function(btn){
+    '<p class="quizhint">'+(Q.multi?tr("Pick any that fit","Elige todas las que te queden"):tr("Pick one","Elige una"))+'</p>'+
+    '<div class="quizopts" role="group" aria-labelledby="quizTitle">'+Q.opts.map(function(o,i){ const on=sel.indexOf(i)>=0; return '<button type="button" class="quizopt'+(on?' on':'')+'" data-i="'+i+'" aria-pressed="'+on+'">'+clubEsc(o.t)+'</button>'; }).join("")+'</div>'+
+    '<div class="quiznav">'+(quizStep>0?'<button type="button" class="btn ghost" id="quizBack">'+tr("Back","Atrás")+'</button>':'')+
+    '<button type="button" class="btn primary" id="quizNext"'+(sel.length?'':' disabled')+'>'+(last?tr("See my matches","Ver mis clubes"):tr("Next","Siguiente"))+'</button></div>', dir);
+  if(!pane) return;
+  const nx=pane.querySelector("#quizNext");
+  pane.querySelectorAll(".quizopt").forEach(function(btn){
     btn.onclick=function(){
-      const o=Q.opts[+btn.dataset.i];
-      if(Q.multi){ btn.classList.toggle("on"); const idx=quizSel.indexOf(o); if(idx>=0) quizSel.splice(idx,1); else quizSel.push(o); }
-      else { addCats(o.cats); advance(); }
+      const i=+btn.dataset.i, at=sel.indexOf(i);
+      if(Q.multi){ if(at>=0) sel.splice(at,1); else sel.push(i); }
+      else { sel.length=0; sel.push(i); }
+      pane.querySelectorAll(".quizopt").forEach(function(b){ const on=sel.indexOf(+b.dataset.i)>=0; b.classList.toggle("on",on); b.setAttribute("aria-pressed",String(on)); });
+      nx.disabled=!sel.length;
     };
   });
-  const nx=body.querySelector("#quizNext"); if(nx) nx.onclick=function(){ quizSel.forEach(function(o){ addCats(o.cats); }); advance(); };
+  nx.onclick=function(){ if(!sel.length) return; quizStep++; if(quizStep>=MATCH_QS.length) renderQuizResults("next"); else renderQuizStep("next"); quizFocusTitle(); };
+  const bk=pane.querySelector("#quizBack"); if(bk) bk.onclick=function(){ quizStep--; renderQuizStep("back"); quizFocusTitle(); };
 }
 function scoreClubs(){
   var total=Object.keys(quizPrefs).reduce(function(a,k){return a+quizPrefs[k];},0)||1;
@@ -1962,11 +1985,13 @@ function scoreClubs(){
     return {club:c, cat:cat, score:sc, pct:Math.max(10,Math.min(99,Math.round(sc/total*100)))};
   }).sort(function(a,b){ return (b.score-a.score) || String(a.club.name||"").localeCompare(String(b.club.name||"")); });
 }
-function renderQuizResults(){
+function renderQuizResults(dir){
+  quizPrefs={};
+  MATCH_QS.forEach(function(Q,qi){ (quizAns[qi]||[]).forEach(function(i){ (Q.opts[i].cats||[]).forEach(function(c){ quizPrefs[c]=(quizPrefs[c]||0)+1; }); }); });
+  quizProgress(100);
   const ranked=scoreClubs().filter(function(r){return r.score>0;}).slice(0,3);
-  const body=document.getElementById("quizBody"); if(!body) return;
-  let html='<div class="quizhead"><span class="quizprog"><span style="width:100%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="Close">&times;</button></div><h2 id="quizTitle" class="quizq">Your top matches</h2>';
-  if(!ranked.length){ html+='<p class="note">No strong match yet. Try browsing all clubs.</p>'; }
+  let html='<h2 id="quizTitle" class="quizq">'+tr("Your top matches","Tus mejores opciones")+'</h2>';
+  if(!ranked.length){ html+='<p class="note">'+tr("No strong match yet. Try browsing all clubs.","Todavía no hay una opción clara. Prueba a ver todos los clubes.")+'</p>'; }
   else html+=ranked.map(function(r){
     const c=r.club;
     var emails=Array.isArray(c.emails)?c.emails.filter(Boolean):[];
@@ -1975,13 +2000,13 @@ function renderQuizResults(){
     return '<div class="matchcard"><div class="matchtop"><h3>'+clubEsc(c.name)+'</h3><span class="matchpct">'+r.pct+tr('% match','% de afinidad')+'</span></div>'+
       '<p class="matchcat"><b>'+clubEsc(clubCatLabel(r.cat))+'</b></p>'+ meet +
       (desc?'<p class="matchwhy">'+clubEsc(desc.slice(0,140))+(desc.length>140?"…":"")+'</p>':"")+
-      (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">Email the club</a>':"")+'</div>';
+      (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">'+tr("Email the club","Escribir al club")+'</a>':"")+'</div>';
   }).join("");
-  html+='<div class="quizactions"><button type="button" class="btn ghost" id="quizRetake">Retake</button><button type="button" class="btn primary" id="quizDone">Browse all clubs</button></div>';
-  body.innerHTML=html;
-  body.querySelector("#quizClose").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
-  body.querySelector("#quizRetake").onclick=openMatch;
-  body.querySelector("#quizDone").onclick=function(){ const d=document.getElementById("matchDialog"); if(d) d.close(); };
+  html+='<div class="quiznav"><button type="button" class="btn ghost" id="quizBack">'+tr("Back","Atrás")+'</button><button type="button" class="btn ghost" id="quizRetake">'+tr("Retake","Repetir")+'</button><button type="button" class="btn primary" id="quizDone">'+tr("Browse all clubs","Ver todos los clubes")+'</button></div>';
+  const pane=quizSwap(html, dir); if(!pane) return;
+  pane.querySelector("#quizBack").onclick=function(){ quizStep=MATCH_QS.length-1; renderQuizStep("back"); quizFocusTitle(); };
+  pane.querySelector("#quizRetake").onclick=function(){ quizStep=0; quizAns=[]; renderQuizStep("back"); quizFocusTitle(); };
+  pane.querySelector("#quizDone").onclick=closeQuiz;
 }
 (function(){ const b=document.getElementById("findClubBtn"); if(b) b.addEventListener("click", openMatch); })();
 
@@ -2003,6 +2028,7 @@ function _saveSignin(){ try{ localStorage.setItem(SIGNIN_KEY, JSON.stringify(sig
 function _clearSignin(){ try{ localStorage.removeItem(SIGNIN_KEY); }catch(e){} }
 function _loadSignin(){ try{ const s=JSON.parse(localStorage.getItem(SIGNIN_KEY)||"null"); if(s&&s.email){ signedIn.name=s.name||""; signedIn.email=s.email||""; signedIn.picture=s.picture||""; return true; } }catch(e){} return false; }
 function applySignedInUI(){
+  renderHello();
   if(!_signinBtn) return;
   if(signedIn.email){
     // Built with DOM nodes: the photo URL and name never go through innerHTML, and only a
@@ -2375,6 +2401,92 @@ document.addEventListener("keydown", function(ev){
 _loadSignin(); sgyLoad(); applySignedInUI(); initGoogleSignin(); renderSchoology(); sgyRefresh(false);
 
 /* =====================================================
+   Home hero: a greeting with the student's first name (from Google sign-in), today's date,
+   and the current Sunnyvale weather from Open-Meteo (free, no key). The last good weather is
+   kept and shown at any age; if it has never loaded, the line stays hidden. No error text.
+===================================================== */
+var HELLO_SEEN_KEY = "fh_seen_v1";
+var helloReturning = (function(){ try{ var v=localStorage.getItem(HELLO_SEEN_KEY); if(!v) localStorage.setItem(HELLO_SEEN_KEY, new Date().toISOString().slice(0,10)); return !!v; }catch(e){ return false; } })();
+function renderHello(){
+  var h=document.getElementById("heroHello"); if(!h) return;
+  var first=(signedIn && signedIn.name ? String(signedIn.name).trim().split(/\s+/)[0] : "") || "Firebird";
+  var lead = helloReturning ? tr("Welcome back, ","Hola de nuevo, ") : tr("Welcome, ","Hola, ");
+  if(h.dataset.hello===lead+first) return;
+  h.dataset.hello=lead+first;
+  h.textContent=""; h.appendChild(document.createTextNode(lead));
+  var hl=document.createElement("span"); hl.className="hl"; hl.textContent=first; h.appendChild(hl);
+  var d=document.getElementById("heroDate");
+  if(d){ try{ setText(d, new Date().toLocaleDateString(fhLang==="es"?"es-US":"en-US", { weekday:"long", month:"long", day:"numeric", timeZone:"America/Los_Angeles" })); }catch(e){} }
+  renderWeather();
+}
+var WX_KEY="fh_weather_v1", WX_MAX_AGE=15*60*1000, wx=null, wxBusy=false;
+try{ wx=JSON.parse(localStorage.getItem(WX_KEY)||"null"); }catch(e){ wx=null; }
+var WX_ICONS={
+  sun:'<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/>',
+  moon:'<path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1Z"/>',
+  partly:'<path d="M8.5 3.5v1.6M3.6 8.4h1.6M5 5l1.1 1.1M12 5l-1.1 1.1"/><path d="M5.6 11.2a3.6 3.6 0 0 1 6.3-2.9"/><path d="M8 20h9.5a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.4 12 4 4 0 0 0 8 20Z"/>',
+  cloud:'<path d="M7 19h10.5a4 4 0 0 0 .5-8 5.5 5.5 0 0 0-10.6-1.4A4.7 4.7 0 0 0 7 19Z"/>',
+  fog:'<path d="M7 13h10.5a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.4 5 4 4 0 0 0 7 13Z"/><path d="M4 17h16M6 20.5h12"/>',
+  rain:'<path d="M7 15h10.5a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.4 7 4 4 0 0 0 7 15Z"/><path d="M8.5 18l-1 2.5M12.5 18l-1 2.5M16.5 18l-1 2.5"/>',
+  snow:'<path d="M7 15h10.5a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.4 7 4 4 0 0 0 7 15Z"/><path d="M8 19h.01M12 20.5h.01M16 19h.01"/>',
+  storm:'<path d="M7 15h10.5a3.5 3.5 0 0 0 .4-7A5 5 0 0 0 8.4 7 4 4 0 0 0 7 15Z"/><path d="m12.5 15-2 3.5h3l-2 3.5"/>'
+};
+function wxKind(code, day){
+  code=+code;
+  if(code===0) return { i: day?"sun":"moon", en:"Clear", es:"Despejado" };
+  if(code===1) return { i: day?"sun":"moon", en:"Mostly clear", es:"Mayormente despejado" };
+  if(code===2) return { i:"partly", en:"Partly cloudy", es:"Parcialmente nublado" };
+  if(code===3) return { i:"cloud", en:"Cloudy", es:"Nublado" };
+  if(code===45||code===48) return { i:"fog", en:"Foggy", es:"Con niebla" };
+  if(code>=51&&code<=57) return { i:"rain", en:"Drizzle", es:"Llovizna" };
+  if((code>=61&&code<=67)||(code>=80&&code<=82)) return { i:"rain", en: code>=80?"Showers":"Rain", es: code>=80?"Chubascos":"Lluvia" };
+  if((code>=71&&code<=77)||code===85||code===86) return { i:"snow", en:"Snow", es:"Nieve" };
+  if(code>=95) return { i:"storm", en:"Thunderstorms", es:"Tormentas" };
+  return { i:"cloud", en:"Cloudy", es:"Nublado" };
+}
+function renderWeather(){
+  var el=document.getElementById("wxLine"); if(!el) return;
+  if(!wx || typeof wx.t!=="number"){ el.hidden=true; return; }
+  var k=wxKind(wx.code, wx.day), t=Math.round(wx.t);
+  var hilo=(typeof wx.hi==="number" && typeof wx.lo==="number") ? tr(" High "+Math.round(wx.hi)+"°, low "+Math.round(wx.lo)+"°."," Máxima "+Math.round(wx.hi)+"°, mínima "+Math.round(wx.lo)+"°.") : "";
+  var html='<span class="wxico" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+WX_ICONS[k.i]+'</svg></span>'+
+    '<span class="wxtxt"><b>'+t+'°F</b> '+clubEsc(tr(k.en+" in Sunnyvale.", k.es+" en Sunnyvale."))+'<span class="wxhl">'+clubEsc(hilo)+'</span></span>';
+  if(el.dataset.html!==html){ el.dataset.html=html; el.innerHTML=html; }
+  el.hidden=false;
+}
+function loadWeather(force){
+  if(wxBusy) return;
+  if(!force && wx && Date.now()-(wx.at||0) < WX_MAX_AGE){ renderWeather(); return; }
+  wxBusy=true;
+  var ctrl = typeof AbortController!=="undefined" ? new AbortController() : null;
+  var timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 8000) : null;
+  fetch("https://api.open-meteo.com/v1/forecast?latitude=37.3688&longitude=-122.0363&current=temperature_2m,weather_code,is_day&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=America%2FLos_Angeles&forecast_days=1", { signal: ctrl?ctrl.signal:undefined })
+    .then(function(r){ if(!r.ok) throw new Error("wx"); return r.json(); })
+    .then(function(d){
+      var c=d && d.current; if(!c || typeof c.temperature_2m!=="number") throw new Error("wx");
+      wx={ t:c.temperature_2m, code:c.weather_code, day:c.is_day!==0,
+           hi: d.daily && d.daily.temperature_2m_max ? d.daily.temperature_2m_max[0] : null,
+           lo: d.daily && d.daily.temperature_2m_min ? d.daily.temperature_2m_min[0] : null, at:Date.now() };
+      try{ localStorage.setItem(WX_KEY, JSON.stringify(wx)); }catch(e){}
+      renderWeather();
+    })
+    .catch(function(){ renderWeather(); }) // keep the last good weather, or stay hidden
+    .then(function(){ wxBusy=false; if(timer) clearTimeout(timer); });
+}
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) loadWeather(false); });
+setInterval(function(){ if(!document.hidden) loadWeather(false); }, 5*60*1000);
+/* All dialogs: a tap on the dim area outside closes it, the same as Escape or Close. */
+document.querySelectorAll("dialog").forEach(function(d){
+  d.addEventListener("click", function(e){
+    if(e.target!==d) return;
+    var r=d.getBoundingClientRect();
+    if(e.clientX<r.left || e.clientX>r.right || e.clientY<r.top || e.clientY>r.bottom) d.close();
+  });
+});
+renderHello(); loadWeather(false);
+
+
+/* =====================================================
    Spirit scoreboard — live pull from the Google Sheet
 ===================================================== */
 function parseSheetRows(text){
@@ -2659,6 +2771,8 @@ if(!FEATURES.fireBucks){
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
 var I18N_EN_ES = {
+  // v61 review fixes (2026-11-20)
+  "Ask":"Pregúntale","Felipe":"a Felipe","ASB links":"Enlaces de ASB","Pick one":"Elige una","Back":"Atrás","See my matches":"Ver mis clubes",
   // v52 compact layout (2026-11-16)
   "What are you most into?":"¿Qué es lo que más te gusta?","Pick any that fit":"Elige todas las que te queden",
   "Science, tech & building":"Ciencia, tecnología y construir cosas","Art, music & performing":"Arte, música y actuación","Culture, identity & language":"Cultura, identidad e idioma",

@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=48">
+<link rel="stylesheet" href="styles.css?v=49">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -55,9 +55,9 @@
 
   <div class="hero">
     <div class="copy">
-      <p class="kicker">Fremont High School · Sunnyvale</p>
-      <h1>The One Nest for <span class="hl">Everything FHS</span></h1>
-      <p>Every event, every bell, every club, in one place, for every Firebird. No app to download, and no login needed to look around.</p>
+      <p class="kicker" id="heroDate">Fremont High School · Sunnyvale</p>
+      <h1 id="heroHello">Welcome, <span class="hl">Firebird</span></h1>
+      <p class="wx" id="wxLine" hidden></p>
       <div class="btnrow">
         <a class="btn primary" href="#schedule" data-nav="schedule">Bell schedule</a>
         <a class="btn ghost" href="#clubs" data-nav="clubs">Browse clubs</a>
@@ -447,39 +447,38 @@
       <p class="hint" data-i18n="settings.hint">Saved on this device. Live listings stay in the language they were entered.</p>
     </section>
 
-    <section class="quickpanel" aria-labelledby="h-fbmore">
-      <h2 id="h-fbmore" class="subhead">Feedback &amp; more</h2>
-      <button type="button" class="linkrow strong" id="fbOpen" aria-expanded="false" aria-controls="fbPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 5h16v11H9l-5 4V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Tell ASB anything</span></button>
-      <a class="linkrow" href="https://www.instagram.com/firebirdfelipe" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span>@firebirdfelipe</span></a>
-      <a class="linkrow" href="https://www.fremontasb.org" target="_blank" rel="noopener"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="2"/></svg><span>fremontasb.org</span></a>
-      <button type="button" class="linkrow" id="aboutOpen" aria-expanded="false" aria-controls="aboutPanel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>About this app</span></button>
+    <section class="card fbpanel" id="fbPanel" aria-labelledby="h-fb">
+      <h2 id="h-fb" class="subhead">Tell ASB anything</h2>
+      <p class="hint">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. It comes straight to us, with no extra steps.</p>
+      <form id="fbForm" novalidate>
+        <div class="fieldrow">
+          <div class="field">
+            <label for="fbName">Your name <span class="req" aria-hidden="true">*</span></label>
+            <input type="text" id="fbName" autocomplete="name" required>
+            <p class="fielderr" id="fbNameErr">Add your first and last name.</p>
+          </div>
+          <div class="field">
+            <label for="fbEmail">School email <span class="req" aria-hidden="true">*</span></label>
+            <input type="email" id="fbEmail" inputmode="email" autocomplete="email" placeholder="you@student.fuhsd.org" required>
+            <p class="fielderr" id="fbEmailErr">Add a valid email so ASB can reply.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label for="fbMsg">Message <span class="req" aria-hidden="true">*</span></label>
+          <textarea id="fbMsg" rows="4" required></textarea>
+          <p class="fielderr" id="fbMsgErr">Write a message first. Even one sentence helps.</p>
+        </div>
+        <button class="btn primary" type="submit">Send to ASB</button>
+        <p class="formok" id="fbOk" role="status" tabindex="-1"></p>
+      </form>
     </section>
-  </div>
 
-  <div class="card fbpanel" id="fbPanel" hidden>
-    <h3>Tell ASB anything</h3>
-    <p class="hint">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. It comes straight to us, with no extra steps.</p>
-    <form id="fbForm" novalidate>
-      <div class="fieldrow">
-        <div class="field">
-          <label for="fbName">Your name <span class="req" aria-hidden="true">*</span></label>
-          <input type="text" id="fbName" autocomplete="name" required>
-          <p class="fielderr" id="fbNameErr">Add your first and last name.</p>
-        </div>
-        <div class="field">
-          <label for="fbEmail">School email <span class="req" aria-hidden="true">*</span></label>
-          <input type="email" id="fbEmail" inputmode="email" autocomplete="email" placeholder="you@student.fuhsd.org" required>
-          <p class="fielderr" id="fbEmailErr">Add a valid email so ASB can reply.</p>
-        </div>
-      </div>
-      <div class="field">
-        <label for="fbMsg">Message <span class="req" aria-hidden="true">*</span></label>
-        <textarea id="fbMsg" rows="4" required></textarea>
-        <p class="fielderr" id="fbMsgErr">Write a message first. Even one sentence helps.</p>
-      </div>
-      <button class="btn primary" type="submit">Send to ASB</button>
-      <p class="formok" id="fbOk" role="status" tabindex="-1"></p>
-    </form>
+    <section class="quickpanel" aria-labelledby="h-fbmore">
+      <h2 id="h-fbmore" class="subhead">ASB links</h2>
+      <a class="linkrow" href="https://www.instagram.com/firebirdfelipe" target="_blank" rel="noopener"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><circle cx="17.2" cy="6.8" r="1.3" fill="currentColor"/></svg><span>@firebirdfelipe</span></a>
+      <a class="linkrow" href="https://www.fremontasb.org" target="_blank" rel="noopener"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 10.5 12 4l9 6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M5.5 9.5V20h13V9.5" stroke="currentColor" stroke-width="2"/></svg><span>fremontasb.org</span></a>
+      <button type="button" class="linkrow" id="aboutOpen" aria-expanded="false" aria-controls="aboutPanel"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>About this app</span></button>
+    </section>
   </div>
 
   <div class="card aboutpanel" id="aboutPanel" hidden>
@@ -537,7 +536,7 @@
 
 </main>
 
-<button id="askFab" class="askfab" type="button" aria-expanded="false" aria-controls="askPanel" aria-haspopup="dialog">Ask Felipe</button>
+<button id="askFab" class="askfab" type="button" aria-expanded="false" aria-controls="askPanel" aria-haspopup="dialog"><span>Ask</span> <span>Felipe</span></button>
 <div id="askBack" class="askback" hidden></div>
 <div id="askPanel" class="askpanel" hidden role="dialog" aria-modal="true" aria-labelledby="askTitle">
   <div class="askhead"><b id="askTitle">Ask Felipe</b><button id="askClose" class="askx" type="button" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>
@@ -606,13 +605,13 @@
 </dialog>
 
 <footer>
-  <b>Fremont ASB · Firebird Hub</b><br>
-  Go Firebirds. Built with care by the Tech Commission at Fremont High School, FUHSD.<br>
-  <span style="font-size:12.5px; opacity:.8">Accessibility issues? Tell us in the feedback box. We fix those first.</span>
+  <b>Fremont ASB · Firebird Hub</b>
+  <span>Go Firebirds. Built with care by the Tech Commission at Fremont High School, FUHSD.</span>
+  <span class="fsmall">Accessibility issues? Tell us in the feedback box. We fix those first.</span>
 </footer>
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
 <script src="felipe-core.js?v=6"></script>
-<script src="app.js?v=60"></script>
+<script src="app.js?v=61"></script>
 </body>
 </html>
