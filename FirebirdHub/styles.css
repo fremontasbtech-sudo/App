@@ -1276,3 +1276,4 @@ dialog.quiz{padding:16px 18px 18px; max-height:calc(100dvh - 32px); overflow:aut
 /* Square focus rings everywhere, to match the square layout. */
 :focus-visible{border-radius:0}
 .wxhl{white-space:nowrap}
+.spiritclosed > h3{margin-bottom:0}

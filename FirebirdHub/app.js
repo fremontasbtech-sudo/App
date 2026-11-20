@@ -669,7 +669,7 @@ function writeSportsCache(){
 }
 function updateSportsStamp(){
   const upd = document.getElementById("sportsUpdated");
-  if(upd) setText(upd, sportsUpdatedLabel ? (tr("Schedule updated ","Horario actualizado: ")+sportsUpdatedLabel) : "");
+  if(upd) setText(upd, "");
 }
 // force=true always refetches; otherwise a fetch from the last minute is reused.
 async function loadSports(force){
@@ -1166,7 +1166,7 @@ function renderDay(day){
 function renderToday(){
   const t=todaySchedule();
   if(t) renderDay(t);
-  else document.getElementById("schedBody").innerHTML='<tr><td colspan="3">'+tr("It's the weekend, so no school. Pick a day above to preview.","Es fin de semana, así que no hay clases. Elige un día arriba para ver su horario.")+'</td></tr>';
+  else document.getElementById("schedBody").innerHTML='<tr><td colspan="3">'+tr("No school today. It's the weekend.","Hoy no hay clases. Es fin de semana.")+'</td></tr>';
   document.querySelectorAll(".daypick button").forEach(b=>
     b.setAttribute("aria-pressed", b.dataset.day==="auto" ? "true":"false"));
 }
@@ -1265,6 +1265,8 @@ function renderSpiritWear(){
   const open = days.length > 0;
   if(card.hidden === open) card.hidden = !open;
   if(closed.hidden !== open) closed.hidden = open;
+  const fold = document.getElementById("pointsFold");
+  if(fold && fold.dataset.formOpen !== String(open)){ fold.dataset.formOpen = String(open); fold.open = !open; }
   if(!open) return;
   const sel = document.getElementById("spDay"), cur = sel.value;
   const html = '<option value="">'+tr("Which day is this for?","¿Para qué día es esto?")+'</option>'+
@@ -2053,7 +2055,7 @@ function refreshSigninDialog(){
     if(blurb) blurb.textContent = tr("Signed in as "+signedIn.email+".","Sesión iniciada como "+signedIn.email+".");
     if(gsi) gsi.hidden = true; if(note) note.hidden = true; if(out) out.hidden = false;
   } else {
-    if(blurb) blurb.textContent = tr("Sign in with your school Google account to see your name on the app and connect your Schoology calendar. Everything else works without signing in.","Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app y conectar tu calendario de Schoology. Todo lo demás funciona sin iniciar sesión.");
+    if(blurb) blurb.textContent = tr("Sign in with your school Google account to see your name on the app and connect your Schoology calendar.","Inicia sesión con tu cuenta escolar de Google para ver tu nombre en la app y conectar tu calendario de Schoology.");
     if(out) out.hidden = true;
     // No Google button when the client ID is missing or Google's script didn't load
     // (Securly on school Wi-Fi): the note says why instead of an empty dialog.
@@ -2062,8 +2064,8 @@ function refreshSigninDialog(){
     if(note){
       note.hidden = !unavailable;
       if(unavailable) note.textContent = !CONFIG.googleClientId
-        ? tr("Google sign-in isn't set up yet. Everything else in the app still works.","El inicio de sesión con Google todavía no está listo. Todo lo demás en la app sigue funcionando.")
-        : tr("Google sign-in isn't reachable on this network right now. Everything else in the app still works.","El inicio de sesión con Google no está disponible en esta red por ahora. Todo lo demás en la app sigue funcionando.");
+        ? tr("Google sign-in isn't set up yet.","El inicio de sesión con Google todavía no está listo.")
+        : tr("Google sign-in isn't reachable on this network right now.","El inicio de sesión con Google no está disponible en esta red por ahora.");
     }
   }
 }
@@ -2243,8 +2245,8 @@ function sgyInviteHTML(where){
     '<div class="txt"><h3>'+clubEsc(tr("See your Schoology calendar here","Ve tu calendario de Schoology aquí"))+'</h3>'+
     '<p>'+clubEsc(school
       ? tr("To connect Schoology, sign in with your @student.fuhsd.org account.","Para conectar Schoology, inicia sesión con tu cuenta @student.fuhsd.org.")
-      : tr("Your assignments, quizzes and class events, sorted by day. Sign in with your school Google account and connect Schoology once. It takes about a minute.",
-           "Tus tareas, pruebas y eventos de clase, ordenados por día. Inicia sesión con tu cuenta escolar de Google y conecta Schoology una vez. Toma más o menos un minuto."))+'</p>'+
+      : tr("Your assignments, quizzes and class events, sorted by day.",
+           "Tus tareas, pruebas y eventos de clase, ordenados por día."))+'</p>'+
     '<div class="btnrow"><button type="button" class="btn primary" data-sgy="open">'+clubEsc(tr("Connect Schoology","Conectar Schoology"))+'</button>'+
     (where==="home" ? '<button type="button" class="btn ghost" data-sgy="hide">'+clubEsc(tr("Not now","Ahora no"))+'</button>' : '')+
     '</div></div></div>';
@@ -2321,8 +2323,7 @@ function renderSgySched(){
   });
   if(groups.length > limit) html += '<button type="button" class="btn ghost" data-sgy="more">'+clubEsc(tr("Show "+(groups.length-limit)+" more days","Mostrar "+(groups.length-limit)+" días más"))+'</button>';
   const upd = Date.parse(sgy.fetchedAt||"");
-  if(upd) html += '<p class="note">'+clubEsc(tr("From your Schoology calendar. Updated ","De tu calendario de Schoology. Actualizado a las ")+new Date(upd).toLocaleTimeString(tr("en-US","es-US"),{hour:"numeric",minute:"2-digit",timeZone:"America/Los_Angeles"})+".")+
-    ' <button type="button" class="linkbtn" data-sgy="disconnect">'+clubEsc(tr("Disconnect Schoology","Desconectar Schoology"))+'</button></p>';
+  if(upd) html += '<p class="note"><button type="button" class="linkbtn" data-sgy="disconnect">'+clubEsc(tr("Disconnect Schoology","Desconectar Schoology"))+'</button></p>';
   // Keep the search box focused (and the caret in place) while typing.
   const active = document.activeElement && document.activeElement.id==="sgySearch";
   const caret = active ? document.activeElement.selectionStart : 0;
@@ -2358,7 +2359,7 @@ function renderSgyStep(){
         '<br><a class="btn ghost sgyopen" href="'+SGY_SETTINGS_URL+'" target="_blank" rel="noopener">'+clubEsc(tr("Open Schoology settings","Abrir configuración de Schoology"))+'</a></li>'+
       '<li>'+clubEsc(tr("Scroll down to Share your Schoology Calendar and click Enable. Copy the link under Use this iCal link.",
         "Baja hasta Share your Schoology Calendar y haz clic en Enable. Copia el enlace que aparece en Use this iCal link."))+'</li>'+
-      '<li>'+clubEsc(tr("Paste it here. You only do this once on each device.","Pégalo aquí. Solo lo haces una vez en cada dispositivo."))+'</li>'+
+      '<li>'+clubEsc(tr("Paste it here.","Pégalo aquí."))+'</li>'+
     '</ol>'+
     '<div class="field'+(sgyStepMsg.bad?' bad':'')+'"><label for="sgyFeed">'+clubEsc(tr("Your Schoology calendar link","Tu enlace del calendario de Schoology"))+'</label>'+
       '<div class="sgypaste"><input type="text" id="sgyFeed" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="webcal://fuhsd.schoology.com/calendar/feed/ical/…" value="'+clubEsc(keep)+'"'+(sgyStepMsg.bad?' aria-invalid="true" aria-describedby="sgyMsg"':' aria-describedby="sgyMsg"')+'>'+
@@ -2771,6 +2772,7 @@ if(!FEATURES.fireBucks){
    Settings + Language (EN/ES) — saved per device
 ===================================================== */
 var I18N_EN_ES = {
+  "One dress-up submission per student per day.":"Un envío de vestimenta por estudiante por día.",
   // v61 review fixes (2026-11-20)
   "Ask":"Pregúntale","Felipe":"a Felipe","ASB links":"Enlaces de ASB","Pick one":"Elige una","Back":"Atrás","See my matches":"Ver mis clubes",
   // v52 compact layout (2026-11-16)
@@ -3064,7 +3066,6 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   var Core = (typeof window!=="undefined" && window.FelipeCore) || null;
   var lastSend=0, busy=false, queue=[];
   var hist=[]; // [{ role:"user"|"model", text }], newest last; only real answers are kept
-  var dataNoteShown=false; // the "fuller answers are back soon" note, once per visit
   var HIST_TURNS=6, HIST_CHARS=500, ASK_TIMEOUT_MS=30000, LLM_GAP_MS=1500;
   var lastAssign=null; // the Schoology items sent with the last assignment question, for "the first one" follow-ups
   // A random id for this browser, so the server's rate limit counts this student and not the
@@ -3135,11 +3136,6 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   function nearBottom(){ return log.scrollHeight - log.scrollTop - log.clientHeight < 60; }
   function toBottom(){ log.scrollTop=log.scrollHeight; }
   function add(text, who){ var d=document.createElement("div"); d.className="askmsg "+who; d.textContent=text; log.appendChild(d); toBottom(); return d; }
-  function srcTag(d){
-    var s=document.createElement("span"); s.className="asksrc";
-    s.textContent=tr("From the app's data","Con datos de la app");
-    d.appendChild(s);
-  }
   function crisisActions(d, lang, reason){
     var es = lang==="es";
     var row=document.createElement("div"); row.className="askact";
@@ -3265,7 +3261,6 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
       try{ loc = Core.answerLocal(c.intent, c.resolved || q, appData(), lang); }catch(e){ loc = null; }
       if(loc && loc.text){
         var ld=add(loc.text,"bot local");
-        if(!/^(?:greeting|thanks|capabilities)$/.test(c.intent)) srcTag(ld);
         toBottom();
         remember("user", q); remember("model", loc.text);
         return;
@@ -3327,15 +3322,6 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
         bub = add(text || TRY_AGAIN(),"bot");
       }
       if(r.partial){ var n=document.createElement("span"); n.className="asksrc"; n.textContent=tr("This answer was cut short. Please ask again.","Esta respuesta quedó incompleta. Vuelve a preguntar, por favor."); bub.appendChild(n); }
-      else if(r.source==="data"){
-        // Answered from the school's data while the AI is busy: tagged like on-device answers,
-        // with the "back soon" note only the first time in a visit.
-        var ds=document.createElement("span"); ds.className="asksrc";
-        ds.textContent = (r.note && !dataNoteShown) ? tr("From the school's data. Fuller answers will be back soon.","Con datos de la escuela. Las respuestas completas volverán pronto.")
-          : tr("From the school's data","Con datos de la escuela");
-        if(r.note) dataNoteShown = true;
-        bub.appendChild(ds);
-      }
       log.removeAttribute("aria-busy");
       if(text && !r.fallback && !r.partial){ remember("user", q); remember("model", text); }
       toBottom();

@@ -16,7 +16,7 @@
 <!-- Non-blocking: a slow or filtered fonts host can't hold up the first paint. -->
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet"></noscript>
-<link rel="stylesheet" href="styles.css?v=49">
+<link rel="stylesheet" href="styles.css?v=50">
 <link rel="manifest" href="manifest.webmanifest?v=2">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 
@@ -139,7 +139,6 @@
       <div id="weekView"></div>
     </div>
 
-    <p class="note" id="schedNote">Official 2026–27 FHS bell schedule. For the exact dates of a special week, trust the announcements.</p>
   </div>
 
   <section id="sgySched" class="sgysec sgysched" aria-labelledby="h-sgysched" hidden></section>
@@ -159,7 +158,6 @@
        app.js renderSpiritWear() swaps it for the form below when both are ready. -->
   <div class="card spiritcard spiritclosed" id="spiritClosed">
     <h3>Spirit Wear submissions open during spirit weeks.</h3>
-    <p>When the next spirit week starts, its dress-up days will show here.</p>
   </div>
 
   <div class="card spiritcard" id="spiritFormCard" hidden>
@@ -184,11 +182,10 @@
           </div>
           <div class="field">
             <label for="spId">Student ID <span class="req" aria-hidden="true">*</span></label>
-            <input type="text" id="spId" name="studentId" inputmode="numeric" autocomplete="off" required aria-describedby="spIdHint">
+            <input type="text" id="spId" name="studentId" inputmode="numeric" autocomplete="off" required>
             <p class="fielderr" id="spIdErr">Enter your student ID (numbers only, 5–7 digits).</p>
           </div>
         </div>
-        <p class="hint fieldhint" id="spIdHint">Your ID is used only to prevent duplicate submissions.</p>
         <div class="field">
           <label for="spDay">Spirit day <span class="req" aria-hidden="true">*</span></label>
           <select id="spDay" name="day" required>
@@ -212,7 +209,6 @@
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
               Check my fit
             </button>
-            <p class="hint" style="margin:8px 0 0">On-device check that reads your photo and tells you if the outfit matches the spirit day. Nothing leaves your phone, and Spirit still confirms every point.</p>
           </div>
           <div class="fitresult" id="fitResult" role="status" aria-live="polite" hidden>
             <div class="fitverdict" id="fitVerdict">
@@ -229,7 +225,7 @@
       </form>
   </div>
 
-  <details class="fold">
+  <details class="fold" id="pointsFold" open>
     <summary>How points work</summary>
     <div class="foldbody">
       <ul class="ptrules">
@@ -239,7 +235,7 @@
         <li><span class="pt">+12</span> Your grade wins an Olympia (3v3 hoops, soccer, chess…)</li>
         <li><span class="pt">★</span> Teacher bonus, awarded by staff and added by Spirit</li>
       </ul>
-      <p class="note">One dress-up submission per student per day, and duplicates are removed before points post. Photos are only seen by ASB Spirit &amp; Tech and your advisor.</p>
+      <p class="note">One dress-up submission per student per day.</p>
     </div>
   </details>
 </div>
@@ -444,12 +440,10 @@
         <span class="setlabel" id="lblMotion" data-i18n="settings.motion">Motion mode</span>
         <div class="segbtns"><button type="button" class="segbtn" id="motionToggle2" aria-pressed="false" aria-labelledby="lblMotion motionToggle2">Off</button></div>
       </div>
-      <p class="hint" data-i18n="settings.hint">Saved on this device. Live listings stay in the language they were entered.</p>
     </section>
 
     <section class="card fbpanel" id="fbPanel" aria-labelledby="h-fb">
       <h2 id="h-fb" class="subhead">Tell ASB anything</h2>
-      <p class="hint">Event ideas, questions, or shout-outs. Add your name and school email so ASB can follow up. It comes straight to us, with no extra steps.</p>
       <form id="fbForm" novalidate>
         <div class="fieldrow">
           <div class="field">
@@ -483,7 +477,7 @@
 
   <div class="card aboutpanel" id="aboutPanel" hidden>
     <h3>About this app</h3>
-    <p class="hint">Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.</p>
+    <p class="hint">Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries.</p>
     <p class="hint">Ask Felipe answers simple questions from the app's data on your device. Other questions, your last few messages and, when you ask about your assignments, the matching Schoology items (title, due date and short description) are sent to Google's Gemini AI to write an answer. Answers to general questions, like when the fall play is, are kept for up to 6 hours so other students get them faster, without your messages or assignments. ASB doesn't save your questions, and no one at ASB reads them. Please don't share private information with Felipe.</p>
   </div>
 </div>
@@ -594,9 +588,9 @@
 
 <dialog id="signinDialog" class="signindlg" aria-labelledby="signinTitle">
   <h3 id="signinTitle" style="margin-bottom:10px">Google sign-in</h3>
-  <p style="margin-top:0; color:var(--ink-soft)" id="signinBlurb">Sign in with your school Google account to see your name on the app and connect your Schoology calendar. Everything else works without signing in.</p>
+  <p style="margin-top:0; color:var(--ink-soft)" id="signinBlurb">Sign in with your school Google account to see your name on the app and connect your Schoology calendar.</p>
   <div class="gsiwrap" id="gsiBtn"></div>
-  <p class="note" id="signinNote" hidden>Google sign-in isn't reachable on this network right now. Everything else in the app still works.</p>
+  <p class="note" id="signinNote" hidden>Google sign-in isn't reachable on this network right now.</p>
   <div class="sgystep" id="sgyStep" hidden></div>
   <div class="signin-actions">
     <button class="btn ghost" id="signoutBtn" type="button" hidden style="font-size:14px">Sign out</button>
@@ -612,6 +606,6 @@
 <script src="qr.js?v=28"></script>
 <script src="vision.js?v=29"></script>
 <script src="felipe-core.js?v=6"></script>
-<script src="app.js?v=61"></script>
+<script src="app.js?v=62"></script>
 </body>
 </html>
