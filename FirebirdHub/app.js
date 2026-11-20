@@ -3044,9 +3044,12 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   }
 
   /* ---------- the app's own data, for instant answers ---------- */
+  // Only live data (or the last good copy of it): until the Events tab has loaded once on this
+  // phone, EVENTS is the built-in starter list, which can be out of date, so event questions go
+  // to the server, which reads the sheet.
   function appData(){
     return { now: nowPST(), schedules: SCHEDULES, specialDays: SPECIAL_DAYS, noClasses: NO_CLASSES, schoolYear: SCHOOL_YEAR,
-      events: EVENTS, games: sportsGames || [], spirit: spiritStandings || [], announcements: annAll || FTV_FEED, clubs: CLUBS };
+      events: eventsCurated ? EVENTS : [], games: sportsGames || [], spirit: spiritStandings || [], announcements: annAll || FTV_FEED, clubs: CLUBS };
   }
 
   /* ---------- the server: streamed, with a plain JSON fallback ---------- */

@@ -10,7 +10,7 @@
  * note itself (note:false; the app since 2026-11-18). English and Spanish.
  * Nothing here calls the network: it reads the data context.js already parsed.
  */
-import { helpers, matchingAnnouncements } from "./context.js";
+import { helpers, matchingAnnouncements, withEnglish } from "./context.js";
 import { BELL_SCHEDULE, NO_CLASSES, SPECIAL_DAYS, FIRST_DAY, LAST_DAY, TZ, addDays, weekday, isoDate, dayInfo } from "./calendar.js";
 import FelipeCoreDefault from "../../felipe-core.js";
 
@@ -79,13 +79,6 @@ function windowOf(n, today){
   if(/\b(this week|esta semana)\b/.test(n)) return { from: today, to: addDays(today, 7 - (wd || 7)), en: "this week", es: "esta semana" };
   return monthWindow(n, today);
 }
-// Spanish words students use for things the data names in English ("audiciones de color guard").
-const ES_EN = { audiciones: "auditions", audicion: "audition", partido: "game", partidos: "games", concierto: "concert", conciertos: "concerts", obra: "play",
-  teatro: "theater theatre", otono: "fall", baile: "dance", feria: "fair", ajedrez: "chess", astrofisica: "astrophysics", robotica: "robotics", programacion: "coding code",
-  fotografia: "photography", ciencia: "science", ciencias: "science", matematicas: "math", arte: "art", musica: "music", cocina: "cooking", voluntariado: "volunteer",
-  donaciones: "donations", ropa: "clothing", colecta: "drive", banda: "band", coro: "choir", orquesta: "orchestra", desfile: "parade", competencia: "competition",
-  ensayo: "rehearsal", tutoria: "tutoring", universidad: "college", solicitudes: "applications", taller: "workshop", noche: "night", dia: "day", trivia: "trivia" };
-const withEnglish = t=>{ const extra = words(t).map(w=> ES_EN[w]).filter(Boolean); return extra.length ? t + " " + extra.join(" ") : t; };
 const normQ = s=> String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’'`]/g, "");
 
 /* ---------- sports ---------- */
@@ -115,7 +108,12 @@ function sportsAnswer(games, now, text, lang){
   const qw = new Set(words(text).filter(w=> w.length >= 4 && !EV_STOP.has(w)));
   const vsOpp = pool.filter(g=> g.opp && words(g.opp).some(w=> qw.has(w)));
   if(vsOpp.length) pool = vsOpp;
-  if(/\bbell game\b/.test(n)) pool = pool.filter(g=> g.bell);
+  if(/\bbell game\b/.test(n)){
+    // Only the Varsity row is the Bell Game itself; "JV score in the bell game" means the JV
+    // game against the same school that week.
+    const bells = games.filter(g=> g.bell), b = pool.filter(g=> g.bell);
+    pool = b.length ? b : pool.filter(g=> bells.some(x=> x.opp === g.opp && Math.abs(Date.parse(x.date) - Date.parse(g.date)) <= 3 * 864e5));
+  }
   if(/\bhome\b|\ben casa\b/.test(n)) { const p = pool.filter(g=> /home/i.test(g.ha)); if(p.length) pool = p; }
   if(!f.pats.length && ARTS_RE.test(n)) return null;   // "how did marching band do": not a sport
   if(!pool.length) return f.pats.length
@@ -175,6 +173,10 @@ function eventsAnswer(d, now, text, lang){
   if(qw.size){
     const scored = items.map(e=>{ const nw = new Set(words(e.name).map(stem)), hw = new Set(words(e.hay).map(stem)); let s = 0; for(const w of qw){ const x = stem(w); if(nw.has(x)) s += 3; else if(hw.has(x)) s += 1; } return { e, s }; })
       .filter(x=> x.s >= 2).sort((a, b)=> b.s - a.s || a.e.start.localeCompare(b.e.start));
+    // "is marching band competing this weekend": among the name matches, the ones in that window.
+    const inWin = win ? scored.filter(x=> x.e.start <= win.to && x.e.end >= win.from) : [];
+    if(inWin.length) return R(cap(L(lang, win.en, win.es)) + ":\n" + inWin.sort((a, b)=> a.e.start.localeCompare(b.e.start)).slice(0, 4).map(x=> "- " + line(x.e)).join("\n"), true,
+      coverage(text, inWin.map(x=> x.e.hay).join(" ")));
     if(scored.length){
       const top = scored.filter(x=> x.s === scored[0].s).map(x=> x.e);
       const up = top.filter(e=> e.end >= today).sort((a, b)=> a.start.localeCompare(b.start)), past = top.filter(e=> e.end < today).sort((a, b)=> b.start.localeCompare(a.start));
@@ -418,7 +420,17 @@ export function dataAnswer({ intent, text, lang, sections, data, now, assignment
     }
     // 3. Fixed facts about the app.
     const app = appAnswer(text, lang); if(app) return done(app);
-    if(/assign|homework/.test(i) || /\b(assignments?|homework|tareas?)\b/.test(n)){ const r = assignmentsAnswer([], now, text, lang); if(r) return done(r.text); }
+    if(/assign|homework/.test(i) || /\b(assignments?|homework|tareas?)\b/.test(n)){
+      // "when are UC apps due", "where is the interact service project": the school's own
+      // announcements or calendar may answer it before the "connect Schoology" reply.
+      if(!/\b(my|mis|mi)\b/.test(n)){
+        const a = d.announcements ? announcementsAnswer(d.announcements, now, text, lang, true) : null;
+        if(a && a.strong) return done(a.text);
+        const e = eventsAnswer(d, now, text, lang);
+        if(e && e.strong && e.cov >= 0.5) return done(e.text);
+      }
+      const r = assignmentsAnswer([], now, text, lang); if(r) return done(r.text);
+    }
     // 4. Topics: the intent's own first, then whatever the question's words point at.
     const order = [];
     const add = k=>{ if(!order.includes(k)) order.push(k); };
@@ -458,7 +470,10 @@ export function dataAnswer({ intent, text, lang, sections, data, now, assignment
       else if(k === "schedule") r = scheduleAnswer(now, text, lang);
       if(r && r.strong) return done(r.text);
       // A sports question never falls through to the schedule or the calendar.
-      if(r && k === "sports" && primary === "sports") return done(r.text);
+      if(r && k === "sports" && primary === "sports"){
+        const a = !r.strong && d.announcements ? announcementsAnswer(d.announcements, now, text, lang, true) : null;
+        return done((a && a.strong ? a : r).text);
+      }
       if(r && !weakBy[k]) weakBy[k] = r;
       if(r && !weak) weak = r;
     }

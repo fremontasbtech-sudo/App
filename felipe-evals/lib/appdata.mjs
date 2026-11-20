@@ -26,7 +26,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { EVALS_DIR } from "./instrument.mjs";
 
-const FX = path.join(EVALS_DIR, "fixtures");
+// FELIPE_FIXTURES_DIR: same override as lib/instrument.mjs.
+const FX = process.env.FELIPE_FIXTURES_DIR ? path.resolve(process.env.FELIPE_FIXTURES_DIR) : path.join(EVALS_DIR, "fixtures");
 const read = f => readFileSync(path.join(FX, f), "utf8");
 
 // Copied from FirebirdHub/app.js (2026-11-18).

@@ -630,6 +630,29 @@ test("final exams are the schedule, not homework", () => {
   assert.equal(F.classify("when is my history test", {}).intent, "assignments");
 });
 
+/* ---------- 2026-11-20: answers follow the data, not the wording of today's items ---------- */
+test("a game against a brand-new opponent, named without 'next' or 'when'", () => {
+  const c = F.classify("do we play Riverbend in lacrosse soon", {});
+  assert.equal(c.route, "local"); assert.equal(c.intent, "next_game");
+  const games = [{ sport: "Lacrosse", date: "2026-12-02", time: "4:00 PM", level: "Varsity", homeAway: "Away", opponent: "Riverbend", location: "Riverbend HS" },
+    { sport: "Lacrosse", date: "2026-11-30", time: "4:00 PM", level: "Varsity", homeAway: "Home", opponent: "Oak Ridge", location: "Fremont" }];
+  const t = F.answerLocal(c.intent, "do we play Riverbend in lacrosse soon", Object.assign(data(at(2026, 11, 20)), { games }), "en").text;
+  assert.ok(/Riverbend/.test(t) && /Dec 2/.test(t) && !/Oak Ridge/.test(t), t);
+});
+test("a team meeting or practice is not a game", () => {
+  for (const q of ["when is the boys tennis meeting", "when is soccer practice", "girls golf interest meeting?"]) assert.notEqual(F.classify(q, {}).route, "local", q);
+  assert.equal(F.classify("is there a play this weekend", {}).intent, "events");
+});
+test("last school day before a break comes from the no-class table", () => {
+  const t = F.answerLocal("school_on", "whats the last school day before thanksgiving break", data(at(2026, 11, 20)), "en").text;
+  assert.ok(/last school day before Thanksgiving Break is on Tuesday, Nov 24/.test(t), t);
+  const es = F.answerLocal("school_on", "cual es el ultimo dia de clases antes de accion de gracias", data(at(2026, 11, 20)), "es").text;
+  assert.ok(/martes 24 de nov/.test(es), es);
+  // A break that is not in the table yet: no made-up answer.
+  const d = data(at(2026, 11, 20)); d.noClasses = d.noClasses.filter(r => !/thanksgiving/i.test(r[2])); d.NO_CLASSES = d.noClasses;
+  assert.equal(F.answerLocal("school_on", "last day before thanksgiving break", d, "en"), null);
+});
+
 /* ---------- report ---------- */
 const routes = CASES.reduce((m, c) => (m[c[1]] = (m[c[1]] || 0) + 1, m), {});
 console.log(`felipe-core ${F.version}: ${pass} passed, ${fail} failed (${CASES.length} routing cases: ${JSON.stringify(routes)})`);

@@ -31,7 +31,8 @@ import path from "node:path";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const EVALS_DIR = path.resolve(HERE, "..");
 export const APP_DIR = path.resolve(EVALS_DIR, "..");
-const FIXTURES = path.join(EVALS_DIR, "fixtures");
+// FELIPE_FIXTURES_DIR points the fixtures at another folder (inject.mjs uses a copy with new data).
+const FIXTURES = process.env.FELIPE_FIXTURES_DIR ? path.resolve(process.env.FELIPE_FIXTURES_DIR) : path.join(EVALS_DIR, "fixtures");
 
 // The handler sends its x-felipe-* debug headers only when this is set; evals always want them.
 if(process.env.FELIPE_DEBUG_HEADERS === undefined) process.env.FELIPE_DEBUG_HEADERS = "1";

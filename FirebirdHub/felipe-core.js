@@ -397,6 +397,8 @@
     // ---- games
     ["next_game", 4, both(new RegExp("\\b" + SPORTW + "\\b"), new RegExp("\\b(?:next|when|what time|upcoming|coming up|tonight|today|tomorrow|this week|this weekend|this friday|who do we play|who are we playing|who is playing|play next|playing next|is there a|are there any|any games|proximo|proxima|cuando|a que hora|hoy|manana|esta semana|contra quien|juegan|juega)\\b"))],
     ["next_game", 3, /\b(?:home|away) (?:games?|matches|match|meets?)\b|\bpartidos? en casa\b/],
+    // "do we play Homestead", "when does the team play": a game, not a theater play.
+    ["next_game", 3, /\b(?:we|fremont|team|teams|firebirds) (?:play|playing|plays|face|facing)\b/],
     ["next_game", 4, /\b(?:when|what time|what day) (?:do|does|will|are) (?:we|fremont|our team|the team|our|the firebirds) (?:play|playing|face)\b|\bwho (?:do|are) we (?:play|playing)\b/],
     // ---- spirit standings
     ["spirit_standings", 4, /\bspirit (?:points?|standings?|score|scores|leaderboard|board|race|rankings?|totals?)\b/],
@@ -419,7 +421,7 @@
     ["clubs", 3, /\bclubs?\b|\bclubes\b/],
     ["clubs", 2, /\b(?:robotics|deca|fbla|key club|mock trial|speech and debate|debate|model un|mun|hosa|interact|nhs|csf|gsa|bsu|msa|astrophysics|science olympiad|chess|kpop|k pop)\b/],
     ["sports", 1, new RegExp("\\b" + SPORTW + "\\b")],
-    ["sports", 3, /\b(?:score|scores|won|win|lose|lost|beat|result|results|record|how did|final score|roster|tryouts?|coach|clearance|register for|physical|gano|ganamos|perdimos|resultado|marcador|entrenador)\b/],
+    ["sports", 3, /\b(?:score|scores|won|win|lose|lost|beat|result|results|record|how did|final score|roster|tryouts?|coach|clearance|register for|physical|meeting|meetings|practice|practices|reunion|gano|ganamos|perdimos|resultado|marcador|entrenador)\b/],
     ["events", 2, new RegExp("\\b" + EVENTNOUN + "\\b")],
     ["events", 1, /\bevents?\b|\beventos?\b|\btickets?\b|\bboletos?\b/],
     ["spirit", 2, /\bspirit\b|\bdress ?up\b|\bspirit (?:week|wear|days?)\b|\bclass colors?\b|\bespiritu\b/],
@@ -852,6 +854,14 @@
     }
     return null;
   }
+  function prevClassDay(iso, T) {
+    for (var i = 1; i <= 30; i++) {
+      var d = addDays(iso, -i), st = dayStatus(d, T);
+      if (st.rows) return st;
+      if (T.year && T.year.first && d < T.year.first) return null;
+    }
+    return null;
+  }
   var PERIOD_ES = { Brunch: "el brunch", Lunch: "el almuerzo", Tutorial: "Tutoría", Rally: "el rally", Enrichment: "Enriquecimiento" };
   function rowName(name, lang, cap) {
     var s;
@@ -1087,6 +1097,13 @@
       }
       var back = nextClassDay(r[1], T, false);
       var now0 = r[0] <= today;
+      // "last day before the break": the school day before it starts.
+      var before = !now0 && /\b(?:last (?:school )?day|before|antes|ultimo dia)\b/.test(n) ? prevClassDay(r[0], T) : null;
+      if (before && before.iso >= today) {
+        return (lang === "es" ? "El último día de clases antes de " + (r[3] || r[2]) + " es " + onDay(before.iso, today, lang) + ". "
+          : "The last school day before " + r[2] + " is " + onDay(before.iso, today, lang) + ". ") + rangeText(r, lang) + "." +
+          (back ? (lang === "es" ? " Las clases regresan " + onDay(back.iso, today, lang) + "." : " Classes are back " + onDay(back.iso, today, lang) + ".") : "");
+      }
       var txt = rangeText(r, lang) + (lang === "es" ? (now0 ? ", y es ahora" : "") + ", así que no hay clases esos días." : (now0 ? ", and it's happening now" : "") + ", so there's no school " + (r[0] === r[1] ? "that day." : "those days."));
       if (back) txt += lang === "es" ? " Las clases regresan " + onDay(back.iso, today, lang) + "." : " Classes are back " + onDay(back.iso, today, lang) + ".";
       return txt;

@@ -132,7 +132,7 @@ const PARSE = {
   },
   clubsApi(text){
     const data = JSON.parse(text);
-    const cl = (data.clubs||[]).filter(c=> c && c.name && !c.disbanded)
+    const cl = (data.clubs||[]).filter(c=> c && c.name && !(c.disbanded === true || /^(true|yes|y|1)$/i.test(String(c.disbanded||"").trim())))
       .map(c=> ({ name:oneLine(c.name), purpose:clip(String(c.purpose||"").replace(EMAIL_RE,""),150), advisor:oneLine(c.teacherAdvisor), meeting:clip(String(c.meetingInfo||"").replace(EMAIL_RE,""),90) }));
     if(!cl.length) throw new Error("no clubs");
     return cl;
@@ -306,6 +306,10 @@ function sportsSection(games, now, text){
   });
   const laterList = Object.keys(later).filter(k=>!perTeam[k]).map(k=>later[k]).sort(byWhen);
   const out = [];
+  // Games against a school the question names ("do we play Homestead"), from the schedule itself.
+  const low = " "+words(text).join(" ")+" ";
+  const vsNamed = upcoming.filter(g=> g.opp && words(g.opp).length && low.includes(" "+words(g.opp).join(" ")+" ")).slice(0,8);
+  if(vsNamed.length) out.push("UPCOMING GAMES AGAINST THE SCHOOL THIS QUESTION NAMES:\n"+vsNamed.map(g=>"- "+gameLine(g)).join("\n"));
   out.push("NEXT GAMES AND MEETS"+label+" (next 30 days, up to "+per+" per team, soonest first; FEATURED = a game ASB is promoting):\n"
     + (next.length ? next.map(g=>"- "+gameLine(g)).join("\n") : "- None in the next 30 days."));
   if(laterList.length) out.push("FIRST GAME FOR TEAMS WITH NOTHING IN THE NEXT 30 DAYS:\n"+laterList.slice(0,12).map(g=>"- "+gameLine(g)).join("\n"));
@@ -355,7 +359,7 @@ function spiritSection(st){
   return "STANDINGS (class spirit points, live from the Spirit tab): "+st.map((s,i)=>(i+1)+". "+s.cls+" "+s.pts).join(", ")+".";
 }
 
-const STOP = new Set("the and for are what when where which who how does do did is was can you your our club clubs about there that this with from have has meet meets meeting join any some tell know want like more info information school fremont fhs que los las del una por para con como cuando donde cual club clubes sobre hay quiero".split(" "));
+const STOP = new Set("the and for are what when where which who how does do did is was can you your our club clubs about there that this with from have has meet meets meeting join any some tell know want like more info information school fremont fhs que los las del una por para con como cuando donde cual club clubes sobre hay quiero reune reunen reunimos".split(" "));
 const words = s=> String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").match(/[a-z0-9]{3,}/g) || [];
 function clubsSection(clubs, text){
   const q = words(text).filter(w=> !STOP.has(w));
@@ -397,13 +401,43 @@ export function matchingAnnouncements(list, now, text){
     if(seen.has(key)) continue;
     const tw = new Set(words(a.title)), bw = new Set(words(a.text));
     let sc = 0;
-    for(const w of q){ if(tw.has(w)) sc += 3; else if(bw.has(w)) sc += 1; else if(w.length>=6 && [...tw].some(t=> t.startsWith(w.slice(0,5)))) sc += 2; }
+    for(const w of q){ const s = w.replace(/s$/,""); if(tw.has(w)) sc += 3; else if(w.length>=6 && [...tw].some(t=> t.startsWith(w.slice(0,5)))) sc += 2; else if(s.length>=3 && [...tw].some(t=> t.length>s.length && t.startsWith(s))) sc += 2; if(bw.has(w) && !tw.has(w)) sc += 1; }
     if(sc >= 2){ seen.add(key); hits.push({ a, sc }); }
   }
   hits.sort((x,y)=> y.sc-x.sc);
   const out = []; let len = 0;
   for(const { a } of hits){ const line = "- "+WD_SHORT[weekday(a.date)]+" "+a.date+": "+(a.title?a.title+". ":"")+a.text; if(len + line.length > 1600 && out.length) break; out.push(line); len += line.length; if(out.length>=4) break; }
   return out;
+}
+
+// Spanish words students use for things the data names in English ("audiciones de color guard").
+const ES_EN = { audiciones: "auditions", audicion: "audition", partido: "game", partidos: "games", concierto: "concert", conciertos: "concerts", obra: "play",
+  teatro: "theater theatre", otono: "fall", baile: "dance", feria: "fair", ajedrez: "chess", astrofisica: "astrophysics", robotica: "robotics", programacion: "coding code",
+  fotografia: "photography", ciencia: "science", ciencias: "science", matematicas: "math", arte: "art", musica: "music", cocina: "cooking", voluntariado: "volunteer",
+  donaciones: "donations", ropa: "clothing", colecta: "drive", banda: "band", coro: "choir", orquesta: "orchestra", desfile: "parade", competencia: "competition",
+  ensayo: "rehearsal", tutoria: "tutoring", universidad: "college", solicitudes: "applications", taller: "workshop", noche: "night", dia: "day", trivia: "trivia",
+  frances: "french", ingles: "english", espanol: "spanish", chino: "chinese", aleman: "german", japones: "japanese", coreano: "korean",
+  investigacion: "research", lectura: "reading", libros: "books book", cine: "movie film", peliculas: "movie movies film", juegos: "games", ambiental: "environmental",
+  medicina: "medicine medical", negocios: "business", economia: "economics", ingenieria: "engineering", reunion: "meeting", proyecto: "project", servicio: "service" };
+export const withEnglish = t=>{ const extra = words(t).map(w=> ES_EN[w]).filter(Boolean); return extra.length ? t + " " + extra.join(" ") : t; };
+// Words in a question that can name a specific item (an event, a club, a concert, a team):
+// 4+ letters and not a generic question or school word.
+const NAME_STOP = new Set([...STOP, ...EV_STOP, ...ANN_STOP, ...("going happening happen coming upcoming anything something does doing many much long time times date dates game games team teams play playing player event events today tonight tomorrow week weekend month year night nights first last next soon start starts begin ends over where whats what when isnt cant dont know tell show give need help " +
+  "girls boys mens womens varsity junior senior seniors juniors sophomores freshmen class classes home away score scores " +
+  "football soccer basketball volleyball tennis wrestling baseball softball swim swimming track golf badminton hockey polo country").split(" ")]);
+export function nameWords(text){ return [...new Set(words(text).filter(w=> w.length>=4 && !NAME_STOP.has(w)))]; }
+// Which data sources hold an item the question names, read from the data itself.
+export function namedSources(d, now, text){
+  const q = new Set(nameWords(text)), hit = new Set();
+  if(!q.size) return hit;
+  const named = s=> words(s).some(w=> q.has(w));
+  const yearStart = (Number(now.iso.slice(5,7))>=8 ? now.iso.slice(0,4) : String(Number(now.iso.slice(0,4))-1))+"-08-01";
+  if(d.events && d.events.some(e=> e.end >= yearStart && named(e.name))) hit.add("events");
+  if(d.arts && d.arts.some(a=> a.date >= now.iso && named(a.name+" "+a.who))) hit.add("arts");
+  if(d.clubs && d.clubs.some(c=> named(c.name))) hit.add("clubs");
+  if(d.sports){ const low = " "+words(text).join(" ")+" ";
+    if(d.sports.some(g=> g.opp && g.date >= now.iso && words(g.opp).length && low.includes(" "+words(g.opp).join(" ")+" "))) hit.add("sports"); }
+  return hit;
 }
 
 // Compact "next 3 weeks" digest, sent with every question.
@@ -446,14 +480,24 @@ export async function fillMissing(data, sections, waitMs){
   await Promise.all(miss.map(async k=>{ data[k] = await getSource(k, waitMs); }));
   return data;
 }
-export async function buildLive(sections, now, text){
-  const need = KEYS.filter(k=> sections.has(k));
+export async function buildLive(sections, now, rawText){
+  const text = withEnglish(rawText);
+  const first = KEYS.filter(k=> sections.has(k));
   const t0 = Date.now();
   // Only a cold source is waited for: up to 4 s when the question needs it, up to 1.2 s for
   // the digest's sources (they normally load in well under 200 ms), never for the rest.
   const DIGEST = ["events","sports","announcements"];
   const data = {};
-  await Promise.all(KEYS.map(async k=>{ data[k] = await getSource(k, need.includes(k) ? COLD_WAIT_MS : DIGEST.includes(k) ? DIGEST_WAIT_MS : 0); }));
+  await Promise.all(KEYS.map(async k=>{ data[k] = await getSource(k, first.includes(k) ? COLD_WAIT_MS : DIGEST.includes(k) ? DIGEST_WAIT_MS : 0); }));
+  // The question may name something only the data knows ("Origami Society", "Jazz Night",
+  // a new opponent): that source joins the prompt, whatever words the keyword lists above
+  // know. A cold instance gives clubs and the arts calendar a short wait for this.
+  if(nameWords(text).length){
+    const cold = ["clubs","arts"].filter(k=> !first.includes(k) && !data[k]);
+    await Promise.all(cold.map(async k=>{ data[k] = await getSource(k, DIGEST_WAIT_MS); }));
+    for(const k of namedSources(data, now, text)) sections.add(k);
+  }
+  const need = KEYS.filter(k=> sections.has(k));
   const waitedMs = Date.now()-t0;
   // named: [name, text]; the digest is first in the prompt, the question's own sections after it.
   const named = [["digest", digest(data, now)]];
