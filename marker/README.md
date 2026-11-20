@@ -17,9 +17,9 @@ and say what should change. Each comment becomes a GitHub issue on this repo wit
 ## Files
 | File | What |
 |---|---|
-| `build.mjs` | Build command of the review project only (`node ../marker/build.mjs`, root `FirebirdHub`). Copies the overlay and the API in, adds `noindex` and "Review copy" to the title, adds the copy's address to the functions' allowed origins. The real `app` project has no build command, so it never gets any of this. |
+| `build.mjs` | Build command of the review project only (`node ../marker/build.mjs`, root `FirebirdHub`). Copies the overlay in, adds `noindex` and "Review copy" to the title, adds the copy's address to the functions' allowed origins. The real `app` project has no build command, so it never gets any of this. |
 | `annotate.js` | The overlay, served as `/marker-overlay.js`. |
-| `api-marker.js` | Becomes `/api/marker`: lists, creates, edits and deletes comments as GitHub issues. Needs env `GITHUB_TOKEN` on the review project. |
+| `../FirebirdHub/api/marker.js` | `/api/marker`: lists, creates, edits and deletes comments as GitHub issues. It sits in the real app too (Vercel finds functions before the build runs) but answers 404 unless env `MARKER=on`, which only the review project has, along with `GITHUB_TOKEN`. |
 | `notes.mjs` | The local command for reading and closing comments (token from `.git/.sudo-credentials`, never printed). |
 
 ## Safety

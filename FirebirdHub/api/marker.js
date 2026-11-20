@@ -1,8 +1,9 @@
 /**
  * Review comments for the public review copy of Firebird Hub (Vercel serverless function).
  *
- * Only the review copy deploys this file: marker/build.mjs copies it to api/marker.js at build
- * time. The real app never runs that build, so it has no /api/marker.
+ * Lives in the real app too (Vercel finds functions before the build step), but it answers only
+ * where env MARKER is "on", which only the review project (firebirdhub-review) has. Everywhere
+ * else it is a plain 404.
  *
  * Every comment is a GitHub issue on the App repo with the label "marker". The issue body holds
  * a readable summary plus a hidden JSON block (what was clicked, the page, the screen size), so
@@ -143,6 +144,7 @@ async function readBody(req) {
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   const send = (code, body) => res.status(code).json(body);
+  if (process.env.MARKER !== "on") return send(404, { error: "not-found" });
   if (!process.env.GITHUB_TOKEN) return send(503, { error: "not-set-up" });
   const n = Number((req.query && req.query.n) || 0);
   try {
