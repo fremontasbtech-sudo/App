@@ -70,7 +70,12 @@ function cleanTarget(t) {
     selector: clip(t.selector, 600), label: clip(t.label, 120), text: clip(t.text, 200), html: clip(t.html, 1000),
   };
   if (t.rect) out.rect = { x: +t.rect.x || 0, y: +t.rect.y || 0, w: +t.rect.w || 0, h: +t.rect.h || 0 };
-  if (t.region) out.region = { x: +t.region.x || 0, y: +t.region.y || 0, w: +t.region.w || 0, h: +t.region.h || 0 };
+  if (t.region) {
+    out.region = { x: +t.region.x || 0, y: +t.region.y || 0, w: +t.region.w || 0, h: +t.region.h || 0 };
+    const r = t.region.rel; // the same area as fractions of the element, so it fits any screen size
+    if (r) out.region.rel = { fx: +r.fx || 0, fy: +r.fy || 0, fw: +r.fw || 0, fh: +r.fh || 0 };
+  }
+  if (t.dialog) out.dialog = clip(t.dialog, 120);
   if (t.styles && typeof t.styles === "object") out.styles = Object.fromEntries(Object.entries(t.styles).slice(0, 30).map(([k, v]) => [clip(k, 40), clip(v, 160)]));
   if (Array.isArray(t.rules)) out.rules = t.rules.slice(-14).map((r) => ({ file: clip(r.file, 80), selector: clip(r.selector, 200), ...(r.media ? { media: clip(r.media, 120) } : {}) }));
   return out;
