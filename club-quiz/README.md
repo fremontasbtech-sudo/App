@@ -27,15 +27,16 @@ Why labels: Netflix dropped its "% Match" in 2024 because viewers found it confu
 
 | | Old quiz | New quiz |
 |---|---|---|
-| Clubs that can appear in a top 3 | 18 of 76 | 76 of 76 |
+| Clubs that can appear in a top 3 | 18 of 76 | 76 of 76 (none above 15% of answer sets) |
 | How the top 3 is picked on a tie | Alphabetical | Fit, then variety, then a hash of the answers |
 | Best match shown as | 27% median (max 50%) | Strong match for coherent answers, Good match for mixed ones |
-| Blind judges, 30 student profiles (1 to 5) | 1.6 and 1.7 | 3.7 and 3.8 (round 1); round 2 below |
-| Judges preferring it | 3 of 30 | 27 of 30 (both judges) |
+| Blind judges, 30 student profiles, round 1 (1 to 5) | 1.6 and 1.7 | 3.7 and 3.8 |
+| Round 1: judges preferring it | 3 of 30 (each judge) | 27 of 30 (each judge) |
+| Round 2, final version, fresh judge (1 to 5) | 1.6 | 4.2 (won 27, tied 3, lost 0) |
 
-Round 2 (final version, fresh judge): see the 2026-11-20 LOG.md entry.
+The judges saw both lists per student in random order without labels (`personas.mjs` has the 30 profiles; `node club-quiz/personas-run.mjs` prints the current results). After round 2, "Nature" became "Nature, animals and the environment" (Vet Connect is tagged animals) and the "Awards and honors" goal leans harder on honor societies.
 
-Known limits: Vet Connect sits under medicine and health (there is no animals answer); broad service clubs like culinary for community show for about 15% of answer sets; 9 clubs have thin descriptions, so their tags rest on the name.
+Known limits: broad service clubs like culinary for community show for about 15% of answer sets; 9 clubs have thin descriptions, so their tags rest on the name.
 
 ## Keeping it current
 

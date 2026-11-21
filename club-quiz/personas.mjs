@@ -21,7 +21,7 @@ export const P=[
 ["Indian student who loves Bollywood dance",{int:["culture","dance"],com:["south_asian"],act:["stage"],time:["regular"],goal:["fun"]},[[2,1],[0],[0],[3]]],
 ["Muslim student looking for community",{int:["culture"],com:["muslim"],act:["learn","chill"],time:["light"],goal:["friends"]},[[2],[1],[0],[0]]],
 ["Movie buff interested in filmmaking",{int:["theatre"],act:["learn"],time:["light"],goal:["fun"]},[[1],[0],[0],[3]]],
-["Wants to be a vet, loves animals",{int:["health"],act:["learn"],time:["light"],goal:["skills"]},[[0],[1],[1],[1]]],
+["Wants to be a vet, loves animals",{int:["health","nature"],act:["learn"],time:["light"],goal:["skills"]},[[0],[1],[1],[1]]],
 ["Cybersecurity curious, likes hacking puzzles",{int:["coding"],act:["learn","compete"],time:["regular"],goal:["skills"]},[[0],[2],[1],[1]]],
 ["Interested in world affairs and geography",{int:["debate"],act:["learn"],time:["regular"],goal:["fun"]},[[4],[1],[0],[3]]],
 ["Wants to help kids and special ed friends",{int:["service"],act:["help","chill"],time:["regular"],goal:["friends"]},[[3],[1],[0],[2]]],

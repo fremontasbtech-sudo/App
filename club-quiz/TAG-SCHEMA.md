@@ -30,6 +30,7 @@ Interest keys (pick any that apply):
 - faith: religious community
 - service: volunteering, fundraising, community service hours
 - environment: climate, sustainability, gardening, nature
+- animals: animals, veterinary (added 2026-11-20)
 - identity_support: safe space / advocacy for a group (LGBTQ+, disability inclusion, mental health stigma, girls in STEM/business)
 - sports_fitness: playing a sport, martial arts, physical activity
 - games: card games, board games, video/dance games, casual play

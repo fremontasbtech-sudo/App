@@ -1234,7 +1234,8 @@
   "name": "Vet Connect",
   "interests": {
    "health": 3,
-   "service": 2
+   "service": 2,
+   "animals": 3
   },
   "activities": {
    "learn_discuss": 2,
@@ -1246,6 +1247,6 @@
   "evidence": "\"closing the gap between students and the veterinary world\"; \"animal advocacy and education\"; \"produce podcasts and interviews with professionals including vets\"; \"partner with local institutions such as the SPCA ... to provide members with various volunteer opportunities\"; \"Thu lunch, monthly\"",
   "unknowns": "Schema has no animals key; health used for veterinary careers. Outside-of-school podcast work commitment not stated.",
   "confidence": "high",
-  "changes": ""
+  "changes": "2026-11-20: added animals 3 (\"closing the gap between students and the veterinary world\") so the nature and animals answer reaches it."
  }
 ]
