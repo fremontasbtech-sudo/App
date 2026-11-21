@@ -1,0 +1,19 @@
+answer sets 1512
+clubs ever in top3: 18 of 76 ; never: 58
+most shown: [
+  [ 'Aerospace and UAV Society', 681 ],
+  [ 'Astrophysics Club', 641 ],
+  [ 'Basketball Club', 513 ],
+  [ '4kidz', 423 ],
+  [ 'Bring Change 2 Mind', 287 ],
+  [ 'BSU', 247 ],
+  [ 'FHS Badminton Club', 242 ],
+  [ 'Cloud Computing', 240 ]
+]
+top1 pct p10/50/90/max 21 27 36 50
+all shown pct p10/50/90 21 27 36
+clubs tied with #1: median 22 min 6 max 75
+[[1],[0],[1],[1]] Aerospace and UAV Society 38% | Art and animation club 38% | Astrophysics Club 38%
+[[0],[2],[1],[1]] Aerospace and UAV Society 44% | Astrophysics Club 44% | Cloud Computing 44%
+[[2],[1],[0],[0]] BSU 44% | Chinese club/NCHS 44% | Chinese Song Club 44%
+[[0,1,2,3,4,5],[1],[0],[3]] Basketball Club 29% | FHS Badminton Club 29% | Fremont Pickleball Club 29%

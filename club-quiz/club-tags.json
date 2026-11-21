@@ -1,0 +1,1251 @@
+[
+ {
+  "name": "4kidz",
+  "interests": {
+   "service": 3,
+   "health": 1
+  },
+  "activities": {
+   "volunteer": 3,
+   "learn_discuss": 2,
+   "build_make": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"bring joy, hope, and comfort to kids in pediatric care through volunteer service, fundraising, and creative projects\"; \"officers will lead presentations and activities\"; \"host outings\"; meets \"Wed & Fri lunch, biweekly\"",
+  "unknowns": "What the creative projects are; how often outings happen; whether the Wed and Fri meetings are both required or alternatives.",
+  "confidence": "high",
+  "changes": "Removed visual_art 1: \"creative projects\" never says art or crafts (kept build_make 1)."
+ },
+ {
+  "name": "Aerospace and UAV Society",
+  "interests": {
+   "engineering": 3,
+   "film_theatre": 1
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "build_make": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"technical foundation in aerospace engineering and Unmanned Aerial Systems\"; \"educate members on the principles of flight, prepare students for FAA recreational safety certification (TRUST)\"; \"drone technology in cinematography, mapping and Search and Rescue\"; \"video services by request to the school yearbook\"; \"Mon lunch, biweekly\"",
+  "unknowns": "Whether members fly or build drones hands-on at meetings (build_make weighted low for that reason); no mention of competitions.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Art and animation club",
+  "interests": {
+   "visual_art": 3
+  },
+  "activities": {
+   "build_make": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "Name only: \"Art and animation club\". Purpose is a stub: \"This club will go into.\" Meets \"Mon lunch\".",
+  "unknowns": "Purpose is a stub. Nothing on what members do (drawing, digital animation, projects), skill level, or materials. Activities left empty.",
+  "confidence": "low",
+  "changes": "Added build_make 2: the name plainly says members make art and animation; activities were empty (purpose is a stub)."
+ },
+ {
+  "name": "Astrophysics Club",
+  "interests": {
+   "science": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"explores modern astrophysics and cosmology\"; \"student-led presentations and open discussions\"; \"bring in guest speakers, professors, graduate students, and researchers\"; \"connect members with outside opportunities like summer programs, competitions, and research experiences\"; \"Wed lunch, biweekly\"",
+  "unknowns": "Competitions are only mentioned as outside opportunities the club points to, not something the club enters, so compete is not tagged.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Basketball Club",
+  "interests": {
+   "sports_fitness": 3,
+   "service": 3
+  },
+  "activities": {
+   "volunteer": 3,
+   "hang_out_play": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"focuses on basketball, mentorship, and community involvement\"; \"connects Fremont students with younger children through basketball activities and coaching\"; \"Through volunteering and coaching\"; \"Mon, biweekly\"",
+  "unknowns": "Meeting time of day is not given (lunch or after school); coaching sessions with children may add time beyond meetings. Whether members play pickup games themselves is not stated (hang_out_play kept at 1).",
+  "confidence": "medium",
+  "changes": "service 2 -> 3: coaching younger children through volunteering is the core activity (volunteer is already 3), alongside basketball."
+ },
+ {
+  "name": "BSU",
+  "interests": {
+   "culture_heritage": 3,
+   "identity_support": 2
+  },
+  "activities": {
+   "hang_out_play": 3
+  },
+  "commitment": "regular",
+  "openness": "community",
+  "evidence": "\"To have a safe space on campus for Black students to connect.\"; \"Fri lunch\"",
+  "unknowns": "One-sentence purpose. Does not say whether non-Black students are welcome, or whether there are events, discussions or performances.",
+  "confidence": "medium",
+  "community": "black",
+  "changes": ""
+ },
+ {
+  "name": "Bring Change 2 Mind",
+  "interests": {
+   "identity_support": 3,
+   "health": 2
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Raise awareness and break the stigma around mental health by having open conversations and informing others.\"; \"Mon or Fri, biweekly\"",
+  "unknowns": "Short purpose. No detail on campaigns, events or speakers; meeting time of day not given.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "California Scholarship Federation (CSF)",
+  "interests": {
+   "academics_honors": 3,
+   "service": 2
+  },
+  "activities": {
+   "volunteer": 3
+  },
+  "commitment": "regular",
+  "openness": "selective",
+  "evidence": "\"honor society that recognizes the academic achievement and dedication to service of California high school juniors and seniors\"; \"scholarship and volunteering opportunities like SAT tutoring\"; \"Tue lunch, biweekly\"",
+  "unknowns": "Exact eligibility rules (grades, application) are not spelled out, only that it is an honor society for juniors and seniors.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Ceramics Club",
+  "interests": {
+   "visual_art": 3
+  },
+  "activities": {
+   "build_make": 3,
+   "hang_out_play": 2,
+   "learn_discuss": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"teach students about the art of ceramics and give them the option to create ceramic pieces\"; \"meeting new people and creating new friends\"; \"We will provide all the materials, so student can sit back, relax, and create.\"; meets \"Tue & Fri\"",
+  "unknowns": "Commitment is heavy only by the schema's two-meetings-a-week rule; the purpose describes a relaxed, drop-in feel and does not say both days are expected. Time of day not given.",
+  "confidence": "high",
+  "changes": "commitment heavy -> regular: two meetings a week, but the purpose is a relaxed drop-in (\"sit back, relax, and create\"), no practices or competitions; heavy would misdirect students looking for a casual art club."
+ },
+ {
+  "name": "Cheese Club",
+  "interests": {
+   "food": 3
+  },
+  "activities": {
+   "learn_discuss": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"To introduce the students of fremont to the wonders of cheese.\"; \"Mon or Fri, biweekly\"",
+  "unknowns": "One-line purpose. Does not say whether members taste cheese, cook, or just learn about it, so activity is a weak guess from \"introduce\". Time of day not given.",
+  "confidence": "low",
+  "changes": ""
+ },
+ {
+  "name": "Chinese club/NCHS",
+  "interests": {
+   "culture_heritage": 3,
+   "language": 2,
+   "games": 1,
+   "academics_honors": 1
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "hang_out_play": 2,
+   "volunteer": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Encourage awareness and learning of Chinese culture, learn about Chinese history\"; \"participate in the setting up of the annual Chinese new year event\"; \"learn how to use chopsticks, play numerous traditional Chinese games\"; \"Chinese learning opportunities, programs, and NCHS\"; \"Wed lunch, biweekly\"",
+  "unknowns": "NCHS (Chinese honor society) is named but its requirements are not described; the club itself reads as open to all. Helping set up the New Year event is tagged as minor volunteering.",
+  "confidence": "high",
+  "community": "chinese",
+  "changes": "Added academics_honors 1: name includes NCHS (National Chinese Honor Society) and purpose mentions it; matches French club/honors society."
+ },
+ {
+  "name": "Chinese Song Club",
+  "interests": {
+   "music": 3,
+   "culture_heritage": 2,
+   "language": 1
+  },
+  "activities": {
+   "perform": 2,
+   "hang_out_play": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Bring joy to everyone who likes singing Chinese songs, let them have fun either singing Chinese songs or just listening.\"; \"Thu, twice monthly\"",
+  "unknowns": "Whether singing is for an audience or only among members is not stated (perform kept at 2); no performances or events mentioned. Time of day not given.",
+  "confidence": "medium",
+  "community": "chinese",
+  "changes": ""
+ },
+ {
+  "name": "Climate Collective",
+  "interests": {
+   "environment": 3
+  },
+  "activities": {
+   "learn_discuss": 2,
+   "volunteer": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"branch of the District-wide FUHSD Climate Collective\"; \"improving environmental literacy and promoting sustainable practices in FUHSD\"; \"Mon lunch, biweekly\"",
+  "unknowns": "What members actually do (campaigns, projects, district meetings) is not described; activities are inferred from \"environmental literacy\" and \"promoting sustainable practices\".",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Cloud Computing",
+  "interests": {
+   "coding": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Teach students about the history and basics of computing.\"; \"Mon lunch, biweekly\"",
+  "unknowns": "One-line purpose that does not mention cloud computing itself despite the name; no hands-on projects or certifications mentioned.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "culinary for community",
+  "interests": {
+   "food": 3,
+   "service": 3
+  },
+  "activities": {
+   "build_make": 3,
+   "volunteer": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"come together and make food while also helping the community by donating the meals\"; \"Tue or Thu lunch, monthly\"",
+  "unknowns": "Where meals are donated and whether cooking happens at lunch or at separate sessions is not stated.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Cybersecurity Club",
+  "interests": {
+   "coding": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Teach and educate people on online security and also teach people cybersecurity skills and concepts in the industry.\"; \"Fri lunch\"",
+  "unknowns": "No mention of competitions (for example CTFs) or hands-on labs; frequency assumed weekly from \"Fri lunch\".",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Developer Club",
+  "interests": {
+   "coding": 3
+  },
+  "activities": {
+   "build_make": 3,
+   "learn_discuss": 2,
+   "compete": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"interested in software development to share their interests, learn, and build real projects\"; \"mentorship, tools, and collaboration necessary to turn creative ideas into functional applications\"; \"annual hackathon, where we allow other schools across the Bay Area to compete and win prizes\"; \"Mon\"",
+  "unknowns": "Time of day not given (assumed one weekly meeting). The hackathon is an annual event the club hosts, so compete is a minor tag; extra organizing time for it is not described.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Environmental Club",
+  "interests": {
+   "environment": 3
+  },
+  "activities": {
+   "learn_discuss": 2
+  },
+  "commitment": "unknown",
+  "openness": "open",
+  "evidence": "\"To educate students and promote environmental opportunities.\"; meets at \"Lunch\" with no day or frequency",
+  "unknowns": "One-line purpose; no projects, cleanups or events named. Meeting frequency not given.",
+  "confidence": "low",
+  "changes": ""
+ },
+ {
+  "name": "Everyday Hardware Essentials Club",
+  "interests": {
+   "engineering": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"teach members about core computer hardware and how all these components work together as one system\"; \"Thu lunch, monthly\"",
+  "unknowns": "No mention of building or repairing computers hands-on; coding tagged 1 only because it is a computing topic.",
+  "confidence": "medium",
+  "changes": "Removed coding 1: purpose is only about physical computer hardware components; software is never mentioned."
+ },
+ {
+  "name": "FHS Badminton Club",
+  "interests": {
+   "sports_fitness": 3
+  },
+  "activities": {
+   "hang_out_play": 3,
+   "compete": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Hosts open gyms in the large gym for badminton games. Occasional contests, potential collabs with other schools.\"; \"Tue or Thu lunch, biweekly\"",
+  "unknowns": "Skill level expected is not stated; contests are occasional and collabs only potential.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Fhs Christian Club",
+  "interests": {
+   "faith": 3
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "hang_out_play": 2,
+   "volunteer": 1
+  },
+  "commitment": "regular",
+  "openness": "community",
+  "evidence": "\"inclusive place, where both Christians and non-Christians can gather to support each other, ask any questions, and most importantly learn about Jesus together\"; \"caring for the needs of our students and communities\"; \"welcoming anyone who is curious\"; \"Wed lunch\". Faith-centered but explicitly welcomes all.",
+  "unknowns": "Meeting format (Bible study, worship, speakers) not described; service is implied only by \"caring for the needs of our students and communities\".",
+  "confidence": "high",
+  "community": "christian",
+  "changes": ""
+ },
+ {
+  "name": "Filipino Youth Organization",
+  "interests": {
+   "culture_heritage": 3
+  },
+  "activities": {
+   "learn_discuss": 1
+  },
+  "commitment": "light",
+  "openness": "community",
+  "evidence": "\"Represent the Filipino Community, and bring awareness to Filipino Culture at Fremont High School.\"; \"2nd Wed of month lunch\"",
+  "unknowns": "Does not say whether non-Filipino students are welcome or what members do (events, food, dance, performances); activity is a weak guess from \"bring awareness\".",
+  "confidence": "low",
+  "community": "filipino",
+  "changes": ""
+ },
+ {
+  "name": "Firebird Buddies",
+  "interests": {
+   "identity_support": 3,
+   "service": 2
+  },
+  "activities": {
+   "hang_out_play": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"foster meaningful and personalized friendships between special education and general education students\"; \"Mon lunch\"",
+  "unknowns": "One-sentence purpose. No detail on activities or whether service hours are given; service is tagged 2 because general education members are there to include and befriend special education peers.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Fremont GSA",
+  "interests": {
+   "identity_support": 3
+  },
+  "activities": {
+   "hang_out_play": 2,
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "community",
+  "evidence": "\"To provide a safe, supportive, and educational environment and community for the students of Fremont.\"; \"Tue, biweekly\". LGBTQ+ focus comes from the name GSA; the purpose says it is for \"the students of Fremont\".",
+  "unknowns": "LGBTQ+ is not named in the purpose, only implied by GSA. No activities or events described; time of day not given.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Fremont Hack Club (Programming Club)",
+  "interests": {
+   "coding": 3
+  },
+  "activities": {
+   "build_make": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Introduce programming and technology through engaging real-world projects.\"; \"Mon lunch\"",
+  "unknowns": "Short purpose. No hackathons or competitions mentioned; skill level assumed beginner-friendly from \"Introduce\".",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Fremont High Robotics",
+  "interests": {
+   "engineering": 3,
+   "business": 1
+  },
+  "activities": {
+   "build_make": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "heavy",
+  "openness": "open",
+  "evidence": "\"develop their interest in STEAM through hands-on experiences and direct guidance from other students and mentors\"; \"enabling students of all backgrounds to participate in robotics\"; \"success in engineering, business, and positive collaboration\"; \"Mon & Wed 6:30-9:30pm\"",
+  "unknowns": "The purpose never mentions competitions or a league, so compete is not tagged even though robotics teams usually compete. No tryout or application is stated.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Fremont High School Folklórico",
+  "interests": {
+   "dance": 3,
+   "culture_heritage": 3
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "perform": 1
+  },
+  "commitment": "heavy",
+  "openness": "open",
+  "evidence": "\"spread México's culture through teaching our traditional dances\"; meets \"Wed 3:15-4:30pm\" (after school).",
+  "unknowns": "Does not say whether the club performs for audiences, or whether non-Mexican students join (aim of spreading culture suggests open). Openness not stated.",
+  "confidence": "medium",
+  "community": "latino",
+  "changes": "Added perform 1: a dance club with only learn_discuss under-describes it; \"spread México's culture\" through dance implies sharing it with others (weight kept low since shows are not stated)."
+ },
+ {
+  "name": "Fremont Pickleball Club",
+  "interests": {
+   "sports_fitness": 3
+  },
+  "activities": {
+   "hang_out_play": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Expand and grow the sport of pickleball within the school\"; \"Wed lunch, biweekly\".",
+  "unknowns": "Does not say what happens at meetings (casual play, lessons, matches) or skill level expected. Openness inferred from 'grow the sport'.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Fremont Rocketry",
+  "interests": {
+   "engineering": 3,
+   "science": 2
+  },
+  "activities": {
+   "compete": 3,
+   "build_make": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"compete in the American Rocketry Challenge by designing, building, testing, and launching model rockets\"; \"aerospace science\"; meets \"Tue lunch, monthly\".",
+  "unknowns": "Commitment tagged light from the monthly lunch meeting, but a rocketry competition build likely needs time outside meetings; the description does not say how much. Team size or selection not stated.",
+  "confidence": "medium",
+  "changes": "commitment light -> regular: meetings are monthly, but the club exists to compete in the American Rocketry Challenge, which requires designing, building, testing and launching rockets; light understates it."
+ },
+ {
+  "name": "Fremont Speech and Debate",
+  "interests": {
+   "debate_law_politics": 3
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "perform": 2,
+   "compete": 2
+  },
+  "commitment": "heavy",
+  "openness": "open",
+  "evidence": "\"developing their public speaking, researching, and argumentative skills\"; meets \"Wed lunch & Wed after school\".",
+  "unknowns": "Does not mention tournaments or competitions explicitly, so compete is not tagged. Openness not stated.",
+  "confidence": "medium",
+  "changes": "Added compete 2 and perform 1 -> 2: Speech and Debate is a competitive speaking team by name (meets after school too); public speaking is a core skill named in the purpose. compete kept at 2 because tournaments are not stated in the text."
+ },
+ {
+  "name": "Fremont Zahraa",
+  "interests": {
+   "dance": 3,
+   "culture_heritage": 1
+  },
+  "activities": {},
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Bollywood dance club.\"; \"Mon lunch\".",
+  "unknowns": "Purpose is a one-line stub: no activities, performances, frequency or openness stated. Culture tag rests only on the word 'Bollywood'. Weekly frequency assumed from 'Mon lunch'.",
+  "confidence": "low",
+  "community": "south_asian",
+  "changes": ""
+ },
+ {
+  "name": "French club/honors society",
+  "interests": {
+   "language": 3,
+   "culture_heritage": 2,
+   "writing_books": 1,
+   "film_theatre": 1,
+   "academics_honors": 1
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Spreading French culture and language\"; \"through literature, cinema, or everyday conversation\"; name includes \"honors society\"; \"Mon lunch, biweekly\".",
+  "unknowns": "Honor society eligibility (French class enrollment, grades) is not stated, so openness may be partly selective. Purpose is aspirational and does not describe concrete meeting activities.",
+  "confidence": "medium",
+  "community": "french",
+  "changes": "learn_discuss 2 -> 3: it is the only activity and the core of the club (sharing language and culture through literature, cinema and conversation); consistent with Chinese club."
+ },
+ {
+  "name": "Future Business Leaders of America",
+  "interests": {
+   "business": 3
+  },
+  "activities": {
+   "compete": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"prepare students for college and career pathways in business\"; \"compete against students of other schools at the regional, state, and national level\"; \"Thu, biweekly\".",
+  "unknowns": "Meeting time of day not given (lunch or after school). Time spent preparing for and traveling to competitions not stated, so commitment may be higher than regular.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Garden Club",
+  "interests": {
+   "environment": 3
+  },
+  "activities": {
+   "build_make": 2,
+   "learn_discuss": 2,
+   "hang_out_play": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"teach students how to care for plants, build a community, and create a safe space for everyone to take a break\"; \"Thu lunch, biweekly\".",
+  "unknowns": "Does not say whether members garden hands-on at meetings or where; build_make is inferred from plant care.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Geography Club",
+  "interests": {
+   "geography_world": 3
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "hang_out_play": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"educate people about geography and have fun doing it\"; \"Wed lunch, biweekly\".",
+  "unknowns": "Does not say whether the club does geography bees or other competitions, or what 'fun' activities are.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Geopolitics and History",
+  "interests": {
+   "debate_law_politics": 3,
+   "geography_world": 2
+  },
+  "activities": {},
+  "commitment": "unknown",
+  "openness": "open",
+  "evidence": "Name only: \"Geopolitics and History\". Purpose and meeting info are empty.",
+  "unknowns": "Purpose, activities, meeting time and openness are all missing; tags come only from the club name.",
+  "confidence": "low",
+  "changes": ""
+ },
+ {
+  "name": "Girls in Business",
+  "interests": {
+   "business": 3,
+   "identity_support": 2,
+   "service": 2
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "volunteer": 2,
+   "compete": 1
+  },
+  "commitment": "light",
+  "openness": "community",
+  "evidence": "\"introduce girls in high school and middle school to the world of business\"; \"organizing business workshops and events\" for \"students from our district ranging from ages 10-16\"; \"foster an interest in entrepreneurship\"; \"simulate a marketplace where our students can try to market their products in competition\"; \"Wed lunch, monthly\".",
+  "unknowns": "Commitment tagged light from the monthly lunch meeting, but the purpose mentions after-school workshop sessions whose frequency is not stated. Does not say whether boys can join.",
+  "confidence": "medium",
+  "changes": "service 1 -> 2 and added volunteer 2: members organize business workshops and events for district students ages 10-16, which is outreach/service work, not just learning."
+ },
+ {
+  "name": "Girls Who Code",
+  "interests": {
+   "coding": 3,
+   "identity_support": 2
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "community",
+  "evidence": "\"Teach girls about coding and learn about Women in STEAM\"; \"Mon lunch\".",
+  "unknowns": "Does not say whether members build projects or whether non-girls can join. Weekly frequency assumed from 'Mon lunch'.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "HOSA",
+  "interests": {
+   "health": 3,
+   "service": 2
+  },
+  "activities": {
+   "learn_discuss": 2,
+   "compete": 2,
+   "volunteer": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"prepare students for careers in health professions\"; \"competitive events, guest speakers, workshops, competitions, and volunteer projects\"; \"Fri lunch, biweekly\".",
+  "unknowns": "Time needed for HOSA competitions outside meetings not stated.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Indian Student Association (formerly Indian recognition society)",
+  "interests": {
+   "culture_heritage": 3
+  },
+  "activities": {
+   "hang_out_play": 2
+  },
+  "commitment": "light",
+  "openness": "community",
+  "evidence": "\"connect and bring together not only the Indian students at Fremont, but every student\"; \"a place where they feel welcome\"; \"Wed lunch, monthly\". All students explicitly welcome.",
+  "unknowns": "Does not describe activities (events, food, dance, festivals) beyond community building.",
+  "confidence": "medium",
+  "community": "south_asian",
+  "changes": ""
+ },
+ {
+  "name": "Interact Club",
+  "interests": {
+   "service": 3
+  },
+  "activities": {
+   "volunteer": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"To allow students to serve and be part of a greater community\"; \"Mon lunch, biweekly\".",
+  "unknowns": "Purpose is cut off (\"We provide opp.\"); kinds of service and hours are not described.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Investing Club",
+  "interests": {
+   "business": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"teach members core investing knowledge\"; \"building a strong foundation in the first semester\" then \"index funds in the second semester\"; \"Fri lunch, monthly\".",
+  "unknowns": "Does not say whether there is a stock-pitch or competition component.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Japanese Culture Club",
+  "interests": {
+   "culture_heritage": 3,
+   "games": 1,
+   "food": 1
+  },
+  "activities": {
+   "hang_out_play": 2,
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"explore, appreciate, and enjoy all aspects of Japanese culture, such as games, drinks, food, media, traditions\"; \"Wed lunch\".",
+  "unknowns": "Meeting frequency not stated (weekly assumed). 'Media' is not specified (anime, music, film), so no film or music tag. Openness inferred from 'explore, appreciate'.",
+  "confidence": "medium",
+  "community": "japanese",
+  "changes": ""
+ },
+ {
+  "name": "Jewish Student union",
+  "interests": {
+   "faith": 3,
+   "culture_heritage": 2
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "community",
+  "evidence": "\"strengthen and teach Judiasm, learn about the history and take pride in it\"; \"Mon 1:25\".",
+  "unknowns": "Does not say whether non-Jewish students are welcome. Meeting frequency not stated (weekly assumed).",
+  "confidence": "medium",
+  "community": "jewish",
+  "changes": ""
+ },
+ {
+  "name": "Just Dance club",
+  "interests": {
+   "dance": 3,
+   "games": 2
+  },
+  "activities": {
+   "hang_out_play": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"fun and energetic club where students come together to enjoy dancing using the Just Dance video game\"; \"Fri, monthly\".",
+  "unknowns": "Meeting time of day not stated.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Key Club",
+  "interests": {
+   "service": 3
+  },
+  "activities": {
+   "volunteer": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Service and Volunteering events, especially with elementary schools\"; \"Mon lunch, biweekly\".",
+  "unknowns": "Hours expected and event frequency outside meetings not stated.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Knitting & Crochet Club",
+  "interests": {
+   "visual_art": 3,
+   "service": 2
+  },
+  "activities": {
+   "build_make": 3,
+   "volunteer": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "Name \"Knitting & Crochet\"; purpose \"Hobbies and community service.\"; \"Thu lunch, biweekly\".",
+  "unknowns": "Purpose is a 4-word stub: what service projects, and whether beginners are taught, are not stated.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Konnect Dance Troupe (KDT)",
+  "interests": {
+   "dance": 3,
+   "culture_heritage": 2,
+   "music": 1
+  },
+  "activities": {
+   "hang_out_play": 3,
+   "perform": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"K-Pop related club\"; \"K-Pop dances and Korean culture\"; \"unite fans by providing a safe space to interact, share experiences and connect\"; name \"Dance Troupe\"; \"Thu lunch, biweekly\".",
+  "unknowns": "Performing is implied only by 'Troupe' in the name; no performances or auditions are described. Music tag rests on 'K-Pop'.",
+  "confidence": "medium",
+  "community": "korean",
+  "changes": "perform 1 -> 2: the name says \"Dance Troupe\", a performing group; K-Pop dance is the core."
+ },
+ {
+  "name": "LSU",
+  "interests": {
+   "culture_heritage": 3
+  },
+  "activities": {
+   "hang_out_play": 2
+  },
+  "commitment": "light",
+  "openness": "community",
+  "evidence": "\"bring the Latino community together and create events for the Latino community\"; \"1st Mon of month\".",
+  "unknowns": "Does not say whether non-Latino students are welcome or what the events are. Acronym not expanded.",
+  "confidence": "medium",
+  "community": "latino",
+  "changes": ""
+ },
+ {
+  "name": "Magic: the Gathering Club",
+  "interests": {
+   "games": 3
+  },
+  "activities": {
+   "hang_out_play": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"teach and play the trading card game Magic: the Gathering during club time\"; \"Tue lunch\".",
+  "unknowns": "Meeting frequency not stated (weekly assumed). Does not say whether members need their own cards.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Math Club",
+  "interests": {
+   "math": 3
+  },
+  "activities": {
+   "compete": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"train students for math competitions such as the AMC 10 and AMC 12\"; \"Thu\".",
+  "unknowns": "Meeting time of day and frequency not stated (\"Thu\" only), so commitment is a guess.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Mock Trial",
+  "interests": {
+   "debate_law_politics": 3
+  },
+  "activities": {
+   "compete": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "heavy",
+  "openness": "open",
+  "evidence": "\"prepare for and compete at local mock trial competitions\"; \"educate students on law and the real proceedings of a trial\"; meets \"Mon lunch & Wed 5:30-7:30, biweekly\"",
+  "unknowns": "Does not say whether there are tryouts or fixed roles (attorney/witness), or how many competitions per season.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Model United nations",
+  "interests": {
+   "debate_law_politics": 3,
+   "geography_world": 2
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"simulate international diplomacy\"; \"learn about global issues, practice public speaking, and build leadership skills\"; \"Fri lunch, biweekly\"",
+  "unknowns": "Does not mention attending MUN conferences or competitions, or any cost/travel.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Movie Club",
+  "interests": {
+   "film_theatre": 3
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "build_make": 2,
+   "hang_out_play": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"dive into the filmmaking process, from scriptwriting and acting to filming, editing\"; \"analyze films\"; \"screenings, activities, discussions, and Q&As\"; \"create their own short films\"; \"Wed lunch, bi-monthly\"",
+  "unknowns": "\"Bi-monthly\" is ambiguous (twice a month vs every two months); tagged regular on the twice-a-month reading.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Multicultural club",
+  "interests": {
+   "culture_heritage": 3,
+   "geography_world": 1
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"So people know about different countries and cultures.\"; \"Last Wed of month lunch\"",
+  "unknowns": "One-line purpose: no detail on activities (presentations, food, events) or which cultures.",
+  "confidence": "low",
+  "community": "multicultural",
+  "changes": ""
+ },
+ {
+  "name": "Muslim Community Association (MSA)",
+  "interests": {
+   "faith": 3,
+   "identity_support": 2,
+   "culture_heritage": 2,
+   "geography_world": 1
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "hang_out_play": 1
+  },
+  "commitment": "light",
+  "openness": "community",
+  "evidence": "\"combat negative stereotypes about Muslims\"; \"safe and welcoming environment for Muslim and non Muslim students\" (all welcome); \"learn about Islam and cultures where Islam is present\"; \"raise awareness about world issues faced by Muslims\"; \"3rd Mon lunch of month\"",
+  "unknowns": "Does not say whether it holds prayer, events, or service projects.",
+  "confidence": "high",
+  "community": "muslim",
+  "changes": ""
+ },
+ {
+  "name": "National Honor Society",
+  "interests": {
+   "academics_honors": 3,
+   "service": 2
+  },
+  "activities": {
+   "volunteer": 3
+  },
+  "commitment": "light",
+  "openness": "selective",
+  "evidence": "\"recognize and honor outstanding high school students who have demonstrated excellence in scholarship, leadership, service, and character\"; \"cultivate a culture of service\"; \"2nd Fri of month\"",
+  "unknowns": "Does not state the GPA, application, or required service hours; meeting time of day not given.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "National Personal Finance Challenge Club",
+  "interests": {
+   "business": 3
+  },
+  "activities": {
+   "compete": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"prepares students for the National Personal Finance Challenge\"; \"budgeting, saving, credit management, risk management, investing\"; \"organize into teams and practice ... under timed conditions\"; \"Wed, biweekly\"",
+  "unknowns": "Meeting time of day (lunch or after school) not stated; competition dates/travel not stated.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Neuroscience Club",
+  "interests": {
+   "science": 3,
+   "health": 1
+  },
+  "activities": {
+   "learn_discuss": 3,
+   "build_make": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"welcomes students who want to learn about neuroscience\"; \"analyze neuroscience-based scientific literature\"; \"how mental health correlates to neuroscience\"; \"various discussions and projects\"; \"Fri lunch, biweekly\"",
+  "unknowns": "Projects are not described; the AI use is mentioned but not what members do with it.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Octagon Club",
+  "interests": {
+   "service": 3,
+   "environment": 1
+  },
+  "activities": {
+   "volunteer": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"volunteering at local elementary schools, park clean ups, and volunteering at community events\"; \"Mon lunch, biweekly\"",
+  "unknowns": "Does not say hour requirements or how often events happen outside meetings.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Poetry Club",
+  "interests": {
+   "writing_books": 3
+  },
+  "activities": {
+   "perform": 3,
+   "hang_out_play": 2,
+   "compete": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"creative writing such as poetry, slam, spoken word or rap\"; \"socializing\"; \"read poetry\"; \"poets can compete in open mic slam format competitions periodically\"; \"Mon lunch\"",
+  "unknowns": "Assumed weekly from \"Mon lunch\"; slam competitions appear to be in-club, not outside tournaments.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Radical Researchers Club",
+  "interests": {
+   "science": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"community of students who are passionate about research and knowledge\"; \"share what they have learned and to learn from others\"; \"Tue lunch, biweekly\"",
+  "unknowns": "Research field is never named (could be any subject); no concrete activities (papers, projects, competitions) described.",
+  "confidence": "low",
+  "changes": "science 2 -> 3: research is the club's whole purpose (schema files research under science); confidence stays low because the field of research is not named."
+ },
+ {
+  "name": "Red Cross",
+  "interests": {
+   "service": 3,
+   "health": 2
+  },
+  "activities": {
+   "volunteer": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"humanitarian service, disaster preparedness, and public health education\"; \"first aid and CPR training opportunities, disaster relief awareness campaigns, and community service projects\"; \"Wed lunch, biweekly\"",
+  "unknowns": "Does not say whether CPR training leads to certification or costs anything.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Science Bowl",
+  "interests": {
+   "science": 3
+  },
+  "activities": {
+   "compete": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"To compete at the regional Science Bowl competition.\"; \"Thu lunch\"",
+  "unknowns": "One-line purpose: subjects covered, team selection, and practice outside lunch not stated.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Science Olympiad",
+  "interests": {
+   "science": 3,
+   "engineering": 1
+  },
+  "activities": {
+   "compete": 3,
+   "learn_discuss": 1
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"foster student passion for STEM disciplines through teamwork, mentorship, and competition\"; \"Tue lunch\"",
+  "unknowns": "Events/subjects not listed (Science Olympiad can include building events, but the description does not say); team selection and after-school build time not stated.",
+  "confidence": "medium",
+  "changes": "Added engineering 1: purpose says \"STEM disciplines\", and engineering is part of that umbrella."
+ },
+ {
+  "name": "Scientist Societea",
+  "interests": {
+   "science": 3,
+   "business": 1
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"encourage science communication\"; \"hosting speaker events with academics and industry professionals that discuss their research and career paths\"; \"network with the research community\"; \"Fri lunch, monthly\"",
+  "unknowns": "business tag reflects only the career-path/networking mention.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Self-Defense Club",
+  "interests": {
+   "sports_fitness": 3
+  },
+  "activities": {
+   "learn_discuss": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"better understand and promote martial arts\"; \"how to protect themselves and others in dangerous situations\"; \"Wrestling room · Thu lunch\"",
+  "unknowns": "Does not say whether members physically practice techniques (implied by wrestling room, not stated) or which martial art.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Ship It Society",
+  "interests": {
+   "coding": 3
+  },
+  "activities": {
+   "build_make": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"the art of coding & publishing apps\"; \"Thu, biweekly or monthly\"",
+  "unknowns": "One-line purpose; frequency is \"biweekly or monthly\" and time of day not given, so commitment is light-to-regular; experience level not stated.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Sports Medicine",
+  "interests": {
+   "health": 3,
+   "sports_fitness": 1
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"Educate students about sports related injuries and treatments.\"; \"Wed lunch, twice a month\"",
+  "unknowns": "One-line purpose: no detail on hands-on practice (taping, first aid) or guest speakers.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Teenswithmed",
+  "interests": {
+   "health": 3
+  },
+  "activities": {
+   "learn_discuss": 3
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"teach others about the medical field and about different medical careers\"; \"Fri, biweekly\"",
+  "unknowns": "One-line purpose; meeting time of day not given; no detail on speakers or activities.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "The Book Club",
+  "interests": {
+   "writing_books": 3
+  },
+  "activities": {
+   "learn_discuss": 2,
+   "hang_out_play": 2
+  },
+  "commitment": "regular",
+  "openness": "open",
+  "evidence": "\"share their opinions on books, participate in various literature related activities, and just have fun\"; \"Thu lunch, biweekly\"",
+  "unknowns": "Does not say whether there is a shared reading list or reading pace expected.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "Theatre club",
+  "interests": {
+   "film_theatre": 3
+  },
+  "activities": {
+   "hang_out_play": 2
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"make a community withing theatre for those in and out of the classes\"; \"Tue lunch, monthly\"",
+  "unknowns": "Near-stub purpose: does not say whether members act, perform, or work on productions; tagged only community around theatre.",
+  "confidence": "low",
+  "changes": ""
+ },
+ {
+  "name": "Tri-M Music Honor Society",
+  "interests": {
+   "music": 3,
+   "academics_honors": 2,
+   "service": 2
+  },
+  "activities": {
+   "volunteer": 2,
+   "perform": 2
+  },
+  "commitment": "light",
+  "openness": "selective",
+  "evidence": "\"Music Honor Society\"; \"music-based service projects\"; \"opportunities to perform and showcase their musical abilities\"; \"Choir room · Tue lunch, monthly\"",
+  "unknowns": "Membership requirements (music class enrollment, GPA) are not stated, only implied by \"Honor Society\".",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "UNICEF",
+  "interests": {
+   "service": 3,
+   "geography_world": 2
+  },
+  "activities": {
+   "volunteer": 3
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"protect children's rights, advocate for those living in underprivileged situations\"; \"host fundraisers, community service events, campaigns\"; \"gaining volunteer hours\"; \"Mon lunch, monthly\"",
+  "unknowns": "Event frequency outside the monthly meeting not stated.",
+  "confidence": "high",
+  "changes": ""
+ },
+ {
+  "name": "USABO",
+  "interests": {
+   "science": 3
+  },
+  "activities": {
+   "compete": 3,
+   "learn_discuss": 2
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"To allow students to compete and learn about biology.\"; \"1st Fri lunch of month\"",
+  "unknowns": "One-line purpose; exam prep load outside meetings not stated.",
+  "confidence": "medium",
+  "changes": ""
+ },
+ {
+  "name": "Vet Connect",
+  "interests": {
+   "health": 3,
+   "service": 2
+  },
+  "activities": {
+   "learn_discuss": 2,
+   "volunteer": 2,
+   "build_make": 1
+  },
+  "commitment": "light",
+  "openness": "open",
+  "evidence": "\"closing the gap between students and the veterinary world\"; \"animal advocacy and education\"; \"produce podcasts and interviews with professionals including vets\"; \"partner with local institutions such as the SPCA ... to provide members with various volunteer opportunities\"; \"Thu lunch, monthly\"",
+  "unknowns": "Schema has no animals key; health used for veterinary careers. Outside-of-school podcast work commitment not stated.",
+  "confidence": "high",
+  "changes": ""
+ }
+]

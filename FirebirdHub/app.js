@@ -1906,39 +1906,20 @@ function renderClubDates(){
 
 /* Club filter controls + "Find your club" matcher quiz (#4) */
 
-const MATCH_QS = [
-  {q:"What are you most into?", multi:true, opts:[
-    {t:"Science, tech & building", cats:["STEM"]},
-    {t:"Art, music & performing", cats:["Arts & Media"]},
-    {t:"Culture, identity & language", cats:["Culture & Language"]},
-    {t:"Service & giving back", cats:["Service & Advocacy"]},
-    {t:"Business, debate & academics", cats:["Academics & Business"]},
-    {t:"Sports & games", cats:["Sports & Games"]}
-  ]},
-  {q:"How do you like to get involved?", opts:[
-    {t:"Hands-on projects", cats:["STEM","Arts & Media"]},
-    {t:"With a team or community", cats:["Service & Advocacy","Culture & Language","Sports & Games"]},
-    {t:"Competing & achieving", cats:["Academics & Business","Sports & Games","STEM"]}
-  ]},
-  {q:"Pick your energy", opts:[
-    {t:"Social & group", cats:["Culture & Language","Service & Advocacy","Sports & Games"]},
-    {t:"Focused & solo", cats:["STEM","Academics & Business"]}
-  ]},
-  {q:"Your main goal?", opts:[
-    {t:"Meet new people", cats:["Culture & Language","Special Interest"]},
-    {t:"Build a skill", cats:["STEM","Arts & Media","Academics & Business"]},
-    {t:"Give back", cats:["Service & Advocacy"]},
-    {t:"Just have fun", cats:["Sports & Games","Special Interest"]}
-  ]}
-];
-/* Every question works the same way: tap answers (they turn gold), then Next. Back returns to
-   the last question with its answers kept. The header (progress + close) stays put, so the
-   progress bar slides, and each question slides in from the side it came from. */
-let quizStep=0, quizPrefs={}, quizAns=[];
+/* Questions, club tags and scoring live in club-match.js (window.ClubMatch), shared with the
+   test harness in club-quiz/. Every question works the same way: tap answers (they turn gold),
+   then Next. Back returns to the last question with its answers kept. The header (progress +
+   close) stays put, and each question slides in from the side it came from. The "Which
+   communities?" step shows only when "Culture, language and faith" is picked. Results show a
+   fit label (no percent, see club-quiz/README.md) and one line on why each club matched. */
+let quizStep=0, quizAns={};
 function quizDialog(){ return document.getElementById("matchDialog"); }
 function closeQuiz(){ const d=quizDialog(); if(d && d.open) d.close(); }
+function quizQs(){ return (window.ClubMatch ? ClubMatch.QS : []).filter(function(Q){ return !Q.when || Q.when(quizAns); }); }
+function qT(pair){ return tr(pair[0], pair[1]); }
 function openMatch(){
-  quizStep=0; quizAns=[]; quizPrefs={};
+  if(!window.ClubMatch) return;
+  quizStep=0; quizAns={};
   const body=document.getElementById("quizBody"); if(!body) return;
   body.innerHTML='<div class="quizhead"><span class="quizprog" aria-hidden="true"><span style="width:0%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="'+tr("Close","Cerrar")+'">&times;</button></div><div class="quizpane" id="quizPane"></div>';
   body.querySelector("#quizClose").onclick=closeQuiz;
@@ -1956,58 +1937,83 @@ function quizSwap(html, dir){
 }
 function quizFocusTitle(){ const h=document.getElementById("quizTitle"); if(h){ h.setAttribute("tabindex","-1"); h.focus({preventScroll:true}); } }
 function renderQuizStep(dir){
-  const Q=MATCH_QS[quizStep], sel=quizAns[quizStep]||(quizAns[quizStep]=[]), last=quizStep===MATCH_QS.length-1;
-  quizProgress(Math.round(quizStep/MATCH_QS.length*100));
+  const QS=quizQs(), Q=QS[quizStep], sel=quizAns[Q.id]||(quizAns[Q.id]=[]), last=quizStep===QS.length-1;
+  quizProgress(Math.round(quizStep/QS.length*100));
+  const full=function(){ return Q.max && sel.length>=Q.max; };
   const pane=quizSwap(
-    '<p class="quizstepn">'+tr('Question '+(quizStep+1)+' of '+MATCH_QS.length,'Pregunta '+(quizStep+1)+' de '+MATCH_QS.length)+'</p>'+
-    '<h2 id="quizTitle" class="quizq">'+clubEsc(Q.q)+'</h2>'+
-    '<p class="quizhint">'+(Q.multi?tr("Pick any that fit","Elige todas las que te queden"):tr("Pick one","Elige una"))+'</p>'+
-    '<div class="quizopts" role="group" aria-labelledby="quizTitle">'+Q.opts.map(function(o,i){ const on=sel.indexOf(i)>=0; return '<button type="button" class="quizopt'+(on?' on':'')+'" data-i="'+i+'" aria-pressed="'+on+'">'+clubEsc(o.t)+'</button>'; }).join("")+'</div>'+
+    '<p class="quizstepn">'+tr('Question '+(quizStep+1)+' of '+QS.length,'Pregunta '+(quizStep+1)+' de '+QS.length)+'</p>'+
+    '<h2 id="quizTitle" class="quizq">'+clubEsc(qT(Q.q))+'</h2>'+
+    '<p class="quizhint">'+clubEsc(qT(Q.hint))+'</p>'+
+    '<div class="quizopts'+(Q.grid?' grid':'')+'" role="group" aria-labelledby="quizTitle">'+Q.opts.map(function(o){ const on=sel.indexOf(o.k)>=0; return '<button type="button" class="quizopt'+(on?' on':'')+'" data-k="'+o.k+'" aria-pressed="'+on+'">'+clubEsc(qT(o.t))+'</button>'; }).join("")+'</div>'+
     '<div class="quiznav">'+(quizStep>0?'<button type="button" class="btn ghost" id="quizBack">'+tr("Back","Atrás")+'</button>':'')+
     '<button type="button" class="btn primary" id="quizNext"'+(sel.length?'':' disabled')+'>'+(last?tr("See my matches","Ver mis clubes"):tr("Next","Siguiente"))+'</button></div>', dir);
   if(!pane) return;
   const nx=pane.querySelector("#quizNext");
+  const paint=function(){
+    pane.querySelectorAll(".quizopt").forEach(function(b){ const on=sel.indexOf(b.dataset.k)>=0; b.classList.toggle("on",on); b.setAttribute("aria-pressed",String(on)); b.disabled = !on && !!full(); });
+    nx.disabled=!sel.length;
+    const l=pane.querySelector("#quizNext"); if(l) l.textContent = quizStep===quizQs().length-1 ? tr("See my matches","Ver mis clubes") : tr("Next","Siguiente");
+  };
+  paint();
   pane.querySelectorAll(".quizopt").forEach(function(btn){
     btn.onclick=function(){
-      const i=+btn.dataset.i, at=sel.indexOf(i);
-      if(Q.multi){ if(at>=0) sel.splice(at,1); else sel.push(i); }
-      else { sel.length=0; sel.push(i); }
-      pane.querySelectorAll(".quizopt").forEach(function(b){ const on=sel.indexOf(+b.dataset.i)>=0; b.classList.toggle("on",on); b.setAttribute("aria-pressed",String(on)); });
-      nx.disabled=!sel.length;
+      const k=btn.dataset.k, at=sel.indexOf(k);
+      if(Q.multi){ if(at>=0) sel.splice(at,1); else if(!full()) sel.push(k); }
+      else { sel.length=0; sel.push(k); }
+      paint(); // picking or dropping "Culture" adds or removes the next step, so the count updates
+      const n=pane.querySelector(".quizstepn"), L=quizQs().length; if(n) n.textContent=tr('Question '+(quizStep+1)+' of '+L,'Pregunta '+(quizStep+1)+' de '+L);
     };
   });
-  nx.onclick=function(){ if(!sel.length) return; quizStep++; if(quizStep>=MATCH_QS.length) renderQuizResults("next"); else renderQuizStep("next"); quizFocusTitle(); };
+  nx.onclick=function(){ if(!sel.length) return; quizStep++; if(quizStep>=quizQs().length) renderQuizResults("next"); else renderQuizStep("next"); quizFocusTitle(); };
   const bk=pane.querySelector("#quizBack"); if(bk) bk.onclick=function(){ quizStep--; renderQuizStep("back"); quizFocusTitle(); };
 }
-function scoreClubs(){
-  var total=Object.keys(quizPrefs).reduce(function(a,k){return a+quizPrefs[k];},0)||1;
-  return CLUBS.filter(function(c){ return c && c.name && !c.disbanded; }).map(function(c){
-    var cat=clubCatOf(c);
-    var sc=quizPrefs[cat]||0;
-    return {club:c, cat:cat, score:sc, pct:Math.max(10,Math.min(99,Math.round(sc/total*100)))};
-  }).sort(function(a,b){ return (b.score-a.score) || String(a.club.name||"").localeCompare(String(b.club.name||"")); });
+var MATCH_BAND = { strong:["Strong match","Muy buena opción"], good:["Good match","Buena opción"], some:["Worth a look","Vale la pena ver"] };
+var MATCH_ACT = {
+  compete:["members compete","sus miembros compiten"], make:["members build and make things","sus miembros construyen y crean cosas"],
+  learn:["meetings are talks and lessons","las reuniones son charlas y lecciones"], stage:["members perform","sus miembros se presentan"],
+  help:["members volunteer","sus miembros hacen voluntariado"], chill:["meetings are laid back","las reuniones son relajadas"]
+};
+function matchWhy(r){
+  const w=r.why, t=r.tags, en=[], es=[];
+  const lab=function(k){ if(k==="honors") return ["honors","honores"]; const o=ClubMatch.optOf("int",k); return o ? [o.t[0].toLowerCase(), o.t[1].toLowerCase()] : null; };
+  const i1=w.interest && lab(w.interest), i2=w.interest2 && lab(w.interest2), act=w.act && MATCH_ACT[w.act];
+  if(w.interest==="culture" && t.m && (quizAns.com||[]).indexOf(t.m)>=0){ en.push("A club for the community you picked"); es.push("Un club de la comunidad que elegiste"); }
+  else if(w.interest==="honors"){ en.push("An honor society, for your goal of awards and honors"); es.push("Una sociedad de honor, para tu meta de premios y honores"); }
+  else if(i1){ en.push("Fits your interest in "+i1[0]+(i2?" and "+i2[0]:"")); es.push("Va con tu interés en "+i1[1]+(i2?" y "+i2[1]:"")); }
+  else { en.push("Close to some of your answers"); es.push("Se acerca a algunas de tus respuestas"); }
+  if(act && t.q!=="l" && !t.auto){ en[0]+=", and "+act[0]; es[0]+=", y "+act[1]; }
+  let line=tr(en[0]+".", es[0]+".");
+  if(t.o==="s") line+=" "+tr("Membership has requirements.","Tiene requisitos para ser miembro.");
+  if(t.q==="l" || t.auto) line+=" "+tr("Its listing is short, so ask the club for details.","Su descripción es corta, así que pregunta al club.");
+  return line;
+}
+function matchCardHtml(r, rank){
+  const c=r.club, b=ClubMatch.band(r.fit, r.tags);
+  var desc=String(c.purpose||c.desc||"").replace(/\s+/g," ").trim(), first=(desc.match(/^.*?[.!?](\s|$)/)||[desc])[0].trim();
+  if(first.length>110) first=first.slice(0,104).replace(/\s+\S*$/,"")+"…";
+  if(first.length<12) first="";
+  var emails=Array.isArray(c.emails)?c.emails.filter(Boolean):[];
+  var meet=c.meetingInfo?('<p class="matchmeet">'+CLUB_ICON.meet+'<span>'+clubEsc(c.meetingInfo)+'</span></p>'):"";
+  return '<div class="matchcard">'+
+    '<div class="matchtop"><h3>'+clubEsc(c.name)+'</h3></div>'+
+    '<p class="matchband '+b+'"><span class="matchmeter" aria-hidden="true"><span style="width:'+Math.round(Math.max(.12,r.fit)*100)+'%"></span></span><b>'+qT(MATCH_BAND[b])+'</b></p>'+
+    '<p class="matchwhy">'+clubEsc(matchWhy(r))+'</p>'+ (first?'<p class="matchdesc">'+clubEsc(first)+'</p>':'') + meet +
+    (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">'+CLUB_ICON.mail+'<span>'+tr("Email the club","Escribir al club")+'</span></a>':"")+'</div>';
 }
 function renderQuizResults(dir){
-  quizPrefs={};
-  MATCH_QS.forEach(function(Q,qi){ (quizAns[qi]||[]).forEach(function(i){ (Q.opts[i].cats||[]).forEach(function(c){ quizPrefs[c]=(quizPrefs[c]||0)+1; }); }); });
   quizProgress(100);
-  const ranked=scoreClubs().filter(function(r){return r.score>0;}).slice(0,3);
+  const res=ClubMatch.top(quizAns, CLUBS, 3), ranked=res.top;
+  const shown={}; ranked.forEach(function(r){ shown[r.club.name]=1; });
+  const more=res.all.filter(function(r){ return !shown[r.club.name] && r.fit>=0.7; }).slice(0,3);
   let html='<h2 id="quizTitle" class="quizq">'+tr("Your top matches","Tus mejores opciones")+'</h2>';
-  if(!ranked.length){ html+='<p class="note">'+tr("No strong match yet. Try browsing all clubs.","Todavía no hay una opción clara. Prueba a ver todos los clubes.")+'</p>'; }
-  else html+=ranked.map(function(r){
-    const c=r.club;
-    var emails=Array.isArray(c.emails)?c.emails.filter(Boolean):[];
-    var meet=c.meetingInfo?('<p class="matchcat">'+clubEsc(c.meetingInfo)+'</p>'):"";
-    var desc=String(c.purpose||c.desc||"").trim();
-    return '<div class="matchcard"><div class="matchtop"><h3>'+clubEsc(c.name)+'</h3><span class="matchpct">'+r.pct+tr('% match','% de afinidad')+'</span></div>'+
-      '<p class="matchcat"><b>'+clubEsc(clubCatLabel(r.cat))+'</b></p>'+ meet +
-      (desc?'<p class="matchwhy">'+clubEsc(desc.slice(0,140))+(desc.length>140?"…":"")+'</p>':"")+
-      (emails.length?'<a class="cbtn gold" href="https://mail.google.com/mail/?view=cm&fs=1&to='+encodeURIComponent(emails.join(","))+'" target="_blank" rel="noopener">'+tr("Email the club","Escribir al club")+'</a>':"")+'</div>';
-  }).join("");
+  if(!clubsReady || !CLUBS.length) html+='<p class="note">'+tr("The club list is still loading. Try again in a moment.","La lista de clubes todavía se está cargando. Inténtalo en un momento.")+'</p>';
+  else if(!ranked.length) html+='<p class="note">'+tr("No strong match yet. Try browsing all clubs.","Todavía no hay una opción clara. Prueba a ver todos los clubes.")+'</p>';
+  else html+=ranked.map(matchCardHtml).join("");
+  if(more.length) html+='<h3 class="matchmorehead">'+tr("Also worth a look","También vale la pena ver")+'</h3><ul class="matchmore">'+more.map(function(r){ return '<li><b>'+clubEsc(r.club.name)+'</b><span>'+qT(MATCH_BAND[ClubMatch.band(r.fit, r.tags)])+'</span></li>'; }).join("")+'</ul>';
   html+='<div class="quiznav"><button type="button" class="btn ghost" id="quizBack">'+tr("Back","Atrás")+'</button><button type="button" class="btn ghost" id="quizRetake">'+tr("Retake","Repetir")+'</button><button type="button" class="btn primary" id="quizDone">'+tr("Browse all clubs","Ver todos los clubes")+'</button></div>';
   const pane=quizSwap(html, dir); if(!pane) return;
-  pane.querySelector("#quizBack").onclick=function(){ quizStep=MATCH_QS.length-1; renderQuizStep("back"); quizFocusTitle(); };
-  pane.querySelector("#quizRetake").onclick=function(){ quizStep=0; quizAns=[]; renderQuizStep("back"); quizFocusTitle(); };
+  pane.querySelector("#quizBack").onclick=function(){ quizStep=quizQs().length-1; renderQuizStep("back"); quizFocusTitle(); };
+  pane.querySelector("#quizRetake").onclick=function(){ quizStep=0; quizAns={}; renderQuizStep("back"); quizFocusTitle(); };
   pane.querySelector("#quizDone").onclick=closeQuiz;
 }
 (function(){ const b=document.getElementById("findClubBtn"); if(b) b.addEventListener("click", openMatch); })();

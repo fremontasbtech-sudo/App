@@ -1307,3 +1307,27 @@ dialog.quiz{padding:16px 18px 18px; max-height:calc(100dvh - 32px); overflow:aut
 .askpanel .askform .btn{flex:none}
 dialog{max-height:calc(100dvh - 32px); overflow:auto}
 .qrbig{width:min(100%, 340px)}
+
+/* v54: "Find your club" rebuilt (2026-11-20). Two-column answer grid for long lists, fit label
+   with a short meter instead of a percent, one "why" line, and an "Also worth a look" list. */
+.quizopts.grid{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.quizopts.grid .quizopt{padding:10px 10px; font-size:14px; line-height:1.25; min-height:48px}
+.quizopt[disabled]{opacity:.45; cursor:not-allowed; transform:none; box-shadow:none}
+.matchcard{padding:12px 14px; margin-bottom:10px}
+.matchtop h3{font-size:19px; line-height:1.15}
+.matchband{display:flex; align-items:center; gap:10px; margin:6px 0 4px; font-size:14px}
+.matchband b{font-weight:700; color:var(--cardinal)}
+.matchband.some b{color:var(--ink-soft)}
+.matchmeter{flex:none; width:72px; height:8px; background:rgba(39,21,16,.12); border:1px solid rgba(39,21,16,.35)}
+.matchmeter span{display:block; height:100%; background:var(--cardinal)}
+.matchband.good .matchmeter span{background:var(--flame)}
+.matchband.some .matchmeter span{background:var(--ink-soft)}
+.matchwhy{font-size:14.5px; margin:4px 0 6px; line-height:1.4}
+.matchmeet{display:flex; gap:7px; align-items:flex-start; font-size:13px; color:var(--ink-soft); margin:0 0 10px}
+.matchmeet .ci{width:15px; height:15px; flex:none; margin-top:2px; stroke:var(--cardinal); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+.matchmorehead{font-size:15px; margin:14px 0 6px; text-transform:uppercase; letter-spacing:.04em}
+.matchmore{list-style:none; margin:0 0 8px; padding:0; border-top:2px solid var(--ink)}
+.matchmore li{display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid rgba(39,21,16,.2); font-size:14px}
+.matchmore li span{color:var(--ink-soft); white-space:nowrap}
+@media (max-width:340px){ .quizopts.grid{grid-template-columns:1fr} }
+.matchdesc{font-size:13.5px; color:var(--ink-soft); margin:0 0 6px; line-height:1.4}
