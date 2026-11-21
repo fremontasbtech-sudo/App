@@ -1991,7 +1991,7 @@ function matchCardHtml(r, rank){
   const c=r.club, b=ClubMatch.band(r.fit, r.tags);
   var desc=String(c.purpose||c.desc||"").replace(/\s+/g," ").trim(), first=(desc.match(/^.*?[.!?](\s|$)/)||[desc])[0].trim();
   if(first.length>110) first=first.slice(0,104).replace(/\s+\S*$/,"")+"…";
-  if(first.length<12) first="";
+  if(first.length<12 || (r.tags.q==="l" && first.length<40)) first=""; // stub listings ("This club will go into.") add nothing
   var emails=Array.isArray(c.emails)?c.emails.filter(Boolean):[];
   var meet=c.meetingInfo?('<p class="matchmeet">'+CLUB_ICON.meet+'<span>'+clubEsc(c.meetingInfo)+'</span></p>'):"";
   return '<div class="matchcard">'+
