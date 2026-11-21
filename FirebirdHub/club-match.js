@@ -8,7 +8,7 @@
    and in Node (module.exports) so the eval harness runs the same code. */
 (function(root){
 "use strict";
-var VERSION = "2";
+var VERSION = "3";
 
 /* ---- Questions. Option keys feed the scorer; text is English plus Spanish. ---- */
 var QS = [
@@ -174,6 +174,8 @@ function score(ans, clubs){
     var T = (TIME_FIT[time]||TIME_FIT.regular)[t.c||"u"] || 0.75;
     var G = goal ? goalFit(goal, t) : 0.5;
     var s = W.interest*I.fit + W.act*A.fit + W.time*T + W.goal*G;
+    // A club for a community the student picked is the clearest signal in the quiz.
+    if(t.m && has(ans,"int","culture") && (ans.com||[]).indexOf(t.m)>=0) s += 0.15;
     if(!I.top) s *= 0.4;            // none of your interests: it can only fill space at the bottom
     if(t.auto) s *= 0.93;             // a club tagged by keyword rules only: we know less, so claim less
     // tiny tie-breakers: breadth beyond the cap, then clubs whose core is your top pick

@@ -30,4 +30,5 @@ export const P=[
 ["Theatre kid who wants to act",{int:["theatre"],act:["stage"],time:["regular"],goal:["friends"]},[[1],[1],[0],[0]]],
 ["Wants a hands-on craft hobby like knitting, also likes giving back",{int:["art","service"],act:["make"],time:["light"],goal:["fun"]},[[1,3],[0],[0],[3]]],
 ["Undecided new student who wants to meet people, likes many things",{int:["games","art","culture"],com:["multicultural"],act:["chill"],time:["light"],goal:["friends"]},[[5,1,2],[1],[0],[0]]]
+,["Mexican-American student who loves to dance",{int:["culture","dance"],com:["latino"],act:["stage"],time:["regular"],goal:["friends"]},[[2,1],[0],[0],[0]]]
 ];
