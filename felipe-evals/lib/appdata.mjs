@@ -56,7 +56,10 @@ export const NO_CLASSES = [
   ["2027-04-12","2027-04-16","Spring Break","Vacaciones de primavera"],
   ["2027-05-31","2027-05-31","Memorial Day","Día de los Caídos"]
 ];
-export const SPECIAL_DAYS = { "2026-11-09":"a", "2026-11-10":"b", "2026-11-23":"a", "2026-11-24":"b" };
+export const SPECIAL_DAYS = { "2026-11-09":"a", "2026-11-10":"b", "2026-11-23":"a", "2026-11-24":"b", "2026-12-15":"fin13", "2026-12-16":"fin56", "2026-12-17":"fin47", "2026-12-18":"fin2" };
+const full = (a, b) => [[a+" Final","8:30","10:30"],["Brunch","10:30","10:50"],[b+" Final","11:00","1:00"],["Lunch","1:00","1:40"],["Enrichment","1:50","3:50"]];
+Object.assign(SCHEDULES, { fin13:{ label:"Finals: 1st & 3rd", rows:full("1st","3rd") }, fin56:{ label:"Finals: 5th & 6th", rows:full("5th","6th") }, fin47:{ label:"Finals: 4th & 7th", rows:full("4th","7th") },
+  fin2:{ label:"Finals: 2nd (min day)", rows:[["Enrichment","8:30","9:30"],["Brunch","9:30","9:40"],["2nd Final","9:50","11:50"],["Lunch","12:00","12:30"]] } });
 const WHY = { "2026-11-09":"Veterans Day week", "2026-11-10":"Veterans Day week", "2026-11-23":"Thanksgiving week", "2026-11-24":"Thanksgiving week" };
 
 function parseCSV(text){

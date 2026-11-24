@@ -107,7 +107,15 @@ const SCHEDULES = {
     ["Brunch","10:50","11:05"],["Period 5","11:15","12:45"],["Lunch","12:45","1:25"],["Period 6","1:35","3:05"]
   ]}
 };
-const SCHED_LABEL_ES = { mon:"Lunes", a:"D\u00eda A \u00b7 mar y jue", b:"D\u00eda B \u00b7 mi\u00e9 y vie" };
+/* 1st semester finals days (official PDF "2026-2027 1st Semester Finals Schedule", fhs.fuhsd.org >
+   Bell Schedules). SPECIAL_DAYS below says which date runs which of these. */
+function finalsFull(a,b){ return [[a+" Final","8:30","10:30"],["Brunch","10:30","10:50"],[b+" Final","11:00","1:00"],["Lunch","1:00","1:40"],["Enrichment","1:50","3:50"]]; }
+function finalsMin(n){ return [["Enrichment","8:30","9:30"],["Brunch","9:30","9:40"],[n+" Final","9:50","11:50"],["Lunch","12:00","12:30"]]; }
+SCHEDULES.fin13 = { label:"Finals: 1st & 3rd", rows:finalsFull("1st","3rd") };
+SCHEDULES.fin56 = { label:"Finals: 5th & 6th", rows:finalsFull("5th","6th") };
+SCHEDULES.fin47 = { label:"Finals: 4th & 7th", rows:finalsFull("4th","7th") };
+SCHEDULES.fin2  = { label:"Finals: 2nd (min day)", rows:finalsMin("2nd") };
+const SCHED_LABEL_ES = { mon:"Lunes", a:"D\u00eda A \u00b7 mar y jue", b:"D\u00eda B \u00b7 mi\u00e9 y vie", fin13:"Finales: 1.\u00ba y 3.\u00ba", fin56:"Finales: 5.\u00ba y 6.\u00ba", fin47:"Finales: 4.\u00ba y 7.\u00ba", fin2:"Finales: 2.\u00ba (d\u00eda corto)" };
 
 /* FUHSD 2026-27 calendar (fuhsd.org > About Us > Calendar): days with no classes, as
    [from, to, reason, Spanish]. Classes run 2026-08-17 to 2027-06-03.
@@ -125,14 +133,16 @@ const NO_CLASSES = [
   ["2027-04-12","2027-04-16","Spring Break","Vacaciones de primavera"],
   ["2027-05-31","2027-05-31","Memorial Day","D\u00eda de los Ca\u00eddos"]
 ];
-/* Dated A/B swaps for weeks where a mid-week day off shifts the pattern ("YYYY-MM-DD":"a"|"b").
+/* Dated days that don't run their weekday's schedule ("YYYY-MM-DD": a key of SCHEDULES): A/B swaps
+   for weeks where a mid-week day off shifts the pattern, and finals days.
    Monday-off weeks need nothing here: Tue A, Wed B, Thu A, Fri B is already the default.
    Source: "FHS Bell Schedules - Full Export.md" (Thanksgiving Week 2025 ran Mon A, Tue B,
    Wed-Fri off, and its pattern rule: the remaining days alternate A, B starting Monday).
    Keep these in step with SPECIAL_DAYS in api/ask.js and the Special weeks below. */
 const SPECIAL_DAYS = {
   "2026-11-09":"a", "2026-11-10":"b",   // Veterans Day week, Wed 11-11 off
-  "2026-11-23":"a", "2026-11-24":"b"    // Thanksgiving week, Wed 11-25 to Fri 11-27 off
+  "2026-11-23":"a", "2026-11-24":"b",   // Thanksgiving week, Wed 11-25 to Fri 11-27 off
+  "2026-12-15":"fin13", "2026-12-16":"fin56", "2026-12-17":"fin47", "2026-12-18":"fin2" // 1st semester finals (Mon 12-14 is a regular Monday)
 };
 function noClassReason(iso){
   // Summer is June 1 to the first day, and the last day to Aug 10. Past that, the table is
@@ -168,8 +178,6 @@ function periodName(n){
 
 /* Regular-day templates reused across the built-in special weeks. */
 const RALLY_B = SCHEDULES.b.rows.map(r => r[0]==="Tutorial" ? ["Rally","10:10","10:50"] : r);
-function finalsFull(a,b){ return [[a+" Final","8:30","10:30"],["Brunch","10:30","10:50"],[b+" Final","11:00","1:00"],["Lunch","1:00","1:40"],["Enrichment","1:50","3:50"]]; }
-function finalsMin(n){ return [["Enrichment","8:30","9:30"],["Brunch","9:30","9:40"],[n+" Final","9:50","11:50"],["Lunch","12:00","12:30"]]; }
 const CAREER_MON=[["Period 1","8:30","9:10"],["Period 2","9:15","9:55"],["Career Session #1","10:05","10:30"],["Career Session #2","10:35","11:00"],["Brunch","11:00","11:15"],["Period 3","11:25","12:05"],["Period 4","12:10","12:50"],["Period 5","12:55","1:35"],["Lunch","1:35","2:15"],["Period 6","2:25","3:05"],["Period 7","3:10","3:50"]];
 const CAASPP_TUE=[["CAASPP Testing (11th)","8:30","11:45"],["Brunch","11:45","12:00"],["Period 1","12:10","12:50"],["Period 2","12:55","1:35"],["Lunch","1:35","2:15"],["Period 3","2:25","3:05"],["Period 7","3:10","3:50"]];
 const CAASPP_WED=[["Collaboration (staff only)","7:35","8:25"],["CAASPP Testing (11th)","8:30","11:10"],["Brunch","11:10","11:25"],["Period 4","11:35","12:20"],["Tutorial","12:25","12:50"],["Period 5","12:55","1:40"],["Lunch","1:40","2:20"],["Period 6","2:30","3:20"]];
@@ -197,8 +205,8 @@ const SPECIAL_WEEKS = [
   { id:"thanksgiving", name:"Thanksgiving Week", dates:"Nov 23–27, 2026",
     note:"Monday is an A day and Tuesday is a B day. There is no school Wednesday through Friday for Thanksgiving Break.",
     days:[ D("Mon","A day",A), D("Tue","B day",B), OFF("Wed","Thanksgiving Break"), OFF("Thu","Thanksgiving"), OFF("Fri","Thanksgiving Break") ] },
-  { id:"finals1", name:"1st Semester Finals", dates:"mid-December",
-    days:[ D("Mon","Blocks 1\u20137",MON), D("Tue","Finals: 4th & 7th",finalsFull("4th","7th")), D("Wed","Finals: 5th & 6th",finalsFull("5th","6th")), D("Thu","Finals: 1st & 3rd",finalsFull("1st","3rd")), D("Fri","Finals: 2nd (min day)",finalsMin("2nd")) ] },
+  { id:"finals1", name:"1st Semester Finals", dates:"Dec 14–18, 2026",
+    days:[ D("Mon","Blocks 1\u20137",MON), D("Tue","Finals: 1st & 3rd",finalsFull("1st","3rd")), D("Wed","Finals: 5th & 6th",finalsFull("5th","6th")), D("Thu","Finals: 4th & 7th",finalsFull("4th","7th")), D("Fri","Finals: 2nd (min day)",finalsMin("2nd")) ] },
   { id:"mlk", name:"MLK Week", dates:"mid-January",
     days:[ OFF("Mon","MLK Jr. Day"), D("Tue","A day",A), D("Wed","B day",B), D("Thu","A day",A), D("Fri","B day",B) ] },
   { id:"career", name:"Career Day Week", dates:"early February",
@@ -243,18 +251,22 @@ let CLUBS = [];
    Tab navigation (hash deep-links, focus management)
 ===================================================== */
 const VIEWS = ["home","schedule","spirit","clubs","sports","more","give"]; // "give" is reached by QR scan, not the nav
+// A stray % in a shared link must never stop the app from starting.
+function safeDecode(v){ try{ return decodeURIComponent(v); }catch(e){ return v; } }
 function parseHash(){
   const h = location.hash.replace(/^#/,"");
   const [view, qs] = h.split("?");
   const params = {};
   if(qs) qs.split("&").forEach(kv=>{
     const i = kv.indexOf("=");
-    if(i>0) params[kv.slice(0,i)] = decodeURIComponent(kv.slice(i+1).replace(/\+/g," "));
+    if(i>0) params[kv.slice(0,i)] = safeDecode(kv.slice(i+1).replace(/\+/g," "));
   });
   if(view==="give" && !FEATURES.fireBucks) return { view:"home", params:{} };
   return { view, params };
 }
-function show(view, focusHeading){
+// push=true (a tap on a tab or a link to one) adds a history entry, so Back returns to the last
+// tab instead of leaving the app.
+function show(view, focusHeading, push){
   if(!VIEWS.includes(view)) view = "home";
   VIEWS.forEach(v=>{
     document.getElementById("view-"+v).classList.toggle("active", v===view);
@@ -265,7 +277,10 @@ function show(view, focusHeading){
     else el.removeAttribute("aria-current");
   });
   // keep the QR's ?sid=… params in the URL while on the give screen
-  if(history.replaceState && view!=="give") history.replaceState(null,"","#"+view);
+  if(history.replaceState && view!=="give"){
+    if(push && location.hash!=="#"+view) history.pushState(null,"","#"+view);
+    else history.replaceState(null,"","#"+view);
+  }
   window.scrollTo({top:0, behavior:"auto"});
   if(focusHeading){
     const region = document.getElementById("view-"+view);
@@ -281,8 +296,15 @@ document.addEventListener("click", e=>{
   const t = e.target.closest("[data-nav]");
   if(!t) return;
   e.preventDefault();
-  show(t.getAttribute("data-nav"), true);
+  show(t.getAttribute("data-nav"), true, true);
 });
+// Closes whatever is open on top of the page (a dialog or Felipe). True if something was open.
+function closeOverlays(){
+  let any = false;
+  document.querySelectorAll("dialog[open]").forEach(function(d){ d.close(); any = true; });
+  if(window.closeFelipe && window.closeFelipe()) any = true;
+  return any;
+}
 // Skip link: focus the open view's content in place. "#main" is not a view, so following the
 // link as a hash would send the visitor to Home (and rewrite the URL).
 function focusActiveView(){
@@ -300,6 +322,12 @@ document.addEventListener("click", e=>{
 });
 window.addEventListener("hashchange", ()=>{
   const ph = parseHash();
+  // Back with a dialog or Felipe open closes that and stays on the same tab.
+  if(closeOverlays()){
+    const on = document.querySelector(".view.active");
+    if(on && history.pushState && location.hash!=="#"+on.id.replace(/^view-/,"")) history.pushState(null, "", "#"+on.id.replace(/^view-/,""));
+    return;
+  }
   // A hash that isn't a view (an in-page anchor such as #main) leaves the route alone.
   if(ph.view && !VIEWS.includes(ph.view)){
     const cur = document.querySelector(".view.active");
@@ -330,6 +358,13 @@ function nowPST(){ return new Date(new Date().toLocaleString("en-US",{timeZone:"
 function tickCountdown(){
   const now = nowPST();
   const future = EVENTS.filter(function(e){ return e.when > now; });
+  // A multi-day event with a clock time (the fall play, 7 PM for 3 nights) counts again each day.
+  EVENTS.forEach(function(e){
+    if(e.when > now || !(e.end > now) || withStartTime(e.when, e.time)===e.when) return;
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), e.when.getHours(), e.when.getMinutes());
+    if(at <= now) at.setDate(at.getDate()+1);
+    if(at <= e.end) future.push({ name:e.name, when:at });
+  });
   // Every sports item the Home list shows (senior nights, pinned games, the Bell Game and the
   // fallback home games, kept by renderEvents) counts too, at its real start time, so "Next up"
   // names the same thing as the first card on Home.
@@ -655,10 +690,10 @@ async function loadSportsScoresFast(){
 }
 // The parsed schedule is cached so Sports paints instantly on open, at any age (the
 // "Schedule updated" line says how fresh it is), then refreshes in the background.
-const SPORTS_CACHE_KEY = "fh_sports_v3";
+const SPORTS_CACHE_KEY = "fh_sports_v4";
 function readSportsCache(){
   try{
-    localStorage.removeItem("fh_sports_v2"); // older shape, from before the sheet went private
+    localStorage.removeItem("fh_sports_v2"); localStorage.removeItem("fh_sports_v3"); // older shapes
     const c = JSON.parse(localStorage.getItem(SPORTS_CACHE_KEY)||"null");
     if(c && Array.isArray(c.games) && c.games.length) return c;
   }catch(e){}
@@ -739,7 +774,7 @@ function rowsToGames(rows){
       senior: sheetYes(sn) || /senior\s*night/i.test(sn) || /senior\s*night/i.test(title),
       push: sheetYes(gi("push")>=0 ? col(r,"push") : r[0]),
       kind:col(r,"kind") || (/scrimmage/i.test(col(r,"type"))?"Scrimmage":"Game"),
-      league:/league/i.test(col(r,"type"))
+      league:/\bleague\b/i.test(col(r,"type")) && !/\bnon[\s-]*league\b/i.test(col(r,"type"))
     });
   }
   // Defensive de-dup of feed twins: same sport, date, level and start time (meets: any
@@ -1143,7 +1178,7 @@ function todaySchedule(){
   if(!k) return null;
   const off = noClassReason(iso);
   if(off) return { noSchool:tr(off[0], off[1]), off:off, rows:[], next:nextClassDay(iso) };
-  const label = SPECIAL_DAYS[iso] ? tr(k==="a"?"A day":"B day", k==="a"?"Día A":"Día B") : tr(SCHEDULES[k].label, SCHED_LABEL_ES[k]);
+  const label = (SPECIAL_DAYS[iso] && (k==="a" || k==="b")) ? tr(k==="a"?"A day":"B day", k==="a"?"Día A":"Día B") : tr(SCHEDULES[k].label, SCHED_LABEL_ES[k]);
   return { label:label, rows:SCHEDULES[k].rows };
 }
 
@@ -1762,23 +1797,37 @@ function renderClubs(){
   var empty = document.getElementById("clubEmpty");
   if(empty) empty.hidden = list.length > 0;
 }
+let clubsOk = false, clubsTries = 0, clubsTimer = null;
+// Like fetch, but gives up after ms, so a request that hangs never leaves "Loading clubs…" up.
+async function fetchFor(url, ms){
+  const ctrl = typeof AbortController!=="undefined" ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, ms) : null;
+  try{
+    const res = await fetch(url, ctrl ? { signal:ctrl.signal } : undefined);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    return await res.text();
+  } finally { if(timer) clearTimeout(timer); }
+}
+// The list arrived: fill an open quiz that was waiting for it.
+function clubsArrived(){
+  clubsOk = true; clubsTries = 0; clearTimeout(clubsTimer); renderClubs();
+  if(document.getElementById("quizWaiting")) renderQuizResults(0);
+}
 async function syncClubs(){
   // Primary: the website API (Gemini-cleaned + categorized), fetched through its CDN cache so
   // it loads instantly. NOTE: no per-request "?_cb" buster — that forced a cache MISS every
   // time, so every open re-ran the slow LLM pipeline and the seed list lingered on screen.
   // Fallback: raw gviz sheet. Else: the last good copy on this device. Either way we end clubs-ready.
   try{
-    const res=await fetch(CLUBS_API);
-    if(!res.ok) throw new Error("HTTP "+res.status);
-    const data=await res.json();
+    const data=JSON.parse(await fetchFor(CLUBS_API, 12000));
     const list=(data.clubs||[]).filter(function(c){ return c && c.name && !c.disbanded; });
-    if(list.length){ CLUBS=list; clubsReady=true; saveClubsCache(); renderClubs(); return; }
+    if(list.length){ CLUBS=list; clubsReady=true; saveClubsCache(); clubsArrived(); return; }
   }catch(e){ /* fall through to gviz */ }
   if(CLUB_SHEET){
     try{
-      const res=await fetch(CLUB_SHEET);
-      if(res.ok){
-        const rows=parseSheetRows(await res.text());
+      const text=await fetchFor(CLUB_SHEET, 12000);
+      if(text){
+        const rows=parseSheetRows(text);
         if(rows.length>=2){
           const head=rows[0].map(function(h){return String(h).trim().toLowerCase();});
           const gi=function(n){return head.indexOf(n);};
@@ -1796,11 +1845,14 @@ async function syncClubs(){
               emails:(emailsRaw.match(EMAIL_RE)||[])
             });
           }
-          if(list.length){ CLUBS=list; saveClubsCache(); }
+          if(list.length){ CLUBS=list; clubsReady=true; saveClubsCache(); clubsArrived(); return; }
         }
       }
     }catch(e){ /* offline or blocked: keep the last good list, if any */ }
   }
+  // Nothing new came: try again quietly at 5, 20 and 60 s, then with the 2-minute refresh.
+  const wait = [5000, 20000, 60000][clubsTries++];
+  clearTimeout(clubsTimer); if(wait) clubsTimer = setTimeout(syncClubs, wait);
   clubsReady=true; renderClubs(); // replace the skeleton with whatever we have (gviz, saved copy, or a calm note)
 }
 
@@ -1810,13 +1862,19 @@ async function syncClubs(){
 // The raw feed is kept so the 8:30 filter can re-run every minute: an app left open (the
 // normal case for an installed app) reveals Wednesday's and Friday's items on time.
 let annAll = null, annShownKey = "";
+// The last good feed, so a visit where it can't load still shows announcements.
+const ANN_CACHE_KEY = "fh_announcements_v1";
+try{
+  const c = JSON.parse(localStorage.getItem(ANN_CACHE_KEY)||"null");
+  if(c && Array.isArray(c.list)){ const l = c.list.filter(function(a){ return a && typeof a==="object"; }); if(l.length) annAll = l; }
+}catch(e){}
 async function syncAnnouncements(){
   try{
     const res=await fetch(ANN_API); // CDN-cached by the site (s-maxage=300); never add a cache-buster
     if(!res.ok) throw new Error("HTTP "+res.status);
     const data=await res.json();
     const all=Array.isArray(data.announcements)?data.announcements:[];
-    if(all.length){ annAll = all; applyAnnouncements(); }
+    if(all.length){ annAll = all; try{ localStorage.setItem(ANN_CACHE_KEY, JSON.stringify({ t:Date.now(), list:all })); }catch(e){} applyAnnouncements(); }
   }catch(e){ /* offline or blocked: keep what's on screen */ }
 }
 function applyAnnouncements(){
@@ -1912,7 +1970,7 @@ function renderClubDates(){
    close) stays put, and each question slides in from the side it came from. The "Which
    communities?" step shows only when "Culture, language and faith" is picked. Results show a
    fit label (no percent, see club-quiz/README.md) and one line on why each club matched. */
-let quizStep=0, quizAns={};
+let quizStep=0, quizAns={}, quizSwapAt=0;
 function quizDialog(){ return document.getElementById("matchDialog"); }
 function closeQuiz(){ const d=quizDialog(); if(d && d.open) d.close(); }
 function quizQs(){ return (window.ClubMatch ? ClubMatch.QS : []).filter(function(Q){ return !Q.when || Q.when(quizAns); }); }
@@ -1923,12 +1981,18 @@ function openMatch(){
   const body=document.getElementById("quizBody"); if(!body) return;
   body.innerHTML='<div class="quizhead"><span class="quizprog" aria-hidden="true"><span style="width:0%"></span></span><button type="button" class="quizx" id="quizClose" aria-label="'+tr("Close","Cerrar")+'">&times;</button></div><div class="quizpane" id="quizPane"></div>';
   body.querySelector("#quizClose").onclick=closeQuiz;
+  // The second tap of a double tap on Next lands on the new question; don't let it press anything there.
+  const qp=body.querySelector("#quizPane"), opened=Date.now(); quizSwapAt=0;
+  qp.addEventListener("click", function(e){
+    if(e.detail && Math.abs(Date.now()-(quizSwapAt||opened)) < 350){ e.stopPropagation(); e.preventDefault(); }
+  }, true);
   renderQuizStep(0);
   const d=quizDialog(); if(d && !d.open) d.showModal();
 }
 function quizProgress(pct){ const bar=document.querySelector("#quizBody .quizprog span"); if(bar) requestAnimationFrame(function(){ bar.style.width=pct+"%"; }); }
 function quizSwap(html, dir){
   const pane=document.getElementById("quizPane"); if(!pane) return null;
+  dialogTouched(quizDialog()); quizSwapAt=Date.now();
   pane.className="quizpane"+(dir? " from-"+dir : "");
   pane.innerHTML=html;
   void pane.offsetWidth; // restart the slide animation on every step
@@ -2006,7 +2070,7 @@ function renderQuizResults(dir){
   const shown={}; ranked.forEach(function(r){ shown[r.club.name]=1; });
   const more=res.all.filter(function(r){ return !shown[r.club.name] && r.fit>=0.7; }).slice(0,3);
   let html='<h2 id="quizTitle" class="quizq">'+tr("Your top matches","Tus mejores opciones")+'</h2>';
-  if(!clubsReady || !CLUBS.length) html+='<p class="note">'+tr("The club list is still loading. Try again in a moment.","La lista de clubes todavía se está cargando. Inténtalo en un momento.")+'</p>';
+  if(!clubsReady || !CLUBS.length) html+='<p class="note" id="quizWaiting" role="status">'+tr("The club list is still loading.","La lista de clubes todavía se está cargando.")+'</p>';
   else if(!ranked.length) html+='<p class="note">'+tr("No strong match yet. Try browsing all clubs.","Todavía no hay una opción clara. Prueba a ver todos los clubes.")+'</p>';
   else html+=ranked.map(matchCardHtml).join("");
   if(more.length) html+='<h3 class="matchmorehead">'+tr("Also worth a look","También vale la pena ver")+'</h3><ul class="matchmore">'+more.map(function(r){ return '<li><b>'+clubEsc(r.club.name)+'</b><span>'+qT(MATCH_BAND[ClubMatch.band(r.fit, r.tags)])+'</span></li>'; }).join("")+'</ul>';
@@ -2082,7 +2146,7 @@ function onGoogleCred(resp){
     _saveSignin(); applySignedInUI();
     const csName = document.getElementById("csName");
     if(csName && !csName.value) csName.value = signedIn.name;
-    if(sgy && sgy.email !== signedIn.email) sgyForget();
+    if(sgyBusy || (sgy && sgy.email !== signedIn.email)) sgyForget();
     refreshSigninDialog(); renderSchoology(); sgyRefresh(false);
     // A school account that hasn't connected Schoology stays in the dialog for step 2.
     const d=document.getElementById("signinDialog");
@@ -2138,7 +2202,10 @@ function isSchoolEmail(e){ return /@(student\.)?fuhsd\.org$/i.test(String(e||"")
 function sgyConnected(){ return !!(sgy && sgy.feed && signedIn.email && sgy.email === signedIn.email); }
 function sgyLoad(){ try{ const v=JSON.parse(localStorage.getItem(SGY_KEY)||"null"); if(v && v.feed && v.email) sgy=v; }catch(e){} }
 function sgySave(){ try{ if(sgy) localStorage.setItem(SGY_KEY, JSON.stringify(sgy)); }catch(e){} }
-function sgyForget(){ sgy=null; sgyStepMsg={text:"",bad:false}; try{ localStorage.removeItem(SGY_KEY); }catch(e){} }
+// Bumped on sign-out, disconnect and account change, so a request that was already on its way
+// can't save its answer for the wrong student (or after sign-out).
+let sgySeq = 0;
+function sgyForget(){ sgySeq++; sgyBusy=false; sgyFilter="all"; sgyQuery=""; sgyShowAll=false; sgy=null; sgyStepMsg={text:"",bad:false}; try{ localStorage.removeItem(SGY_KEY); }catch(e){} }
 function sgyClean(raw){ return String(raw||"").trim().replace(/^["'<]+|["'>]+$/g,""); }
 
 async function sgyFetch(feed){
@@ -2162,10 +2229,12 @@ async function sgyConnect(raw){
     renderSgyStep(); return;
   }
   sgyBusy = true; sgyStepMsg = { bad:false, text: tr("Connecting to Schoology…","Conectando con Schoology…") }; renderSgyStep();
+  const seq = sgySeq, owner = signedIn.email;
   const r = await sgyFetch(feed);
+  if(seq !== sgySeq || !owner || signedIn.email !== owner) return; // signed out or switched meanwhile
   sgyBusy = false;
   if(r.items){
-    sgy = { email: signedIn.email, feed: feed, items: r.items, fetchedAt: r.fetchedAt || new Date().toISOString(), dead:false };
+    sgy = { email: owner, feed: feed, items: r.items, fetchedAt: r.fetchedAt || new Date().toISOString(), dead:false };
     sgySave(); sgyLastTry = Date.now();
     sgyStepMsg = { bad:false, text:"" };
     renderSchoology(); renderSgyStep();
@@ -2191,7 +2260,9 @@ async function sgyRefresh(force){
   const age = Date.now() - (Date.parse(sgy.fetchedAt||"")||0);
   if(!force && (age < SGY_REFRESH_MS || Date.now()-sgyLastTry < 60000)) return;
   sgyLastTry = Date.now(); sgyBusy = true;
+  const seq = sgySeq;
   const r = await sgyFetch(sgy.feed);
+  if(seq !== sgySeq) return;
   sgyBusy = false;
   if(!sgyConnected()) return;
   if(r.items){ sgy.items = r.items; sgy.fetchedAt = r.fetchedAt || new Date().toISOString(); sgy.dead = false; sgySave(); renderSchoology(); }
@@ -2418,12 +2489,12 @@ function renderHello(){
   var h=document.getElementById("heroHello"); if(!h) return;
   var first=(signedIn && signedIn.name ? String(signedIn.name).trim().split(/\s+/)[0] : "") || "Firebird";
   var lead = helloReturning ? tr("Welcome back, ","Hola de nuevo, ") : tr("Welcome, ","Hola, ");
+  var d=document.getElementById("heroDate");
+  if(d){ try{ setText(d, new Date().toLocaleDateString(fhLang==="es"?"es-US":"en-US", { weekday:"long", month:"long", day:"numeric", timeZone:"America/Los_Angeles" })); }catch(e){} }
   if(h.dataset.hello===lead+first) return;
   h.dataset.hello=lead+first;
   h.textContent=""; h.appendChild(document.createTextNode(lead));
   var hl=document.createElement("span"); hl.className="hl"; hl.textContent=first; h.appendChild(hl);
-  var d=document.getElementById("heroDate");
-  if(d){ try{ setText(d, new Date().toLocaleDateString(fhLang==="es"?"es-US":"en-US", { weekday:"long", month:"long", day:"numeric", timeZone:"America/Los_Angeles" })); }catch(e){} }
   renderWeather();
 }
 var WX_KEY="fh_weather_v1", WX_MAX_AGE=15*60*1000, wx=null, wxBusy=false;
@@ -2482,12 +2553,20 @@ function loadWeather(force){
 }
 document.addEventListener("visibilitychange", function(){ if(!document.hidden) loadWeather(false); });
 setInterval(function(){ if(!document.hidden) loadWeather(false); }, 5*60*1000);
-/* All dialogs: a tap on the dim area outside closes it, the same as Escape or Close. */
+/* All dialogs: a tap on the dim area outside closes it, the same as Escape or Close. Both the press
+   and the release must be outside (a drag that selects text and ends outside doesn't count), and not
+   within DIALOG_GRACE of the dialog opening or changing (the second tap of a double tap). */
+const DIALOG_GRACE = 700;
+function dialogTouched(d){ if(d) d._changedAt = Date.now(); }
 document.querySelectorAll("dialog").forEach(function(d){
+  let pressedOutside = false;
+  const outside = function(e){ if(e.target!==d) return false; const r=d.getBoundingClientRect(); return e.clientX<r.left || e.clientX>r.right || e.clientY<r.top || e.clientY>r.bottom; };
+  if(typeof MutationObserver!=="undefined") new MutationObserver(function(){ if(d.open) dialogTouched(d); }).observe(d, { attributes:true, attributeFilter:["open"] });
+  d.addEventListener("pointerdown", function(e){ pressedOutside = outside(e); });
   d.addEventListener("click", function(e){
-    if(e.target!==d) return;
-    var r=d.getBoundingClientRect();
-    if(e.clientX<r.left || e.clientX>r.right || e.clientY<r.top || e.clientY>r.bottom) d.close();
+    const ok = pressedOutside && outside(e) && Math.abs(Date.now()-(d._changedAt||0)) > DIALOG_GRACE;
+    pressedOutside = false;
+    if(ok) d.close();
   });
 });
 renderHello(); loadWeather(false);
@@ -2645,17 +2724,25 @@ syncClubs();
 renderEvents();
 syncEventsSheet();
 tickClock(); tickCountdown(); tickNowChip();
+// A new day in an app left open (the normal case for the installed app): redraw everything that
+// depends on today's date, then refetch.
+let lastDay = todayKeyPST();
+function dayChanged(){
+  try{ renderHello(); renderEvents(); renderSports(); renderSchoology(); renderClubDates(); renderSpiritWear(); if(pickedDay==="auto") renderToday(); }catch(e){}
+  if(document.visibilityState==="visible") refreshLive();
+}
 let lastMin = nowPST().getMinutes();
 setInterval(()=>{
   tickClock(); tickCountdown();
   const m = nowPST().getMinutes();
+  if(m!==lastMin){ const t = todayKeyPST(); if(t!==lastDay){ lastDay = t; dayChanged(); } }
   if(m!==lastMin){ lastMin=m; tickNowChip(); if(pickedDay==="auto") renderToday(); applyAnnouncements(); }
 }, 1000);
 // Keep live data current while the app is open: refetch when it comes back to the
 // screen (if the last refresh is over a minute old) and every 2 minutes while visible.
 // These all hit the website's CDN, not Apps Script directly.
 let lastLiveRefresh = Date.now();
-function refreshLive(){ lastLiveRefresh = Date.now(); syncEventsSheet(); syncScoreboard(); loadSports(true); syncAnnouncements(); sgyRefresh(false); }
+function refreshLive(){ lastLiveRefresh = Date.now(); syncEventsSheet(); syncScoreboard(); loadSports(true); syncAnnouncements(); if(!clubsOk) syncClubs(); sgyRefresh(false); }
 document.addEventListener("visibilitychange", function(){
   if(document.visibilityState==="visible" && Date.now()-lastLiveRefresh > 60000) refreshLive();
 });
@@ -2764,6 +2851,7 @@ if(boot.view==="give") fillGive(boot.params);
 show(boot.view || "home", false);
 renderAnnounce();
 renderFTV();
+applyAnnouncements(); // the saved copy, if there is one
 syncAnnouncements();
 initMotion();
 loadSports(); /* preload sports */
@@ -2845,7 +2933,7 @@ var I18N_EN_ES = {
   "Non-Duty Day":"Día sin clases","Memorial Day":"Día de los Caídos","Teacher Work Day":"Día de trabajo para maestros",
   "Rally week template":"Plantilla de semana de rally","early September":"principios de septiembre","Oct 5–9, 2026":"5–9 de oct. de 2026",
   "Oct 12–16, 2026":"12–16 de oct. de 2026","Nov 9–13, 2026":"9–13 de nov. de 2026","Nov 23–27, 2026":"23–27 de nov. de 2026",
-  "mid-December":"mediados de diciembre","mid-January":"mediados de enero","early February":"principios de febrero",
+  "Dec 14–18, 2026":"14–18 de dic. de 2026","mid-January":"mediados de enero","early February":"principios de febrero",
   "early March · 11th graders test":"principios de marzo · examen de 11.º grado","Mar 15–19, 2027":"15–19 de mar. de 2027",
   "late May":"finales de mayo","early June · 9th–11th":"principios de junio · 9.º a 11.º",
   "A regular week, but Friday's Tutorial becomes the Rally (10:10–10:50).":"Una semana normal, pero la Tutoría del viernes se convierte en el Rally (10:10–10:50).",
@@ -3099,13 +3187,16 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     fab.setAttribute("aria-expanded","false");
     if(returnFocus) fab.focus();
   }
+  window.closeFelipe = function(){ if(!isOpen()) return false; hide(true); return true; };
   fab.addEventListener("click", function(){ isOpen() ? hide(true) : open(); });
   if(close) close.addEventListener("click", function(){ hide(true); });
   if(back) back.addEventListener("click", function(){ hide(false); });
   // A click anywhere outside the panel and the button closes it (focus stays where clicked).
   document.addEventListener("click", function(e){
     if(!isOpen() || !e.target.closest) return;
-    if(e.target.closest("#askPanel") || e.target.closest("#askFab")) return;
+    // The path is fixed when the click starts, so a button that removes itself (Try again) still counts as inside.
+    var path = e.composedPath ? e.composedPath() : [];
+    if(path.indexOf(panel)>=0 || path.indexOf(fab)>=0 || e.target.closest("#askPanel") || e.target.closest("#askFab")) return;
     hide(false);
   });
   // Escape closes and returns focus to the button; Tab and Shift+Tab stay inside the panel.

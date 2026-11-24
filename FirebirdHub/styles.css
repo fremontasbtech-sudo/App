@@ -590,7 +590,7 @@ body.motion .skeleton{ position:relative; overflow:hidden; background:#efe7d6; b
 body.motion .skeleton::after{ content:""; position:absolute; inset:0; transform:translateX(-100%); background:linear-gradient(90deg,transparent,rgba(255,201,31,.45),transparent); animation:fh-shimmer 1.3s infinite; }
 @keyframes fh-shimmer{ to{ transform:translateX(100%); } }
 @media(prefers-reduced-motion:reduce){
-  body.motion .ticket{ opacity:1; transform:none; transition:none; }
+  body.motion .ticket, body.motion #eventList .ticket{ opacity:1; transform:none; transition:none; }
   body.motion .skeleton::after{ animation:none; }
 }
 
@@ -1331,3 +1331,25 @@ dialog{max-height:calc(100dvh - 32px); overflow:auto}
 .matchmore li span{color:var(--ink-soft); white-space:nowrap}
 @media (max-width:340px){ .quizopts.grid{grid-template-columns:1fr} }
 .matchdesc{font-size:13.5px; color:var(--ink-soft); margin:0 0 6px; line-height:1.4}
+
+/* v55: chaos test fixes (2026-11-24). Felipe fits short screens (landscape phones, small phones, 200%
+   zoom): the panel takes the whole height, starter questions become one swipeable row, and the panel
+   scrolls if even that isn't enough. */
+.asklog{min-height:0}
+.askhead, .askchips, .askform, .askdis{flex:none}
+@media (max-height:640px){
+  .askpanel{top:max(8px, env(safe-area-inset-top, 0px)); bottom:max(8px, env(safe-area-inset-bottom, 0px)); max-height:none; max-width:460px; overflow-y:auto}
+  .asklog{min-height:72px}
+  .askchips{flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px}
+  .askchip{flex:none; white-space:nowrap}
+  .askfab[aria-expanded="true"]{visibility:hidden}
+}
+@media (max-height:420px){ .askhead{padding:5px 14px} .askform{padding:8px 10px} .askdis{padding-bottom:6px} }
+/* Large text zooms the page 1.12 times, so a height measured from the screen has to shrink by as much. */
+html.bigtext dialog, html.bigtext dialog.signindlg{max-height:calc((100dvh - 32px) / 1.12)}
+@media (max-height:760px) and (max-width:560px){
+  html.bigtext .askpanel{top:max(8px, env(safe-area-inset-top, 0px)); bottom:max(8px, env(safe-area-inset-bottom, 0px)); max-height:none; overflow-y:auto}
+  html.bigtext .askchips{flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px}
+  html.bigtext .askchip{flex:none; white-space:nowrap}
+  html.bigtext .askfab[aria-expanded="true"]{visibility:hidden}
+}

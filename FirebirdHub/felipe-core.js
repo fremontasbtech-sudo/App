@@ -833,6 +833,10 @@
   }
   var KEY_NAME = { en: { mon: "a Monday schedule", a: "an A day", b: "a B day" }, es: { mon: "un horario de lunes", a: "un día A", b: "un día B" } };
   var KEY_SHORT = { en: { mon: "Monday schedule", a: "A day", b: "B day" }, es: { mon: "horario de lunes", a: "día A", b: "día B" } };
+  // Finals days (app.js SCHEDULES.fin13, fin56, fin47, fin2).
+  ["fin13", "fin56", "fin47", "fin2"].forEach(function (k) {
+    KEY_NAME.en[k] = "a finals day"; KEY_SHORT.en[k] = "finals day"; KEY_NAME.es[k] = "un día de exámenes finales"; KEY_SHORT.es[k] = "día de finales";
+  });
   // { iso, off:[en, es] } | { iso, weekend:true } | { iso, key, rows, swapped }
   function dayStatus(iso, T) {
     var y = T.year;
@@ -850,7 +854,7 @@
     var sch = T.schedules && T.schedules[key];
     if (!sch || !Array.isArray(sch.rows)) return { iso: iso, unknown: true };
     var rows = sch.rows.filter(function (r) { return r && !/staff only/i.test(r[0]); });
-    return { iso: iso, key: key, rows: rows, swapped: !!T.special[iso] };
+    return { iso: iso, key: key, rows: rows, swapped: !!T.special[iso] && (key === "a" || key === "b") };
   }
   function nextClassDay(iso, T, inclusive) {
     for (var i = inclusive ? 0 : 1; i <= 120; i++) {
@@ -871,7 +875,7 @@
   var PERIOD_ES = { Brunch: "el brunch", Lunch: "el almuerzo", Tutorial: "Tutoría", Rally: "el rally", Enrichment: "Enriquecimiento" };
   function rowName(name, lang, cap) {
     var s;
-    if (lang !== "es") s = name;
+    if (lang !== "es") s = name.replace(/^(\d)(?:st|nd|rd|th) Final$/, "the Period $1 final");
     else if (PERIOD_ES[name]) s = PERIOD_ES[name];
     else {
       var m = name.match(/^Period (\d+)$/); if (m) s = "el periodo " + m[1];
@@ -883,7 +887,15 @@
     if (arr.length <= 1) return arr.join("");
     return arr.slice(0, -1).join(", ") + (lang === "es" ? " y " : " and ") + arr[arr.length - 1];
   }
+  var FINAL_RE = /^(\d)(?:st|nd|rd|th) Final$/;
+  // "Period 3" also means the 3rd period's final on a finals day.
+  function rowIs(r, target) { if (r[0] === target) return true; var m = r[0].match(FINAL_RE); return !!m && target === "Period " + m[1]; }
   function periodsOf(st, lang) {
+    var fin = st.rows.filter(function (r) { return FINAL_RE.test(r[0]); }).map(function (r) { return r[0].match(FINAL_RE)[1]; });
+    if (fin.length) {
+      if (lang === "es") return (fin.length > 1 ? "los finales de los periodos " : "el final del periodo ") + listJoin(fin, lang);
+      return (fin.length > 1 ? "finals for Periods " : "the final for Period ") + listJoin(fin, lang);
+    }
     var nums = st.rows.filter(function (r) { return /^Period \d$/.test(r[0]); }).map(function (r) { return r[0].slice(7); });
     var tut = st.rows.some(function (r) { return /Tutorial/.test(r[0]); });
     if (lang === "es") return (nums.length > 1 ? "los periodos " : "el periodo ") + listJoin(nums, lang) + (tut ? ", con Tutoría" : "");
@@ -1002,22 +1014,22 @@
         : "School runs from " + fmtBell(sp[0], lang) + " to " + fmtBell(sp[1], lang) + " " + onDay(iso, today, lang) + lbl + ".";
     }
     var row = null;
-    if (target === "LAST") { for (var k = st.rows.length - 1; k >= 0; k--) if (/^Period /.test(st.rows[k][0])) { row = st.rows[k]; break; } }
-    else row = st.rows.filter(function (r) { return r[0] === target; })[0] || null;
+    if (target === "LAST") { for (var k = st.rows.length - 1; k >= 0; k--) if (/^Period /.test(st.rows[k][0]) || FINAL_RE.test(st.rows[k][0])) { row = st.rows[k]; break; } }
+    else row = st.rows.filter(function (r) { return rowIs(r, target); })[0] || null;
     if (!row) {
       var hint = target === "Tutorial" ? (lang === "es" ? " Tutoría es los lunes y los días B." : " Tutorial is on Mondays and B days.") : "";
       var nx = null;
       if (/^Period /.test(target)) {
         for (var j = 1; j <= 14 && !nx; j++) {
           var s2 = dayStatus(addDays(iso, j), T);
-          if (s2.rows && s2.rows.some(function (r) { return r[0] === target; })) nx = s2;
+          if (s2.rows && s2.rows.some(function (r) { return rowIs(r, target); })) nx = s2;
         }
       }
       var nm = rowName(target, lang, true);
       var base = lang === "es" ? nm + " no tiene clase " + onDay(iso, today, lang) + ", porque es " + KEY_NAME.es[st.key] + "."
         : nm + " doesn't meet " + onDay(iso, today, lang) + ", since it's " + KEY_NAME.en[st.key] + ".";
       if (nx) {
-        var r2 = nx.rows.filter(function (r) { return r[0] === target; })[0];
+        var r2 = nx.rows.filter(function (r) { return rowIs(r, target); })[0];
         base += lang === "es" ? " La próxima vez es " + onDay(nx.iso, today, lang) + ", de " + fmtBell(r2[1], lang) + " a " + fmtBell(r2[2], lang) + "."
           : " It meets next " + onDay(nx.iso, today, lang) + ", " + fmtBell(r2[1], lang) + " to " + fmtBell(r2[2], lang) + ".";
       }

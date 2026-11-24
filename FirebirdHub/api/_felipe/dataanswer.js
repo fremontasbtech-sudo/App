@@ -11,7 +11,7 @@
  * Nothing here calls the network: it reads the data context.js already parsed.
  */
 import { helpers, matchingAnnouncements, withEnglish } from "./context.js";
-import { BELL_SCHEDULE, NO_CLASSES, SPECIAL_DAYS, FIRST_DAY, LAST_DAY, TZ, addDays, weekday, isoDate, dayInfo } from "./calendar.js";
+import { BELL_SCHEDULE, NO_CLASSES, SPECIAL_DAYS, FIRST_DAY, LAST_DAY, TZ, addDays, weekday, isoDate, dayInfo, schedKey } from "./calendar.js";
 import FelipeCoreDefault from "../../felipe-core.js";
 
 const Core = (FelipeCoreDefault && FelipeCoreDefault.answerLocal) ? FelipeCoreDefault
@@ -324,21 +324,21 @@ function appAnswer(text, lang){
 }
 
 /* ---------- schedule (with felipe-core's own answers when it has one) ---------- */
-const SCHED_KEYS = { "- Monday": "mon", "- A day": "a", "- B day": "b" };
+const SCHED_KEYS = {}; ["Monday", "A day", "B day", "Finals 1st and 3rd", "Finals 5th and 6th", "Finals 4th and 7th", "Finals 2nd"].forEach(s=> { SCHED_KEYS["- " + s] = schedKey(s); });
 let SCHEDULES = null;
 function schedules(){
   if(SCHEDULES) return SCHEDULES;
   SCHEDULES = {};
   for(const l of BELL_SCHEDULE.split("\n")){
     const k = Object.keys(SCHED_KEYS).find(x=> l.startsWith(x)); if(!k) continue;
-    const rows = [...l.slice(l.indexOf(":") + 1).matchAll(/(P\d|Tutorial|Brunch|Lunch)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/g)].map(m=> [m[1].replace(/^P(\d)$/, "Period $1"), m[2], m[3]]);
+    const rows = [...l.slice(l.indexOf(":") + 1).matchAll(/(P\d|\d(?:st|nd|rd|th) Final|Enrichment|Tutorial|Brunch|Lunch)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/g)].map(m=> [m[1].replace(/^P(\d)$/, "Period $1"), m[2], m[3]]);
     SCHEDULES[SCHED_KEYS[k]] = { label: k.slice(2), rows };
   }
   return SCHEDULES;
 }
 // What app.js holds in memory, built from the server's data, for FelipeCore.answerLocal.
 function appData(d, now, lang, wall){
-  const specialDays = {}; for(const iso in SPECIAL_DAYS) specialDays[iso] = /^a/i.test(SPECIAL_DAYS[iso][0]) ? "a" : "b";
+  const specialDays = {}; for(const iso in SPECIAL_DAYS) specialDays[iso] = schedKey(SPECIAL_DAYS[iso][0]);
   const games = (d.sports || []).map(g=> ({ sport: g.sport, level: g.level, date: g.date, time: g.time, homeAway: g.ha, opponent: g.opp, location: g.loc, type: g.type, senior: !!g.senior, seniorNight: g.senior, score: g.score, title: g.bell ? "Bell Game" : (g.senior ? "Senior Night" : ""), _g: g }));
   const ann = d.announcements ? revealed(d.announcements, now) : [];
   return {
@@ -357,8 +357,14 @@ const WD_WORDS = [["sunday","domingo"],["monday","lunes"],["tuesday","martes"],[
 function scheduleAnswer(now, text, lang){
   const n = normQ(text), tm = addDays(now.iso, 1);
   const say = (iso, x)=> x.off ? L(lang, "No classes on " + fmtDate(iso, lang) + " (" + x.off.replace(/ \(FUHSD calendar\)/, "") + ").", "No hay clases el " + fmtDate(iso, lang) + " (" + x.off.replace(/ \(FUHSD calendar\)/, "") + ").")
-    : L(lang, cap(fmtDate(iso, lang)) + " is " + (/^a/i.test(x.sched) ? "an " : "a ") + x.sched + (/^monday/i.test(x.sched) ? " schedule" : "") + (x.why ? " (" + x.why + ")" : "") + ".",
-        cap(fmtDate(iso, lang)) + " es " + (/^monday/i.test(x.sched) ? "horario de lunes" : "día " + x.sched.charAt(0)) + ".");
+    : L(lang, cap(fmtDate(iso, lang)) + " is " + (/^finals/i.test(x.sched) ? "a finals day, " + x.sched.replace(/^finals /i, "") : (/^a/i.test(x.sched) ? "an " : "a ") + x.sched + (/^monday/i.test(x.sched) ? " schedule" : "")) + (x.why ? " (" + x.why + ")" : "") + ".",
+        cap(fmtDate(iso, lang)) + " es " + (/^finals/i.test(x.sched) ? "un día de exámenes finales" : /^monday/i.test(x.sched) ? "horario de lunes" : "día " + x.sched.charAt(0)) + ".");
+  // "When are finals?": the first finals week that isn't over yet (SPECIAL_DAYS).
+  if(/\b(finals|final exams?|finales|examenes finales)\b/.test(n)){
+    const days = Object.keys(SPECIAL_DAYS).filter(d=> d >= now.iso && /^finals/i.test(SPECIAL_DAYS[d][0])).sort().slice(0, 4);
+    if(days.length) return L(lang, "1st semester finals: " + days.map(d=> fmtDate(d, lang) + " (" + SPECIAL_DAYS[d][0].replace(/^Finals /, "") + ")").join(", ") + ". The Schedule tab has the bell times.",
+      "Finales del primer semestre: " + days.map(d=> fmtDate(d, lang) + " (periodos " + SPECIAL_DAYS[d][0].replace(/^Finals /, "").replace(/(\d)\w\w/g, "$1").replace("and", "y") + ")").join(", ") + ". La pestaña Horario tiene las horas.");
+  }
   // A date ("November 25", "11/25", "the 30th") or a weekday name ("Monday", "next tuesday").
   let iso = "";
   const MONTHS = ["january","february","march","april","may","june","july","august","september","october","november","december"], MES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];

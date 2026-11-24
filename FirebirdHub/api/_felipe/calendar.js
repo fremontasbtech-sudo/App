@@ -23,21 +23,30 @@ export const NO_CLASSES = [
   ["2027-05-31", "2027-05-31", "Memorial Day"]
 ];
 /* Days a mid-week day off shifts the A/B pattern (FHS bell-schedule pattern rule: the days
-   left alternate A, B from Monday). Same dates as SPECIAL_DAYS in app.js. Finals week and
-   rally Fridays go here once FHS posts the 2026-27 dates. */
+   left alternate A, B from Monday). Same dates as SPECIAL_DAYS in app.js. Finals days use
+   the "- Finals ..." lines of BELL_SCHEDULE. Rally Fridays go here once FHS posts the dates. */
 const VETS_WEEK = "Veterans Day week: with Wednesday off, Monday runs A and Tuesday runs B";
+const FINALS_WEEK = "1st semester finals week, Dec 14 to 18; Monday Dec 14 is a regular Monday";
 const THANKS_WEEK = "Thanksgiving week: Monday runs A and Tuesday runs B before the break";
 export const SPECIAL_DAYS = {
   "2026-11-09": ["A day", VETS_WEEK], "2026-11-10": ["B day", VETS_WEEK],
-  "2026-11-23": ["A day", THANKS_WEEK], "2026-11-24": ["B day", THANKS_WEEK]
+  "2026-11-23": ["A day", THANKS_WEEK], "2026-11-24": ["B day", THANKS_WEEK],
+  "2026-12-15": ["Finals 1st and 3rd", FINALS_WEEK], "2026-12-16": ["Finals 5th and 6th", FINALS_WEEK],
+  "2026-12-17": ["Finals 4th and 7th", FINALS_WEEK], "2026-12-18": ["Finals 2nd", FINALS_WEEK]
 };
+// sched name -> the key of app.js SCHEDULES that FelipeCore uses.
+export const schedKey = s=> ({ "Monday":"mon", "A day":"a", "B day":"b", "Finals 1st and 3rd":"fin13", "Finals 5th and 6th":"fin56", "Finals 4th and 7th":"fin47", "Finals 2nd":"fin2" })[s] || "";
 const CAVEAT = "Special weeks (rallies, finals, testing) can change this; the Schedule tab shows the exact day.";
 
 export const BELL_SCHEDULE = `BELL SCHEDULE (regular weeks; school starts 8:30 AM):
 - Monday (all 7 periods): P1 8:30-9:15, P2 9:20-10:05, Tutorial 10:10-10:35, P3 10:40-11:25, Brunch 11:25-11:40, P4 11:50-12:35, P5 12:40-1:25, Lunch 1:25-2:05, P6 2:15-3:00, P7 3:05-3:50.
 - A day (Tue and Thu): P1 8:30-10:00, P2 10:05-11:35, Brunch 11:35-11:50, P3 12:00-1:30, Lunch 1:30-2:10, P7 2:20-3:50.
 - B day (Wed and Fri): P4 8:30-10:05, Tutorial 10:10-10:50, Brunch 10:50-11:05, P5 11:15-12:45, Lunch 12:45-1:25, P6 1:35-3:05.
-Special weeks (rally, finals, CAASPP testing, Career Day) change these; the Schedule tab shows the exact day and a live "current period / time left" clock.`;
+- Finals 1st and 3rd (Tue, Dec 15): 1st Final 8:30-10:30, Brunch 10:30-10:50, 3rd Final 11:00-1:00, Lunch 1:00-1:40, Enrichment 1:50-3:50.
+- Finals 5th and 6th (Wed, Dec 16): 5th Final 8:30-10:30, Brunch 10:30-10:50, 6th Final 11:00-1:00, Lunch 1:00-1:40, Enrichment 1:50-3:50.
+- Finals 4th and 7th (Thu, Dec 17): 4th Final 8:30-10:30, Brunch 10:30-10:50, 7th Final 11:00-1:00, Lunch 1:00-1:40, Enrichment 1:50-3:50.
+- Finals 2nd (Fri, Dec 18, minimum day): Enrichment 8:30-9:30, Brunch 9:30-9:40, 2nd Final 9:50-11:50, Lunch 12:00-12:30.
+Special weeks (rally, CAASPP testing, Career Day, 2nd semester finals) change these; the Schedule tab shows the exact day and a live "current period / time left" clock.`;
 
 export const WD_LONG = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 export const WD_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -55,7 +64,7 @@ export function nowPT(at){
   return { iso, wd:weekday(iso), time, min:timeMin(time) };
 }
 
-// { off:"reason" } on a day with no classes, else { sched:"Monday" | "A day" | "B day" },
+// { off:"reason" } on a day with no classes, else { sched:"Monday" | "A day" | "B day" | "Finals ..." },
 // plus why:"..." on a SPECIAL_DAYS swap, or unknown:true once the calendar runs out.
 export const dayName = iso=> WD_LONG[weekday(iso)]+", "+iso;
 export function dayInfo(iso){
@@ -115,11 +124,11 @@ export function noClassBetween(from, to){
 const toMin = t=>{ const [h,m] = t.split(":").map(Number); return (h<7 ? h+12 : h)*60 + (m||0); };
 const fmt = m=>{ const h = Math.floor(m/60), mm = m%60; return ((h+11)%12+1)+":"+String(mm).padStart(2,"0")+(h>=12?" PM":" AM"); };
 function blocksFor(sched){
-  const key = /^monday/i.test(sched) ? "- Monday" : /^a day/i.test(sched) ? "- A day" : /^b day/i.test(sched) ? "- B day" : "";
-  const line = key && BELL_SCHEDULE.split("\n").find(l=> l.startsWith(key));
+  const key = schedKey(sched) ? "- "+sched : "";
+  const line = key && BELL_SCHEDULE.split("\n").find(l=> l.startsWith(key+" ") || l.startsWith(key+":"));
   if(!line) return [];
   const body = line.slice(line.indexOf(":")+1);
-  return [...body.matchAll(/(P\d|Tutorial|Brunch|Lunch)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/g)]
+  return [...body.matchAll(/(P\d|\d(?:st|nd|rd|th) Final|Enrichment|Tutorial|Brunch|Lunch)\s+(\d{1,2}:\d{2})-(\d{1,2}:\d{2})/g)]
     .map(m=> ({ name: m[1].replace(/^P(\d)$/, "Period $1"), a: toMin(m[2]), b: toMin(m[3]) }));
 }
 export function rightNow(sched, min){
