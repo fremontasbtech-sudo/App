@@ -2870,7 +2870,6 @@ var I18N_EN_ES = {
   "Dress up on a spirit day (submit a photo below)":"Vístete en un día de espíritu (envía una foto abajo)",
   "Your grade wins the rally":"Tu grado gana el rally","Your grade takes second at the rally":"Tu grado queda en segundo lugar en el rally",
   "Your grade wins an Olympia (3v3 hoops, soccer, chess…)":"Tu grado gana una Olympia (básquetbol 3v3, fútbol, ajedrez…)",
-  "Teacher bonus, awarded by staff and added by Spirit":"Bono del maestro, otorgado por el personal y añadido por Espíritu",
   "One dress-up submission per student per day, and duplicates are removed before points post. Photos are only seen by ASB Spirit & Tech and your advisor.":"Un envío de atuendo por estudiante por día, y los duplicados se eliminan antes de sumar puntos. Las fotos solo las ven ASB Espíritu y Tecnología y tu consejero.",
   "Submit your Spirit Wear!":"¡Envía tu Spirit Wear!","Full name":"Nombre completo","Enter your first and last name.":"Escribe tu nombre y apellido.",
   "Grade":"Grado","Choose your grade…":"Elige tu grado…","9 · Freshman":"9 · Primer año","10 · Sophomore":"10 · Segundo año","11 · Junior":"11 · Tercer año","12 · Senior":"12 · Cuarto año",
