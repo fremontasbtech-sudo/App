@@ -180,7 +180,7 @@ function parseQR(text){
   var m = text.match(/#give\?([^\s]*)/);
   if(m){
     var p = {};
-    m[1].split("&").forEach(function(kv){ var i=kv.indexOf("="); if(i>0) p[kv.slice(0,i)]=decodeURIComponent(kv.slice(i+1).replace(/\+/g," ")); });
+    m[1].split("&").forEach(function(kv){ var i=kv.indexOf("="); if(i>0) p[kv.slice(0,i)]=(function(v){ try{ return decodeURIComponent(v); }catch(e){ return v; } })(kv.slice(i+1).replace(/\+/g," ")); });
     if(p.sid) return { sid:p.sid, name:p.n||"", grade:p.g||"" };
   }
   var parts = text.split("|");
@@ -254,7 +254,9 @@ document.querySelectorAll("#amtChips button").forEach(function(b){
   });
 });
 $("amtCustom").addEventListener("input", function(){
-  if(this.value) document.querySelectorAll("#amtChips button").forEach(function(x){ x.setAttribute("aria-pressed","false"); });
+  // A cleared custom amount goes back to the chip that was picked, and shows it.
+  var typed=!!this.value;
+  document.querySelectorAll("#amtChips button").forEach(function(x){ x.setAttribute("aria-pressed", !typed && +x.dataset.amt===amt ? "true":"false"); });
 });
 function showMsg(text, bad){
   var m=$("msg"); m.textContent=text; m.className="ok show"+(bad?" bad":""); m.focus();
@@ -264,7 +266,8 @@ function logGrant(amount){
   grants++;
   var t=new Date();
   var li=document.createElement("li");
-  li.innerHTML='<span class="amt">+'+amount+'</span><span class="who">'+student.name+' · #'+student.sid+'</span><span class="t">'+t.getHours()+':'+String(t.getMinutes()).padStart(2,"0")+'</span>';
+  // Built with text only: a scanned or typed name can never add markup.
+  [["amt","+"+amount],["who",student.name+" · #"+student.sid],["t",t.getHours()+":"+String(t.getMinutes()).padStart(2,"0")]].forEach(function(x){ var e=document.createElement("span"); e.className=x[0]; e.textContent=x[1]; li.appendChild(e); });
   $("log").prepend(li);
 }
 $("giveBtn").addEventListener("click", async function(){

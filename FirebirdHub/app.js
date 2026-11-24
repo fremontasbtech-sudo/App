@@ -53,8 +53,17 @@ async function fetchCsv(url, ms){
     if(!res.ok) throw new Error("HTTP "+res.status);
     const text = await res.text();
     if(!text.trim() || /^\s*</.test(text)) throw new Error("not a CSV");
+    if((text.match(/"/g)||[]).length % 2) throw new Error("cut off"); // a reply that stopped inside a cell
     return text;
   } finally { if(timer) clearTimeout(timer); }
+}
+// A reply with under half the rows of the last good copy is probably cut off, so it has to come
+// twice in a row before it replaces what is on screen.
+const shrunkOnce = {};
+function looksCutOff(name, n, prev){
+  if(prev < 8 || n*2 >= prev){ shrunkOnce[name] = 0; return false; }
+  shrunkOnce[name] = (shrunkOnce[name]||0) + 1;
+  return shrunkOnce[name] < 2;
 }
 // Same "is this cell flagged?" rule as the website (api/_events.js isYes).
 function sheetYes(v){ const t=String(v||"").trim().toLowerCase(); return t!=="" && (t==="y"||t==="yes"||t==="true"||t==="x"||t==="✓"||t==="1"||t==="done"||t.charAt(0)==="y"); }
@@ -66,7 +75,7 @@ function normSheetDate(s){
   if(m){ y=+m[1]; mo=+m[2]; d=+m[3]; }
   else if((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/))){ y=+m[3]; if(y<100) y+=2000; mo=+m[1]; d=+m[2]; }
   else return "";
-  if(mo<1 || mo>12 || d<1 || d>31) return "";
+  if(mo<1 || mo>12 || d<1 || d>new Date(y, mo, 0).getDate()) return "";
   return y+"-"+("0"+mo).slice(-2)+"-"+("0"+d).slice(-2);
 }
 // English or Spanish for text the app builds itself (More → Settings → Language).
@@ -255,7 +264,8 @@ const VIEWS = ["home","schedule","spirit","clubs","sports","more","give"]; // "g
 function safeDecode(v){ try{ return decodeURIComponent(v); }catch(e){ return v; } }
 function parseHash(){
   const h = location.hash.replace(/^#/,"");
-  const [view, qs] = h.split("?");
+  let [view, qs] = h.split("?");
+  if(!VIEWS.includes(view)){ const v = view.replace(/\/+$/,"").toLowerCase(); if(VIEWS.includes(v)) view = v; } // "#Clubs", "#clubs/"
   const params = {};
   if(qs) qs.split("&").forEach(kv=>{
     const i = kv.indexOf("=");
@@ -295,6 +305,7 @@ function show(view, focusHeading, push){
 document.addEventListener("click", e=>{
   const t = e.target.closest("[data-nav]");
   if(!t) return;
+  if(t.tagName==="A" && (e.metaKey || e.ctrlKey || e.shiftKey)) return; // a new tab or window, as usual
   e.preventDefault();
   show(t.getAttribute("data-nav"), true, true);
 });
@@ -304,6 +315,15 @@ function closeOverlays(){
   document.querySelectorAll("dialog[open]").forEach(function(d){ d.close(); any = true; });
   if(window.closeFelipe && window.closeFelipe()) any = true;
   return any;
+}
+// Redraw part of the page without losing keyboard focus: the same control gets it back.
+function keepFocus(box, redraw){
+  const a = document.activeElement, had = box && a && a!==document.body && box.contains(a);
+  const sel = !had ? "" : a.id ? "#"+CSS.escape(a.id) : ["data-sportpick","data-cat","data-sgyf","data-sgy","data-nav"].map(function(k){ return a.hasAttribute(k) ? "["+k+'="'+CSS.escape(a.getAttribute(k))+'"]' : ""; }).filter(Boolean)[0] || a.tagName.toLowerCase();
+  redraw();
+  if(!had || box.contains(document.activeElement)) return;
+  const el = box.querySelector(sel) || box.querySelector("button, a[href]");
+  if(el) el.focus({ preventScroll:true });
 }
 // Skip link: focus the open view's content in place. "#main" is not a view, so following the
 // link as a hash would send the visitor to Home (and rewrite the URL).
@@ -369,6 +389,8 @@ function tickCountdown(){
   // fallback home games, kept by renderEvents) counts too, at its real start time, so "Next up"
   // names the same thing as the first card on Home.
   (homeSportsItems||[]).forEach(function(it){ const at = it.at || it.when; if(at > now) future.push({ name:it.name, when:at }); });
+  // Days with no classes on the Home list count too, so Next up names the same thing as its first card.
+  homeOffDays.forEach(function(it){ if(it.when > now) future.push({ name:it.name, when:it.when }); });
   const next = future.length ? future.reduce(function(a,b){ return a.when<b.when?a:b; }) : null;
   const nameEl = document.getElementById("nextupName");
   const timeEl = document.getElementById("nextupTime");
@@ -468,6 +490,7 @@ function renderEvents(){
       tags:[tr("No school","Sin clases")], photos:"", offday:true });
   });
   homeSportsItems = list.filter(function(it){ return it.sports; });
+  homeOffDays = list.filter(function(it){ return it.offday; });
   renderEventsSportsLink(homeGames.length > 0);
   // At most 5 upcoming, soonest first (same as the website); the rest of the next 30 days
   // sit behind "Show more events".
@@ -493,6 +516,7 @@ function renderEvents(){
   staggered.delete("eventList"); staggerOnce("eventList");
 }
 let lastEventsHtml = "";
+let homeOffDays = [];
 let homeSportsItems = []; // every sports item on the Home list (Next up counts them all)
 const EVENTS_MAX = 5;
 // "See all sports" under the Home list, shown when Home falls back to the next home games.
@@ -523,9 +547,14 @@ function renderEventsMore(more){
   }
   box.hidden = !more;
   if(!more) return;
-  box.innerHTML = '<button type="button" class="btn ghost" aria-controls="eventList" aria-expanded="'+eventsShowAll+'">'+
-    '<span>'+(eventsShowAll ? "Show fewer events" : "Show more events")+'</span>'+
-    (eventsShowAll ? '' : ' <span class="tag" style="margin:0 0 0 6px">+'+more+'</span>')+'</button>';
+  const key = fhLang+"|"+eventsShowAll+"|"+more;
+  if(box.dataset.key===key) return; // a refresh that changes nothing leaves the button (and focus) alone
+  box.dataset.key = key;
+  keepFocus(box, function(){
+    box.innerHTML = '<button type="button" class="btn ghost" aria-controls="eventList" aria-expanded="'+eventsShowAll+'">'+
+      '<span>'+(eventsShowAll ? "Show fewer events" : "Show more events")+'</span>'+
+      (eventsShowAll ? '' : ' <span class="tag" style="margin:0 0 0 6px">+'+more+'</span>')+'</button>';
+  });
 }
 /* Live events feed — the "Events" tab through the website proxy (see SHEET_PROXY), so
    any edit shows up on the app. EVERY dated row shows (read BY NAME, never gid=0, which
@@ -545,7 +574,11 @@ function withStartTime(d, time){
   let h = null, mi = 0;
   const range = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*[-\u2013]\s*\d{1,2}(?::\d{2})?\s*(am|pm)/i);
   const one = s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
-  if(range){ h = +range[1]%12 + (/pm/i.test(range[3]||range[4]) ? 12 : 0); mi = +(range[2]||0); }
+  if(range){
+    h = +range[1]%12 + (/pm/i.test(range[3]||range[4]) ? 12 : 0); mi = +(range[2]||0);
+    // "11:30-1 PM" crosses noon: with one AM/PM at the end, a start later than the end is the other half.
+    if(!range[3]){ const eh = s.match(/[-\u2013]\s*(\d{1,2})(?::(\d{2}))?/); const end = +eh[1]%12 + (/pm/i.test(range[4]) ? 12 : 0); if(h*60+mi > end*60+(+(eh[2]||0)) && h>=12) h -= 12; }
+  }
   else if(one){ h = +one[1]%12 + (/pm/i.test(one[3]) ? 12 : 0); mi = +(one[2]||0); }
   else if(/evening|night/i.test(s)) h = 18;
   else if(/lunch/i.test(s)){ h = 12; mi = 45; }
@@ -563,12 +596,14 @@ async function syncEventsSheet(){
     const list = [];
     for(let i=1;i<rows.length;i++){ const r=rows[i]; const name=col(r,"name"); const when=withStartTime(parseEvDate(col(r,"date"),false), col(r,"time")); if(!name||!when) continue;
       if(/^(no|n|false|0|hide|hidden|off|skip)$/i.test(col(r,"hide"))) continue; // opt-out
-      const end = parseEvDate(col(r,"enddate"),true) || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
+      let end = parseEvDate(col(r,"enddate"),true);
+      if(end && end < when) end = null; // an end typed before the start
+      end = end || new Date(when.getFullYear(),when.getMonth(),when.getDate(),23,59);
       const tags = col(r,"tags").split(/[;,]/).map(function(t){return t.trim();}).filter(Boolean).map(clubCap);
       const feat = /^(yes|true|1|x|red|y)$/i.test(col(r,"featured"));
       list.push({ name:name, when:when, end:end, time:col(r,"time"), loc:col(r,"location")||col(r,"place"), desc:col(r,"description")||col(r,"desc"), tags:tags, featured:feat, photos:col(r,"photos")||col(r,"flickr") });
     }
-    if(!list.length) return;
+    if(!list.length || looksCutOff("events", list.length, eventsCurated ? EVENTS.length : 0)) return;
     eventsCurated = true;
     EVENTS = list.sort(function(a,b){ return a.when-b.when; }); // opt-out: show every event, hidden ones already skipped
     try{ localStorage.setItem(EVENTS_CACHE_KEY, JSON.stringify({ t:Date.now(), events:EVENTS.map(function(e){ return Object.assign({}, e, { when:e.when.getTime(), end:e.end.getTime() }); }) })); }catch(e){}
@@ -582,6 +617,8 @@ const EVENTS_CACHE_KEY = "fh_events_v1";
   try{
     const c = JSON.parse(localStorage.getItem(EVENTS_CACHE_KEY)||"null");
     if(c && Array.isArray(c.events) && c.events.length){
+      c.events = c.events.filter(function(e){ return e && typeof e.name==="string" && isFinite(e.when) && isFinite(e.end) && (!e.tags || Array.isArray(e.tags)); });
+      if(!c.events.length) return;
       EVENTS = c.events.map(function(e){ return Object.assign({}, e, { when:new Date(e.when), end:new Date(e.end) }); });
       eventsCurated = true;
     }
@@ -695,6 +732,7 @@ function readSportsCache(){
   try{
     localStorage.removeItem("fh_sports_v2"); localStorage.removeItem("fh_sports_v3"); // older shapes
     const c = JSON.parse(localStorage.getItem(SPORTS_CACHE_KEY)||"null");
+    if(c && Array.isArray(c.games)) c.games = c.games.filter(function(g){ return g && typeof g.sport==="string" && typeof g.date==="string"; });
     if(c && Array.isArray(c.games) && c.games.length) return c;
   }catch(e){}
   return null;
@@ -723,6 +761,7 @@ async function loadSports(force){
   try{
     const parsed = rowsToGames(parseSheetRows(await fetchCsv(SPORTS_SHEET, 10000)));
     if(!parsed.games.length) throw new Error("no games in the Sports tab");
+    if(looksCutOff("sports", parsed.games.length, sportsGames ? sportsGames.length : 0)) throw new Error("cut off");
     sportsFetchedAt = Date.now(); sportsRetry = 0; clearTimeout(sportsRetryTimer);
     sportsUpdatedLabel = parsed.label || sportsUpdatedLabel;
     const sig = JSON.stringify(parsed.games);
@@ -1083,7 +1122,7 @@ function renderSports(){
       html += '</section>';
     }
   }
-  body.innerHTML = html;
+  keepFocus(body, function(){ body.innerHTML = html; });
 }
 ddInit("sportSelect", function(v){ sportFilter = v; sportLevel = "all"; sportsShowAll = false; sportsResultsAll = false; sportsExtra = 0; renderSports(); });
 ddInit("levelSelect", function(v){ sportLevel = v; sportsShowAll = false; sportsResultsAll = false; sportsExtra = 0; renderSports(); });
@@ -1314,7 +1353,12 @@ function renderSpiritWear(){
 ===================================================== */
 const submittedKeys = new Set(); // session duplicate guard: studentId + day
 let fitPassed = false;           // gate: a passing fit check unlocks submit
-function setBad(id, bad){ document.getElementById(id).closest(".field").classList.toggle("bad", bad); return !bad; }
+function setBad(id, bad){
+  const el = document.getElementById(id); el.closest(".field").classList.toggle("bad", bad);
+  if(bad){ el.setAttribute("aria-invalid","true"); if(document.getElementById(id+"Err")) el.setAttribute("aria-describedby", id+"Err"); }
+  else { el.removeAttribute("aria-invalid"); el.removeAttribute("aria-describedby"); }
+  return !bad;
+}
 document.getElementById("spiritForm").addEventListener("submit", e=>{
   e.preventDefault();
   if(!fitPassed){
@@ -1588,6 +1632,7 @@ document.getElementById("giveForm").addEventListener("submit", async e=>{
    endpoint as fremontasb.org/contact, so every message lands in the private Contact tab
    of the Events sheet. A failure keeps the typed message and asks to try again. */
 const CONTACT_API = "https://www.fremontasb.org/api/contact";
+const FB_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 var fbOpenedAt = Date.now(); // the API drops forms sent within 2 s of opening (bots)
 /* More: the feedback form is always on the page; About opens in place from the links. */
 (function(){
@@ -1609,7 +1654,7 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
   e.preventDefault();
   const nameEl=document.getElementById("fbName"), emailEl=document.getElementById("fbEmail"), msgEl=document.getElementById("fbMsg");
   const name=nameEl.value.trim(), email=emailEl.value.trim(), msg=msgEl.value.trim();
-  const emailOk=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const emailOk=FB_EMAIL.test(email);
   let bad=false;
   if(!name){ setBad("fbName",true); bad=true; } else setBad("fbName",false);
   if(!emailOk){ setBad("fbEmail",true); bad=true; } else setBad("fbEmail",false);
@@ -1617,13 +1662,15 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
   if(bad){ (!name?nameEl:(!emailOk?emailEl:msgEl)).focus(); return; }
   const btn=e.target.querySelector('button[type="submit"]');
   const ok=document.getElementById("fbOk");
-  if(btn){ btn.disabled=true; btn.dataset.label=btn.dataset.label||btn.textContent; btn.textContent=tr("Sending…","Enviando…"); }
+  [nameEl,emailEl,msgEl].forEach(function(x){ x.readOnly=true; }); // what is typed now would be cleared with the form
+  if(btn){ btn.disabled=true; btn.textContent=tr("Sending…","Enviando…"); }
   ok.classList.remove("show","retry");
   const ctrl = typeof AbortController!=="undefined" ? new AbortController() : null;
   const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, 50000) : null;
   function done(sent, why){
     if(timer) clearTimeout(timer);
-    if(btn){ btn.disabled=false; btn.textContent=btn.dataset.label||"Send to ASB"; }
+    [nameEl,emailEl,msgEl].forEach(function(x){ x.readOnly=false; });
+    if(btn){ btn.disabled=false; btn.textContent="Send to ASB"; } // the i18n observer swaps in Spanish
     if(sent){
       e.target.reset(); fbOpenedAt=0;
       ok.textContent=tr("Thanks! Your message is on its way to ASB, and they'll reply to your school email.","¡Gracias! Tu mensaje va en camino a ASB y te responderán a tu correo escolar.");
@@ -1644,7 +1691,10 @@ document.getElementById("fbForm").addEventListener("submit", function(e){
     .then(function(r){ return r.json().catch(function(){ return {}; }); })
     .then(function(d){ done(d && d.ok===true, d && d.error); }, function(){ done(false); });
 });
-["fbName","fbEmail","fbMsg"].forEach(function(id){ document.getElementById(id).addEventListener("input", function(e){ if(e.target.value.trim()) setBad(id,false); }); });
+["fbName","fbEmail","fbMsg"].forEach(function(id){ document.getElementById(id).addEventListener("input", function(e){
+  const v=e.target.value.trim();
+  if(v && (id!=="fbEmail" || FB_EMAIL.test(v))) setBad(id,false);
+}); });
 
 /* =====================================================
    Clubs — search + filter
@@ -1684,6 +1734,7 @@ var clubsReady = false;
 const CLUBS_CACHE_KEY = "fh_clubs_v1";
 try{
   const c = JSON.parse(localStorage.getItem(CLUBS_CACHE_KEY)||"null");
+  if(c && Array.isArray(c.clubs)) c.clubs = c.clubs.filter(function(x){ return x && typeof x.name==="string" && x.name; });
   if(c && Array.isArray(c.clubs) && c.clubs.length){ CLUBS = c.clubs; clubsReady = true; }
 }catch(e){}
 function saveClubsCache(){ try{ localStorage.setItem(CLUBS_CACHE_KEY, JSON.stringify({ t:Date.now(), clubs:CLUBS })); }catch(e){} }
@@ -1756,15 +1807,15 @@ function renderClubs(){
   if(clubCat!=="all" && present.indexOf(clubCat)<0) clubCat="all";
   var chipsEl = document.getElementById("clubChips");
   if(chipsEl){
-    chipsEl.innerHTML = '<button type="button" data-cat="all" aria-pressed="'+(clubCat==="all")+'">'+clubEsc(clubT("All","Todos"))+'</button>' +
-      present.map(function(cat){ return '<button type="button" data-cat="'+clubEsc(cat)+'" aria-pressed="'+(clubCat===cat)+'">'+clubEsc(clubCatLabel(cat))+'</button>'; }).join("");
+    keepFocus(chipsEl, function(){ chipsEl.innerHTML = '<button type="button" data-cat="all" aria-pressed="'+(clubCat==="all")+'">'+clubEsc(clubT("All","Todos"))+'</button>' +
+      present.map(function(cat){ return '<button type="button" data-cat="'+clubEsc(cat)+'" aria-pressed="'+(clubCat===cat)+'">'+clubEsc(clubCatLabel(cat))+'</button>'; }).join(""); });
   }
   var searchEl = document.getElementById("clubSearch");
-  var q = (searchEl ? searchEl.value : "").trim().toLowerCase();
+  var q = (searchEl ? searchEl.value : "").trim().replace(/\s+/g," ").toLowerCase();
   var list = all.filter(function(c){
     if(clubCat!=="all" && c._cat!==clubCat) return false;
     if(!q) return true;
-    var hay = [c.name, c.purpose||c.desc, c.studentAdvisors, c.teacherAdvisor||c.advisor, c.meetingInfo].join(" ").toLowerCase();
+    var hay = [c.name, c.purpose||c.desc, c.studentAdvisors, c.teacherAdvisor||c.advisor, c.meetingInfo].join(" ").replace(/\s+/g," ").toLowerCase();
     return hay.indexOf(q) >= 0;
   }).sort(function(a,b){ return String(a.name||"").localeCompare(String(b.name||"")); });
 
@@ -1897,7 +1948,13 @@ function applyAnnouncements(){
   });
   if(days.length){ FTV_FEED.length=0; days.forEach(function(d){ FTV_FEED.push(d); }); renderFTV(); }
 }
-document.getElementById("clubSearch").addEventListener("input", renderClubs);
+// Starting a search looks through every club; a category picked after that narrows it.
+let clubQ = "";
+document.getElementById("clubSearch").addEventListener("input", function(e){
+  const q = e.target.value.trim();
+  if(q && !clubQ) clubCat = "all";
+  clubQ = q; renderClubs();
+});
 (function(){
   var grid = document.getElementById("clubGrid");
   var moreBtn0 = document.getElementById("clubShowAll");
@@ -1923,7 +1980,7 @@ document.getElementById("clubSearch").addEventListener("input", renderClubs);
   var clr = document.getElementById("clubClear"), s = document.getElementById("clubSearch");
   if(clr && s){
     s.addEventListener("input", function(){ clr.hidden = !s.value; });
-    clr.addEventListener("click", function(){ s.value=""; clr.hidden=true; s.focus(); renderClubs(); });
+    clr.addEventListener("click", function(){ s.value=""; clubQ=""; clr.hidden=true; s.focus(); renderClubs(); });
   }
 })();
 document.querySelectorAll("[data-cat]").forEach(b=>
@@ -1938,6 +1995,18 @@ function renderClubDates(){
   var rows = document.querySelectorAll("#clubDates .drow"), meta = document.getElementById("clubNextDate");
   if(!rows.length) return;
   var today = todayKeyPST(), next = null;
+  // The monthly check-in is due on the last day of every month, September to May.
+  var ck = document.getElementById("clubCheckin");
+  if(ck){
+    var p = today.split("-"), last = new Date(+p[0], +p[1], 0).getDate(), inYear = +p[1]>=10 || +p[1]<=5, iso = p[0]+"-"+p[1]+"-"+("0"+last).slice(-2);
+    ck.hidden = !inYear;
+    ck.setAttribute("data-from", iso); ck.setAttribute("data-to", inYear ? iso : "0000");
+    setText(ck.querySelector(".dstamp b"), tr(SP_MO[+p[1]-1], MO_ES[+p[1]-1])); setText(ck.querySelector(".dstamp span"), String(last));
+    var before = [].slice.call(rows).filter(function(r){ return r!==ck && r.getAttribute("data-from") > iso; })[0];
+    if(ck.nextElementSibling!==(before||null)) ck.parentNode.insertBefore(ck, before||null);
+    rows = document.querySelectorAll("#clubDates .drow:not([hidden])");
+  }
+  var form = document.getElementById("fairForm"); if(form) form.hidden = today > "2026-10-25"; // sign-ups closed
   rows.forEach(function(r){
     var past = (r.getAttribute("data-to")||"") < today;
     r.classList.toggle("past", past);
@@ -2078,7 +2147,11 @@ function renderQuizResults(dir){
   const pane=quizSwap(html, dir); if(!pane) return;
   pane.querySelector("#quizBack").onclick=function(){ quizStep=quizQs().length-1; renderQuizStep("back"); quizFocusTitle(); };
   pane.querySelector("#quizRetake").onclick=function(){ quizStep=0; quizAns={}; renderQuizStep("back"); quizFocusTitle(); };
-  pane.querySelector("#quizDone").onclick=closeQuiz;
+  pane.querySelector("#quizDone").onclick=function(){
+    closeQuiz();
+    const q=document.getElementById("clubSearch"), x=document.getElementById("clubClear"); if(q) q.value=""; if(x) x.hidden=true;
+    clubQ=""; clubCat="all"; clubsExpanded=true; renderClubs();
+  };
 }
 (function(){ const b=document.getElementById("findClubBtn"); if(b) b.addEventListener("click", openMatch); })();
 
@@ -2098,7 +2171,7 @@ function decodeJwt(tok){
 }
 function _saveSignin(){ try{ localStorage.setItem(SIGNIN_KEY, JSON.stringify(signedIn)); }catch(e){} }
 function _clearSignin(){ try{ localStorage.removeItem(SIGNIN_KEY); }catch(e){} }
-function _loadSignin(){ try{ const s=JSON.parse(localStorage.getItem(SIGNIN_KEY)||"null"); if(s&&s.email){ signedIn.name=s.name||""; signedIn.email=s.email||""; signedIn.picture=s.picture||""; return true; } }catch(e){} return false; }
+function _loadSignin(){ try{ const s=JSON.parse(localStorage.getItem(SIGNIN_KEY)||"null"); if(s && s.email && typeof s.email==="string"){ signedIn.name=typeof s.name==="string"?s.name:""; signedIn.email=s.email; signedIn.picture=typeof s.picture==="string"?s.picture:""; return true; } }catch(e){} return false; }
 function applySignedInUI(){
   renderHello();
   if(!_signinBtn) return;
@@ -2111,7 +2184,8 @@ function applySignedInUI(){
       img.alt = ""; img.referrerPolicy = "no-referrer"; img.src = signedIn.picture;
       _signinBtn.appendChild(img);
     }
-    _signinBtn.appendChild(document.createTextNode((signedIn.name||"").split(" ")[0] || tr("Account","Cuenta")));
+    const nm = document.createElement("span"); nm.setAttribute("data-noi18n",""); nm.textContent = (signedIn.name||"").split(" ")[0] || tr("Account","Cuenta");
+    _signinBtn.appendChild(nm);
     _signinBtn.setAttribute("aria-label",tr("Signed in as ","Sesión iniciada como ")+signedIn.email);
   } else {
     _signinBtn.innerHTML = _signinDefaultHTML;
@@ -2142,6 +2216,7 @@ function refreshSigninDialog(){
 function onGoogleCred(resp){
   try{
     const p = decodeJwt(resp.credential);
+    if(signedIn.email && p.email !== signedIn.email && window.resetFelipe) window.resetFelipe();
     signedIn.name = p.name || ""; signedIn.email = p.email || ""; signedIn.picture = p.picture || "";
     _saveSignin(); applySignedInUI();
     const csName = document.getElementById("csName");
@@ -2157,6 +2232,7 @@ function onGoogleCred(resp){
 function signOut(){
   signedIn.name=""; signedIn.email=""; signedIn.picture="";
   _clearSignin(); sgyForget();
+  if(window.resetFelipe) window.resetFelipe(); // the chat can hold this student's assignments
   try{ if(window.google && google.accounts && google.accounts.id) google.accounts.id.disableAutoSelect(); }catch(e){}
   applySignedInUI(); refreshSigninDialog(); renderSchoology();
   const d=document.getElementById("signinDialog"); if(d && d.open) d.close();
@@ -2200,7 +2276,7 @@ let sgyStepMsg = { text:"", bad:false };
 
 function isSchoolEmail(e){ return /@(student\.)?fuhsd\.org$/i.test(String(e||"")); }
 function sgyConnected(){ return !!(sgy && sgy.feed && signedIn.email && sgy.email === signedIn.email); }
-function sgyLoad(){ try{ const v=JSON.parse(localStorage.getItem(SGY_KEY)||"null"); if(v && v.feed && v.email) sgy=v; }catch(e){} }
+function sgyLoad(){ try{ const v=JSON.parse(localStorage.getItem(SGY_KEY)||"null"); if(v && typeof v.feed==="string" && v.feed && v.email){ sgy=v; if(!Array.isArray(sgy.items)) sgy.items=[]; sgy.items=sgy.items.filter(function(e){ return e && typeof e.title==="string" && /^\d{4}-\d{2}-\d{2}/.test(e.date); }); } }catch(e){} }
 function sgySave(){ try{ if(sgy) localStorage.setItem(SGY_KEY, JSON.stringify(sgy)); }catch(e){} }
 // Bumped on sign-out, disconnect and account change, so a request that was already on its way
 // can't save its answer for the wrong student (or after sign-out).
@@ -2221,12 +2297,13 @@ async function sgyFetch(feed){
   finally{ if(timer) clearTimeout(timer); }
 }
 
+function sgyFocusFeed(){ const d=document.getElementById("signinDialog"), f=document.getElementById("sgyFeed"); if(d && d.open && f) f.focus(); }
 async function sgyConnect(raw){
   const feed = sgyClean(raw);
   if(!SGY_FEED_RE.test(feed)){
     sgyStepMsg = { bad:true, text: tr("That doesn't look like a Schoology calendar link. It starts with webcal:// and ends with ical.ics.",
       "Eso no parece un enlace de calendario de Schoology. Empieza con webcal:// y termina con ical.ics.") };
-    renderSgyStep(); return;
+    renderSgyStep(); sgyFocusFeed(); return;
   }
   sgyBusy = true; sgyStepMsg = { bad:false, text: tr("Connecting to Schoology…","Conectando con Schoology…") }; renderSgyStep();
   const seq = sgySeq, owner = signedIn.email;
@@ -2249,7 +2326,7 @@ async function sgyConnect(raw){
          "Eso no parece un enlace de calendario de Schoology. Empieza con webcal:// y termina con ical.ics.")
     : tr("We couldn't reach Schoology just now. Please try again in a minute.",
          "No pudimos conectar con Schoology en este momento. Inténtalo de nuevo en un minuto.") };
-  renderSgyStep();
+  renderSgyStep(); sgyFocusFeed();
 }
 
 // Quiet background refresh: on load, on return to the app and with the live-data timer,
@@ -2304,7 +2381,8 @@ function sgyTimeText(e){
   return (e.type==="event" ? "" : tr("Due ","Para las ")) + e.time;
 }
 function sgyRow(e, withDay){
-  const day = withDay ? sgyDayLabel(e.date).main + ", " : "";
+  const lab = withDay ? sgyDayLabel(e.date) : null, near = lab && (lab.main===tr("Today","Hoy") || lab.main===tr("Tomorrow","Mañana"));
+  const day = lab ? lab.main + ", " + (near ? "" : lab.sub + ", ") : "";
   let when = sgyTimeText(e);
   if(withDay) when = when.charAt(0).toLowerCase() + when.slice(1);
   const meta = clubEsc(day + when) + " &middot; " + clubEsc(sgyTypeName(e.type,1));
@@ -2457,10 +2535,10 @@ function sgyOpenDialog(){
 document.addEventListener("click", function(ev){
   const b = ev.target.closest("[data-sgy],[data-sgyf]"); if(!b) return;
   const f = b.getAttribute("data-sgyf");
-  if(f){ sgyFilter = f; renderSgySched(); return; }
+  if(f){ sgyFilter = f; keepFocus(document.getElementById("sgySched"), renderSgySched); return; }
   const a = b.getAttribute("data-sgy");
   if(a==="open") sgyOpenDialog();
-  else if(a==="hide"){ try{ localStorage.setItem(SGY_HIDE_INVITE,"1"); }catch(e){} renderSgyHome(); }
+  else if(a==="hide"){ try{ localStorage.setItem(SGY_HIDE_INVITE,"1"); }catch(e){} renderSgyHome(); const h=document.getElementById("h-events"); if(h){ h.setAttribute("tabindex","-1"); h.focus({preventScroll:true}); } }
   else if(a==="more"){ sgyShowAll = true; renderSgySched(); }
   else if(a==="connect"){ const i=document.getElementById("sgyFeed"); sgyConnect(i ? i.value : ""); }
   else if(a==="paste"){
@@ -2476,6 +2554,24 @@ document.addEventListener("keydown", function(ev){
   if(ev.key==="Enter" && ev.target && ev.target.id==="sgyFeed"){ ev.preventDefault(); sgyConnect(ev.target.value); }
 });
 
+// Signing in or out, or disconnecting Schoology, in another tab of the app applies here too.
+window.addEventListener("storage", function(e){
+  if(e.key===SIGNIN_KEY || e.key===null){
+    const was = signedIn.email;
+    signedIn.name = signedIn.email = signedIn.picture = "";
+    _loadSignin();
+    if(signedIn.email !== was){
+      sgySeq++; sgyBusy=false; sgy=null; sgyFilter="all"; sgyQuery=""; sgyShowAll=false;
+      if(was && window.resetFelipe) window.resetFelipe();
+      sgyLoad();
+    }
+    applySignedInUI(); refreshSigninDialog(); renderSchoology();
+  } else if(e.key===SGY_KEY){
+    if(!e.newValue){ sgySeq++; sgyBusy=false; sgy=null; }
+    else sgyLoad();
+    renderSchoology(); renderSgyStep();
+  }
+});
 _loadSignin(); sgyLoad(); applySignedInUI(); initGoogleSignin(); renderSchoology(); sgyRefresh(false);
 
 /* =====================================================
@@ -2494,7 +2590,7 @@ function renderHello(){
   if(h.dataset.hello===lead+first) return;
   h.dataset.hello=lead+first;
   h.textContent=""; h.appendChild(document.createTextNode(lead));
-  var hl=document.createElement("span"); hl.className="hl"; hl.textContent=first; h.appendChild(hl);
+  var hl=document.createElement("span"); hl.className="hl"; hl.setAttribute("data-noi18n",""); hl.textContent=first; h.appendChild(hl);
   renderWeather();
 }
 var WX_KEY="fh_weather_v1", WX_MAX_AGE=15*60*1000, wx=null, wxBusy=false;
@@ -2596,7 +2692,8 @@ const SPIRIT_CACHE_KEY = "fh_spirit_v1";
 let spiritStandings = null, spiritFailed = false;
 try{
   const c = JSON.parse(localStorage.getItem(SPIRIT_CACHE_KEY)||"null");
-  if(c && Array.isArray(c.standings) && c.standings.length) spiritStandings = c.standings;
+  const ok = c && Array.isArray(c.standings) ? c.standings.filter(function(x){ return x && typeof x.cls==="string" && typeof x.pts==="number" && isFinite(x.pts); }) : [];
+  if(ok.length) spiritStandings = ok;
 }catch(e){}
 let prevLeaderCls = null;
 function confettiBurst(el){
@@ -2609,6 +2706,8 @@ function confettiBurst(el){
 }
 /* Compact standings strip: always visible at the top of Spirit; the bar race opens under it. */
 const RANK_EN = ["1st","2nd","3rd","4th"], RANK_ES = ["1.º","2.º","3.º","4.º"];
+// Classes with the same points share a rank.
+function rankAt(list, i){ while(i>0 && list[i-1].pts===list[i].pts) i--; return i; }
 function renderMiniBoard(){
   const box=document.getElementById("miniBoard");
   if(!box) return;
@@ -2623,7 +2722,7 @@ function renderMiniBoard(){
   box.innerHTML=list.map(function(s,i){
     const cvar=CLSVAR[s.cls]||"--cardinal";
     return '<div class="mcell'+(i===0?" lead":"")+'" style="--c:var('+cvar+')">'+
-      '<span class="mrank">'+tr(RANK_EN[i]||"",RANK_ES[i]||"")+'</span>'+
+      '<span class="mrank">'+tr(RANK_EN[rankAt(list,i)]||"",RANK_ES[rankAt(list,i)]||"")+'</span>'+
       '<span class="mcls">'+clubEsc(tr(s.cls, CLS_ES[s.cls]||s.cls))+'</span>'+
       '<span class="mpts">'+s.pts+'</span>'+
       '<span class="mtrack" aria-hidden="true"><span style="width:'+Math.round(s.pts/max*100)+'%"></span></span>'+
@@ -2651,7 +2750,7 @@ function renderBarRace(){
   if(!spiritStandings || !spiritStandings.length){
     if(spiritFailed){
       box.removeAttribute("aria-busy");
-      box.innerHTML='<p class="note barnote">'+tr("Standings will show here soon.","La clasificación aparecerá aquí pronto.")+'</p>';
+      box.innerHTML=""; // the strip above already says they will show here soon
     } else {
       box.setAttribute("aria-busy","true");
       box.innerHTML='<p class="sr">'+tr("Loading the standings…","Cargando la clasificación…")+'</p>'+
@@ -2664,12 +2763,13 @@ function renderBarRace(){
   const max=Math.max(1, list[0].pts), leader=list[0];
   box.innerHTML=list.map(function(s,i){
     const lead = list[1] && list[0].pts>list[1].pts ? list[0].pts-list[1].pts : 0;
-    const gap = i===0
+    const tied = list[1] && s.pts===leader.pts && list[0].pts===list[1].pts;
+    const gap = tied ? tr("Tied for first","Empate en primer lugar") : i===0
       ? (lead ? tr("Leading by "+lead,"Adelante por "+lead) : tr("Leading","Adelante"))
       : tr((leader.pts-s.pts)+" behind","A "+(leader.pts-s.pts)+" puntos");
     const cvar=CLSVAR[s.cls]||"--cardinal";
     return '<div class="brow'+(i===0?" lead":"")+'" style="--c:var('+cvar+')">'+
-      '<div class="binfo"><span class="bcls">'+clubEsc(tr(s.cls, CLS_ES[s.cls]||s.cls))+(i===0?' <span class="crown">'+tr("Projected winner","Ganador proyectado")+'</span>':'')+'</span><span class="bpts">'+s.pts+'</span></div>'+
+      '<div class="binfo"><span class="bcls">'+clubEsc(tr(s.cls, CLS_ES[s.cls]||s.cls))+(i===0 && !tied?' <span class="crown">'+tr("Projected winner","Ganador proyectado")+'</span>':'')+'</span><span class="bpts">'+s.pts+'</span></div>'+
       '<div class="btrack"><div class="bfill" data-w="'+Math.round(s.pts/max*100)+'"></div></div>'+
       '<div class="bgap">'+gap+'</div>'+
     '</div>';
@@ -2688,7 +2788,7 @@ async function syncScoreboard(){
       const r=rows.find(function(x){ return (x[0]||"").trim().toLowerCase()===label.toLowerCase(); });
       if(!r) return null;
       const pts=r.slice(1).reduce(function(sum,c){ const n=Number(String(c).replace(/[^\d.-]/g,"")); return sum+(Number.isFinite(n)?n:0); },0);
-      return {cls:label, pts:pts};
+      return {cls:label, pts:Math.round(pts*100)/100};
     }).filter(Boolean);
     if(!standings.length) throw new Error("no classes in the Spirit Points tab");
     spiritFailed = false;
@@ -2868,7 +2968,7 @@ if(!FEATURES.fireBucks){
 var I18N_EN_ES = {
   "One dress-up submission per student per day.":"Un envío de vestimenta por estudiante por día.",
   // v61 review fixes (2026-11-20)
-  "Ask":"Pregúntale","Felipe":"a Felipe","ASB links":"Enlaces de ASB","Pick one":"Elige una","Back":"Atrás","See my matches":"Ver mis clubes",
+  "Ask":"Pregúntale","ASB links":"Enlaces de ASB","Pick one":"Elige una","Back":"Atrás","See my matches":"Ver mis clubes",
   // v52 compact layout (2026-11-16)
   "What are you most into?":"¿Qué es lo que más te gusta?","Pick any that fit":"Elige todas las que te queden",
   "Science, tech & building":"Ciencia, tecnología y construir cosas","Art, music & performing":"Arte, música y actuación","Culture, identity & language":"Cultura, identidad e idioma",
@@ -2885,6 +2985,7 @@ var I18N_EN_ES = {
   "Strikes:":"Faltas:","strike 1 is a warning, strike 2 is a meeting with you and your advisor, and strike 3 means the club is disbanded. You can appeal a strike within the same school year.":"la falta 1 es una advertencia, la falta 2 es una reunión contigo y tu asesor, y con la falta 3 el club se disuelve. Puedes apelar una falta dentro del mismo año escolar.",
   "Contact & links":"Contacto y enlaces","@fremontclubs on Instagram, for the latest club news":"@fremontclubs en Instagram, con las últimas noticias de clubes",
   "The full official clubs list":"La lista oficial completa de clubes","Handbook and tracker on the ASB site":"Manual y registro en el sitio de ASB",
+  "Monthly check-in due, 11:59 PM":"Vence la revisión mensual, 11:59 PM","Add your name.":"Escribe tu nombre.",
   "Multicultural Fair sign-up form":"Formulario de inscripción a la Feria Multicultural",
   "The fall club fair on the quad at lunch. Meet the clubs and sign up in person.":"La feria de clubes de otoño en el patio a la hora del almuerzo. Conoce los clubes e inscríbete en persona.",
   "Lunch, between the A and B buildings. Share your culture and recruit for your club.":"Almuerzo, entre los edificios A y B. Comparte tu cultura y recluta para tu club.",
@@ -2894,7 +2995,7 @@ var I18N_EN_ES = {
   "Team links & full schedules":"Enlaces del equipo y calendarios completos",
   "Full schedules, rosters and live updates at fremonthsathletics.org":"Calendarios completos, plantillas y novedades en fremonthsathletics.org",
   "Saved on this device. Live listings stay in the language they were entered.":"Se guarda en este dispositivo. Las listas en vivo se quedan en el idioma en que se ingresaron.",
-  "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries. Motion mode swaps the card layout for scroll animations and a swipeable events row.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de Spirit Wear se abren solo durante las semanas de espíritu. Cuando están abiertos, solo llegan a Espíritu, Tecnología y el asesor de ASB, y nunca se comparten públicamente. Los IDs de estudiante solo se usan para quitar entradas duplicadas. El modo movimiento cambia las tarjetas por animaciones al desplazarte y una fila de eventos deslizable.",
+  "Built by the ASB Tech Commission, ASB Leadership at Fremont High School, Sunnyvale (FUHSD). Spirit Wear submissions open only during spirit weeks. When they are open, they go only to ASB Spirit, Tech, and the advisor and are never shared publicly. Student IDs are used only to remove duplicate entries.":"Hecha por la Comisión de Tecnología de ASB, Liderazgo de ASB en Fremont High School, Sunnyvale (FUHSD). Los envíos de Spirit Wear se abren solo durante las semanas de espíritu. Cuando están abiertos, solo llegan a Espíritu, Tecnología y el asesor de ASB, y nunca se comparten públicamente. Los IDs de estudiante solo se usan para quitar entradas duplicadas.",
   "Ask Felipe answers simple questions from the app's data on your device. Other questions, your last few messages and, when you ask about your assignments, the matching Schoology items (title, due date and short description) are sent to Google's Gemini AI to write an answer. Answers to general questions, like when the fall play is, are kept for up to 6 hours so other students get them faster, without your messages or assignments. ASB doesn't save your questions, and no one at ASB reads them. Please don't share private information with Felipe.":"Pregúntale a Felipe responde las preguntas sencillas con los datos de la app en tu dispositivo. Las demás preguntas, tus últimos mensajes y, cuando preguntas por tus tareas, las tareas de Schoology que coinciden (título, fecha de entrega y descripción corta) se envían a Gemini, la IA de Google, para escribir la respuesta. Las respuestas a preguntas generales, como cuándo es la obra de otoño, se guardan hasta 6 horas para que otros estudiantes las reciban más rápido, sin tus mensajes ni tus tareas. ASB no guarda tus preguntas y nadie en ASB las lee. Por favor, no compartas información privada con Felipe.",
   "Spirit Wear submissions open during spirit weeks.":"Los envíos de Spirit Wear se abren durante las semanas de espíritu.",
   "When the next spirit week starts, its dress-up days will show here.":"Cuando empiece la próxima semana de espíritu, sus días temáticos aparecerán aquí.",
@@ -3045,12 +3146,16 @@ var I18N_ATTR = {
   "Search clubs by name…":"Busca clubes por nombre…",
   "Ask about school, clubs, homework…":"Pregunta sobre la escuela, clubes, tareas…",
   "Your name":"Tu nombre","Student ID":"ID estudiantil",
-  "Close":"Cerrar","Your question":"Tu pregunta"
+  "Close":"Cerrar","Your question":"Tu pregunta",
+  "Primary":"Principal","Home":"Inicio","Bell schedule":"Horario de campanas","Spirit points":"Puntos de espíritu","Clubs":"Clubes","Sports":"Deportes","More":"Más",
+  "Clear search":"Borrar búsqueda","Announcement":"Anuncio","Dismiss announcement":"Cerrar el anuncio","Club categories":"Categorías de clubes"
 };
 var fhLang = "en", fhTextSize = "normal";
-try{ fhLang = localStorage.getItem("fhLang") || "en"; }catch(e){}
+try{ fhLang = localStorage.getItem("fhLang")==="es" ? "es" : "en"; }catch(e){}
 try{ fhTextSize = localStorage.getItem("fhTextSize") || "normal"; }catch(e){}
 function fhT(key, fallback){ return fallback; }
+// Names and what people type or Felipe answers are never translated ("Felipe", "Back").
+var I18N_SKIP = "[data-noi18n], .askmsg:not([data-i18n-ok])";
 var _i18nOrig = (typeof WeakMap!=="undefined") ? new WeakMap() : null;
 function walkI18n(root, es){
   if(!root || !_i18nOrig || !document.createTreeWalker) return;
@@ -3060,6 +3165,7 @@ function walkI18n(root, es){
     var p = n.parentNode; if(!p) continue;
     var tag = p.nodeName;
     if(tag==="SCRIPT"||tag==="STYLE"||tag==="TEXTAREA") continue;
+    if(p.closest && p.closest(I18N_SKIP)) continue;
     if(!_i18nOrig.has(n)) _i18nOrig.set(n, n.nodeValue);
     var orig = _i18nOrig.get(n);
     var key = orig.trim();
@@ -3092,6 +3198,7 @@ function startI18nObserver(){
         var node = added[j];
         if(node.nodeType===1) walkI18n(node, true);
         else if(node.nodeType===3){
+          if(node.parentElement && node.parentElement.closest(I18N_SKIP)) continue;
           if(!_i18nOrig.has(node)) _i18nOrig.set(node, node.nodeValue);
           var key=node.nodeValue.trim();
           if(key && I18N_EN_ES[key]!==undefined) node.nodeValue = node.nodeValue.replace(key, I18N_EN_ES[key]);
@@ -3108,6 +3215,8 @@ function applyLang(){
   document.documentElement.setAttribute("lang", fhLang);
   document.querySelectorAll("[data-lang]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-lang")===fhLang)); });
   startI18nObserver();
+  var fabName = document.querySelector("#askFab span + span"); if(fabName) setText(fabName, es ? "a Felipe" : "Felipe");
+  var fbOk = document.getElementById("fbOk"); if(fbOk) fbOk.classList.remove("show","retry"); // an old message would stay in the old language
   if(typeof renderSports==="function" && document.getElementById("sportsBody")) { try{ renderSports(); }catch(e){} }
   if(typeof renderClubs==="function" && document.getElementById("clubGrid")) { try{ renderClubs(); }catch(e){} }
   // Text the app builds itself (tr) is redrawn in the new language.
@@ -3158,7 +3267,9 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   var log=document.getElementById("askLog"), form=document.getElementById("askForm"), input=document.getElementById("askInput");
   var close=document.getElementById("askClose"), back=document.getElementById("askBack"), chips=document.getElementById("askChips");
   var Core = (typeof window!=="undefined" && window.FelipeCore) || null;
-  var lastSend=0, busy=false, queue=[];
+  // Time that only moves forward, so a phone that corrects its clock mid-answer can't stall Felipe.
+  function clock(){ return (window.performance && performance.now) ? performance.now() : new Date().getTime(); }
+  var lastSend=-1e9, busy=false, queue=[], gen=0;
   var hist=[]; // [{ role:"user"|"model", text }], newest last; only real answers are kept
   var HIST_TURNS=6, HIST_CHARS=500, ASK_TIMEOUT_MS=30000, LLM_GAP_MS=1500;
   var lastAssign=null; // the Schoology items sent with the last assignment question, for "the first one" follow-ups
@@ -3187,6 +3298,13 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     fab.setAttribute("aria-expanded","false");
     if(returnFocus) fab.focus();
   }
+  window.resetFelipe = function(){
+    gen++; queue=[]; busy=false; hist=[]; lastAssign=null; answered=0; passed={}; shownChips=[]; lastAsk=null;
+    log.removeAttribute("aria-busy"); input.value="";
+    [].slice.call(log.children).forEach(function(x, i){ if(i) x.remove(); });
+    if(sayEl) sayEl.textContent="";
+    chips.innerHTML=""; chips.hidden=true; if(isOpen()) renderChips();
+  };
   window.closeFelipe = function(){ if(!isOpen()) return false; hide(true); return true; };
   fab.addEventListener("click", function(){ isOpen() ? hide(true) : open(); });
   if(close) close.addEventListener("click", function(){ hide(true); });
@@ -3217,7 +3335,10 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   function sgyOn(){ return typeof sgyConnected==="function" && sgyConnected() && sgy && Array.isArray(sgy.items) && sgy.items.length>0; }
   function renderChips(){
     if(!chips) return;
-    if(hist.length || log.querySelector(".askmsg.me")) return; // past the first question: follow-ups own the row
+    if(hist.length || log.querySelector(".askmsg.me")){ // past the first question: follow-ups own the row
+      if(lastAsk && lastAsk.lang!==fhLang && !busy) followUps(lastAsk.c, lastAsk.q); // in the language used now
+      return;
+    }
     var list=[ tr("What period is it?","¿Qué periodo es ahora?"), tr("When is the next home game?","¿Cuándo es el próximo partido en casa?") ];
     list.push(sgyOn() ? tr("What's due this week?","¿Qué tengo pendiente esta semana?") : tr("Help me plan my week","Ayúdame a planear mi semana"));
     showChips(list);
@@ -3406,7 +3527,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     }
     function frame(){
       ticking=false;
-      var ts=Date.now(), dt = last ? Math.min(100, ts-last) : 16; last=ts;
+      var ts=clock(), dt = last ? Math.min(100, ts-last) : 16; last=ts;
       var cps = Math.max(PACE.REVEAL_CPS, target.length*1000/PACE.REVEAL_MAX_MS, (target.length-shown)*1000/600);
       shown = Math.min(target.length, shown + cps*dt/1000);
       draw();
@@ -3427,7 +3548,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
 
   /* ---------- suggested next questions ---------- */
   // Two short ones that fit the answer just given; one the student passed over isn't offered again.
-  var shownChips=[], passed={};
+  var shownChips=[], passed={}, lastAsk=null;
   function nextQs(c){
     var i = c && c.intent;
     if(/^(?:period_now|time_left|bell_time|day_type|school_on|schedule)$/.test(i)) return [tr("When is lunch today?","¿A qué hora es el almuerzo hoy?"), tr("What's tomorrow's schedule?","¿Cuál es el horario de mañana?"), tr("When does school end today?","¿A qué hora termina la escuela hoy?")];
@@ -3454,6 +3575,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   }
   function followUps(c, q){
     if(!chips || queue.length) return;
+    lastAsk={ c:c, q:q, lang:fhLang };
     var ql=String(q||"").trim().toLowerCase();
     var list=nextQs(c).filter(function(x){ return x.toLowerCase()!==ql && !passed[x]; }).slice(0,2);
     var stick=nearBottom();
@@ -3497,8 +3619,9 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
   }
   // Classified when its turn comes, so a follow-up sees the answer before it.
   function run(job){
+    var g=gen; // a sign-out starts a new chat; an answer still on its way is dropped
     busy=true;
-    var q=job.q, t0=Date.now(), c=null;
+    var q=job.q, t0=clock(), c=null;
     if(Core){ try{ c = Core.classify(q, { history:hist.slice(-HIST_TURNS), lang:fhLang }); }catch(e){ c = null; } }
     var lang = (c && c.lang) || fhLang;
     log.setAttribute("aria-busy","true");
@@ -3514,21 +3637,23 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     if(text!=null){
       setTimeout(function(){
         th.remove();
+        if(g!==gen) return;
         var rv=reveal(cls); rv.set(text);
         rv.end(function(b){
+          if(g!==gen) return;
           say(b.textContent);
           if(cls){ remember("user", q); remember("model", text); }
           done(c, q, true);
         });
-      }, Math.max(0, thinkMs(q, text, true) - (Date.now()-t0)));
+      }, Math.max(0, thinkMs(q, text, true) - (clock()-t0)));
       return;
     }
-    var gap = LLM_GAP_MS - (Date.now()-lastSend);
-    setTimeout(function(){ lastSend=Date.now(); sendLlm(q, c, lang, th, t0); }, Math.max(0, gap));
+    var gap = LLM_GAP_MS - (clock()-lastSend);
+    setTimeout(function(){ if(g!==gen) return; lastSend=clock(); sendLlm(q, c, lang, th, t0, g); }, Math.max(0, gap));
   }
 
   // The server (Gemini, the shared cache, or an answer made from the data).
-  function sendLlm(q, c, lang, th, t0){
+  function sendLlm(q, c, lang, th, t0, g){
     var history=hist.slice(-HIST_TURNS);
     // v:2 = this app shows the "fuller answers are back soon" note itself (once per visit).
     var body={ question:q, history:history, lang:lang, v:2 };
@@ -3542,14 +3667,15 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
     }else lastAssign = null;
     var rv=null, latest="", timer=0, started=false, final=null;
     // The pause counts from the question; the first words decide how long it is.
-    function schedule(t, whole){ if(!timer && !started) timer=setTimeout(begin, Math.max(0, thinkMs(q, t, whole) - (Date.now()-t0))); }
+    function schedule(t, whole){ if(!timer && !started) timer=setTimeout(begin, Math.max(0, thinkMs(q, t, whole) - (clock()-t0))); }
     function begin(){
-      if(started) return; started=true; clearTimeout(timer);
+      if(started || g!==gen) return; started=true; clearTimeout(timer);
       th.remove(); rv=reveal(""); rv.set(latest);
       if(final) close();
     }
-    function onText(t){ latest=t; if(started) rv.set(t); else schedule(t); }
+    function onText(t){ if(g!==gen) return; latest=t; if(started) rv.set(t); else schedule(t); }
     function finish(r){
+      if(g!==gen) return;
       final=r; latest=plain(r.text).trim() || TRY_AGAIN();
       if(started) close(); else schedule(latest, true);
     }
@@ -3557,6 +3683,7 @@ function setTextSize(v){ fhTextSize = (v==="large"?"large":"normal"); try{ local
       var r=final, text=latest;
       rv.set(text);
       rv.end(function(b){
+        if(g!==gen) return;
         if(r.partial){ var n=document.createElement("span"); n.className="asksrc"; n.textContent=tr("This answer was cut short. Please ask again.","Esta respuesta quedó incompleta. Vuelve a preguntar, por favor."); b.appendChild(n); }
         if(r.retry){
           var row=document.createElement("div"); row.className="askact";

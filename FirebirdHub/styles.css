@@ -1353,3 +1353,42 @@ html.bigtext dialog, html.bigtext dialog.signindlg{max-height:calc((100dvh - 32p
   html.bigtext .askchip{flex:none; white-space:nowrap}
   html.bigtext .askfab[aria-expanded="true"]{visibility:hidden}
 }
+
+/* v56: the rest of the chaos test findings (2026-11-24). */
+html{scroll-padding-top:72px; scroll-padding-bottom:96px} /* a focused field never hides under the fixed bars */
+@media (min-width:880px){ html{scroll-padding-bottom:24px} }
+.askmsg, #signinBlurb{overflow-wrap:anywhere}
+dialog, .asklog, .askpanel{overscroll-behavior:contain}
+@media (pointer:coarse){ html:has(dialog[open]), html:has(#askPanel:not([hidden])){overflow:hidden} } /* the page behind stays put */
+html[lang="es"] .askfab span:first-child{font-size:11.5px; letter-spacing:0}
+html[lang="es"] .askfab span + span{font-size:12.5px}
+.mcell{overflow:hidden}
+.mpts{overflow:hidden; text-overflow:ellipsis}
+.wx{min-width:0}
+.wxtxt{min-width:0; overflow-wrap:anywhere}
+.topnav button{min-height:44px}
+.dd-val{white-space:normal; line-height:1.15; text-align:left; overflow-wrap:anywhere}
+.bottomnav a{min-width:0}
+.bottomnav .ico{padding-left:clamp(0px, 1.2vw, 12px); padding-right:clamp(0px, 1.2vw, 12px)}
+@media (max-width:380px){ .bottomnav a{font-size:10px; letter-spacing:0} .mcls{font-size:11.5px} }
+@media (max-width:360px){
+  html.bigtext .bottomnav a{font-size:9px}
+  .wordmark b{font-size:17px; white-space:nowrap} .wordmark span{font-size:9.5px; letter-spacing:.06em; white-space:nowrap}
+  .signin{padding:5px 8px; font-size:13px; gap:5px}
+  .mcell{padding-left:5px; padding-right:4px} .mcls{font-size:10.5px}
+}
+@media (max-width:330px){
+  .bottomnav a{font-size:9px}
+  .signin svg{display:none}
+  .ringwrap, .ringwrap svg{width:52px; height:52px}
+  .clockcard{gap:8px; padding:10px}
+  .clockleft b{font-size:24px}
+  .schedwrap th, .schedwrap td{padding-left:8px; padding-right:8px; font-size:13.5px}
+  .daypick button{padding-left:2px; padding-right:2px; font-size:13px}
+  .hero h1{overflow-wrap:anywhere}
+}
+@media (max-width:400px){ html.bigtext .mcls{font-size:10px} html.bigtext .daypick button{font-size:12.5px; padding-left:1px; padding-right:1px; letter-spacing:0} }
+@media (max-width:330px){ .mcls{font-size:9.5px} html[lang="es"] .daypick button{font-size:11.5px; letter-spacing:0} }
+@media (max-width:300px){ html.bigtext .daypick button{font-size:10.5px} html.bigtext .mcls{font-size:8.5px} html.bigtext .wxico{display:none} }
+@media (max-width:360px){ .dd-name{white-space:normal; overflow-wrap:anywhere} .dd-opt{gap:8px} .dd-count{min-width:0} }
+.linkrow span{overflow-wrap:anywhere}
